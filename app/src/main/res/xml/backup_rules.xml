@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Sample backup rules file; see https://developer.android.com/about/versions/12/backup-restore#encrypted-backups
+   for more reference.
+-->
+<full-backup-content>
+    <!-- Exclude all shared preferences -->
+    <exclude domain="sharedpref" path="."/>
+</full-backup-content>

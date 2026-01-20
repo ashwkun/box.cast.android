@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+    
+    <!-- The Focus Box Frame (User Provided) -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M240-40H120q-33 0-56.5-23.5T40-120v-120h80v120h120v80Zm480 0v-80h120v-120h80v120q0 33-23.5 56.5T840-40H720ZM40-720v-120q0-33 23.5-56.5T120-920h120v80H120v120H40Zm800 0v-120H720v-80h120q33 0 56.5 23.5T920-840v120h-80Z"/>
+
+    <!-- The Podcast Waves (Material Symbol: podcasts) - Centered/Scaled -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M480-280q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm0-80q25 0 42.5-17.5T540-420q0-25-17.5-42.5T480-480q-25 0-42.5 17.5T420-420q0 25 17.5 42.5T480-360Zm0-300q-28 0-54.5 9t-50.5 25l-57-57q34-34 78-52.5t94-18.5q50 0 94 18.5t78 52.5l-57 57q-24-16-50.5-25T480-660Zm-160 160q-13 0-25 5t-23 13l-56-56q28-28 64.5-43T360-600v80q-10 0-20 3.5T320-500Zm320 0q-10 0-20-3.5T600-520v-80q41 4 77.5 19T742-538l-56 56q-11-8-23-13t-25-5Z"/>
+</vector>

@@ -1,0 +1,285 @@
+package cx.aswin.boxcast.feature.home
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.Alignment
+import cx.aswin.boxcast.feature.home.components.GridSkeletonItems
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import cx.aswin.boxcast.core.model.Episode
+import cx.aswin.boxcast.core.model.Podcast
+
+import cx.aswin.boxcast.feature.home.components.HeroCarousel
+import cx.aswin.boxcast.feature.home.components.PodcastCard
+import cx.aswin.boxcast.feature.home.components.RisingCard
+import cx.aswin.boxcast.feature.home.components.TopControlBar
+import cx.aswin.boxcast.feature.home.components.YourShowsSection
+
+import cx.aswin.boxcast.feature.home.components.DebugDbInspectorDialog
+import cx.aswin.boxcast.core.data.database.ListeningHistoryEntity
+import cx.aswin.boxcast.core.data.database.PodcastEntity
+
+@Composable
+fun HomeRoute(
+    apiBaseUrl: String,
+    apiKey: String,
+    onPodcastClick: (Podcast) -> Unit,
+    onHeroArrowClick: (SmartHeroItem) -> Unit,
+    onEpisodeClick: ((Episode, Podcast) -> Unit)? = null, // Navigate to EpisodeInfo
+    onPlayClick: ((Podcast) -> Unit)? = null, // Navigate directly to Player (Resume)
+    onNavigateToLibrary: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    val application = LocalContext.current.applicationContext as android.app.Application
+    val viewModel: HomeViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return HomeViewModel(application, apiBaseUrl, apiKey) as T
+            }
+        }
+    )
+    val uiState by viewModel.uiState.collectAsState()
+    val debugHistory by viewModel.debugHistory.collectAsState(initial = emptyList())
+    val debugPodcasts by viewModel.debugPodcasts.collectAsState(initial = emptyList())
+    
+    HomeScreen(
+        uiState = uiState,
+        debugHistory = debugHistory,
+        debugPodcasts = debugPodcasts,
+        onPodcastClick = onPodcastClick,
+        onHeroArrowClick = onHeroArrowClick,
+        onEpisodeClick = onEpisodeClick,
+        onPlayClick = onPlayClick,
+        onNavigateToLibrary = onNavigateToLibrary,
+        onToggleSubscription = viewModel::toggleSubscription,
+        onSelectCategory = viewModel::selectCategory,
+        onDeleteHistoryItem = viewModel::deleteHistoryItem,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun HomeScreen(
+    uiState: HomeUiState,
+    debugHistory: List<ListeningHistoryEntity>,
+    debugPodcasts: List<PodcastEntity>,
+    onPodcastClick: (Podcast) -> Unit,
+    onHeroArrowClick: (SmartHeroItem) -> Unit,
+    onEpisodeClick: ((Episode, Podcast) -> Unit)?,
+    onPlayClick: ((Podcast) -> Unit)?,
+    onNavigateToLibrary: (() -> Unit)?,
+    onToggleSubscription: (String) -> Unit,
+    onSelectCategory: (String?) -> Unit,
+    onDeleteHistoryItem: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Track scroll state for collapsing top bar
+    val gridState = rememberLazyStaggeredGridState()
+    var showDebugDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+    
+    // Calculate scroll fraction: 0 = at top (expanded), 1 = scrolled (collapsed)
+    val scrollFraction by remember {
+        derivedStateOf {
+            val firstVisibleItem = gridState.firstVisibleItemIndex
+            val firstVisibleOffset = gridState.firstVisibleItemScrollOffset
+            
+            val collapseThreshold = 100f
+            
+            if (firstVisibleItem == 0) {
+                (firstVisibleOffset / collapseThreshold).coerceIn(0f, 1f)
+            } else {
+                1f 
+            }
+        }
+    }
+    
+    if (showDebugDialog) {
+        DebugDbInspectorDialog(
+            history = debugHistory,
+            podcasts = debugPodcasts,
+            onDeleteHistoryItem = onDeleteHistoryItem,
+            onDismissRequest = { showDebugDialog = false }
+        )
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        TopControlBar(
+            scrollFraction = scrollFraction,
+            onAvatarLongClick = { showDebugDialog = true }
+        )
+        
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (uiState.isError) {
+                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                     Text("Error loading content", color = MaterialTheme.colorScheme.error)
+                 }
+            } else {
+                PodcastFeed(
+                    heroItems = uiState.heroItems,
+                    latestItems = uiState.latestEpisodes,
+                    subscribedItems = uiState.subscribedPodcasts,
+                    risingItems = uiState.risingPodcasts,
+                    gridItems = uiState.discoverPodcasts,
+                    selectedCategory = uiState.selectedCategory,
+                    isFilterLoading = uiState.isFilterLoading,
+                    onPodcastClick = onPodcastClick,
+                    onHeroArrowClick = onHeroArrowClick,
+                    onEpisodeClick = onEpisodeClick,
+                    onPlayClick = onPlayClick,
+                    onNavigateToLibrary = onNavigateToLibrary,
+                    onToggleSubscription = onToggleSubscription,
+                    onSelectCategory = onSelectCategory,
+                    gridState = gridState
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PodcastFeed(
+    heroItems: List<SmartHeroItem>,
+    latestItems: List<Podcast>,
+    subscribedItems: List<Podcast>,
+    risingItems: List<Podcast>,
+    gridItems: List<Podcast>,
+    selectedCategory: String?,
+    isFilterLoading: Boolean,
+    onPodcastClick: (Podcast) -> Unit,
+    onHeroArrowClick: (SmartHeroItem) -> Unit,
+    onEpisodeClick: ((Episode, Podcast) -> Unit)?,
+    onPlayClick: ((Podcast) -> Unit)?,
+    onNavigateToLibrary: (() -> Unit)?,
+    onToggleSubscription: (String) -> Unit,
+    onSelectCategory: (String?) -> Unit,
+    gridState: androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState,
+    modifier: Modifier = Modifier
+) {
+    LazyVerticalStaggeredGrid(
+        state = gridState,
+        columns = StaggeredGridCells.Adaptive(150.dp),
+        contentPadding = PaddingValues(bottom = 24.dp, start = 16.dp, end = 16.dp), 
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalItemSpacing = 16.dp,
+        modifier = modifier.fillMaxSize()
+    ) {
+
+        // 1. Smart Hero (Personalized Content)
+        item(span = StaggeredGridItemSpan.FullLine) {
+            if (heroItems.isNotEmpty()) {
+                HeroCarousel(
+                    heroItems = heroItems,
+                    onPlayClick = { onPlayClick?.invoke(it) },
+                    onDetailsClick = { podcast ->
+                        val ep = podcast.latestEpisode
+                        if (ep != null) {
+                            onEpisodeClick?.invoke(ep, podcast)
+                        } else {
+                            onPodcastClick(podcast)
+                        }
+                    },
+                    onArrowClick = onHeroArrowClick,
+                    onToggleSubscription = onToggleSubscription,
+                    modifier = Modifier.padding(horizontal = 8.dp) 
+                )
+            } else {
+                cx.aswin.boxcast.feature.home.components.HeroSkeleton()
+            }
+        }
+
+        // 2. "Your Shows" (Merged: Subscribed + New Episodes) - MOVED ABOVE "On The Rise"
+        if (subscribedItems.isNotEmpty() || latestItems.isNotEmpty()) {
+            item(span = StaggeredGridItemSpan.FullLine) {
+                YourShowsSection(
+                    subscribedPodcasts = subscribedItems,
+                    latestEpisodes = latestItems,
+                    onPodcastClick = onPodcastClick,
+                    onEpisodeClick = { episode, podcast ->
+                        onEpisodeClick?.invoke(episode, podcast)
+                    },
+                    onViewLibrary = { onNavigateToLibrary?.invoke() }
+                )
+            }
+        }
+
+        // 3. "On The Rise" (Header Always Visible)
+        item(span = StaggeredGridItemSpan.FullLine) {
+            Column {
+                cx.aswin.boxcast.feature.home.components.OnTheRiseHeader()
+                
+                if (risingItems.isNotEmpty()) {
+                    cx.aswin.boxcast.feature.home.components.OnTheRiseRail(
+                        podcasts = risingItems,
+                        onPodcastClick = onPodcastClick
+                    )
+                } else {
+                     cx.aswin.boxcast.feature.home.components.RisingSkeleton()
+                }
+            }
+        }
+
+        // 4. Discover Section (Header + Chips + Loading State)
+        item(span = StaggeredGridItemSpan.FullLine) {
+            cx.aswin.boxcast.feature.home.components.DiscoverSection(
+                selectedCategory = selectedCategory,
+                isLoading = isFilterLoading,
+                onCategorySelected = onSelectCategory
+            )
+        }
+
+        // 5. Masonry Grid Content (Discover Podcasts)
+        if (!isFilterLoading) {
+            if (gridItems.isNotEmpty()) {
+                items(gridItems, key = { it.id }) { podcast ->
+                    val isTall = podcast.id.hashCode() % 3 == 0
+                    PodcastCard(
+                        podcast = podcast,
+                        isTall = isTall,
+                        onClick = { onPodcastClick(podcast) }
+                    )
+                }
+            } else {
+                 GridSkeletonItems()
+            }
+        } else {
+             GridSkeletonItems()
+        }
+    }
+}

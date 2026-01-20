@@ -1,0 +1,8 @@
+Starting: Intent { cmp=cx.aswin.boxcast/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: cx.aswin.boxcast/.MainActivity
+TotalTime: 641
+WaitTime: 643
+Complete
+01-18 14:14:41.519  9010  9010 D BoxCastPerformance: Content fully loaded. Items: 8 hero, 10 rising, 12 discover
