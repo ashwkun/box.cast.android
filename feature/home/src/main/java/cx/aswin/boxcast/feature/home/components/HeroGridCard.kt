@@ -172,13 +172,20 @@ private fun RowHeader(title: String) {
 
 @Composable
 private fun GridItem(podcast: Podcast, onPlayClick: (Podcast) -> Unit, onDetailsClick: (Podcast) -> Unit, modifier: Modifier = Modifier) {
+    // Use rememberUpdatedState to ensure we always use the latest podcast data
+    val currentPodcast by androidx.compose.runtime.rememberUpdatedState(podcast)
+    val currentOnPlayClick by androidx.compose.runtime.rememberUpdatedState(onPlayClick)
+    
     Surface(
         shape = RoundedCornerShape(12.dp),
         shadowElevation = 0.dp, // Flat inside card looks cleaner
         color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .expressiveClickable { onDetailsClick(podcast) }
+            .expressiveClickable { 
+                android.util.Log.d("HeroGrid", "GridItem clicked: ${currentPodcast.title} (id=${currentPodcast.id})")
+                currentOnPlayClick(currentPodcast) 
+            }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Image Logic: Episode Art -> Podcast Art -> Shapes

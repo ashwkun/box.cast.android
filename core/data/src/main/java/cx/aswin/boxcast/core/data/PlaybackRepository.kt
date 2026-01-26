@@ -1,5 +1,7 @@
 package cx.aswin.boxcast.core.data
 
+import android.util.Log
+
 import android.content.ComponentName
 import android.content.Context
 import androidx.media3.common.MediaItem
@@ -35,6 +37,7 @@ data class PlayerState(
     val isPlaying: Boolean = false,
     val duration: Long = 0L,
     val position: Long = 0L,
+    val bufferedPosition: Long = 0L,
     val currentEpisode: Episode? = null,
     val currentPodcast: Podcast? = null,
     val isLoading: Boolean = false
@@ -51,6 +54,10 @@ class PlaybackRepository(
     private val _playerState = kotlinx.coroutines.flow.MutableStateFlow(PlayerState())
     val playerState = _playerState.asStateFlow()
     
+    // Preferences for session state
+    private val prefs = context.getSharedPreferences("boxcast_player", Context.MODE_PRIVATE)
+    private val KEY_PLAYER_DISMISSED = "player_dismissed"
+    
     // Scope for progress updates
     private val repositoryScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
     private var progressJob: kotlinx.coroutines.Job? = null
@@ -66,8 +73,18 @@ class PlaybackRepository(
             mediaController = mediaControllerFuture?.get()
             mediaController?.addListener(object : androidx.media3.common.Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    Log.d("PlaybackRepo", "onIsPlayingChanged: isPlaying=$isPlaying, currentPos=${mediaController?.currentPosition}")
                     _playerState.value = _playerState.value.copy(isPlaying = isPlaying)
-                    if (isPlaying) startProgressTicker() else stopProgressTicker()
+                    if (isPlaying) {
+                        startProgressTicker()
+                    } else {
+                        stopProgressTicker()
+                        // Save state when paused - delay to prevent list reorder during pod switching
+                        repositoryScope.launch { 
+                            kotlinx.coroutines.delay(10000) // 10 second delay
+                            saveCurrentState() 
+                        }
+                    }
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
@@ -80,12 +97,71 @@ class PlaybackRepository(
                     }
                 }
             })
-            // Sync initial state
-            _playerState.value = _playerState.value.copy(
-                isPlaying = mediaController?.isPlaying == true,
-                isLoading = mediaController?.playbackState == androidx.media3.common.Player.STATE_BUFFERING
-            )
+            
+            // Sync state from MediaController (handles app coming back from background)
+            syncStateFromMediaController()
         }, MoreExecutors.directExecutor())
+    }
+    
+    /**
+     * Sync playback state from the MediaController.
+     * Called when MediaController connects (including when app comes back from background).
+     */
+    private fun syncStateFromMediaController() {
+        val controller = mediaController ?: return
+        
+        val isPlaying = controller.isPlaying
+        val isLoading = controller.playbackState == androidx.media3.common.Player.STATE_BUFFERING
+        val currentPosition = controller.currentPosition.coerceAtLeast(0)
+        val bufferedPosition = controller.bufferedPosition.coerceAtLeast(0)
+        val duration = controller.duration.coerceAtLeast(0)
+        val hasMedia = controller.mediaItemCount > 0
+        
+        if (hasMedia && _playerState.value.currentEpisode == null) {
+            // MediaController has media but we don't have metadata - restore from DB
+            repositoryScope.launch {
+                val lastSession = listeningHistoryDao.getLastPlayedSession()
+                if (lastSession != null) {
+                    val episode = Episode(
+                        id = lastSession.episodeId,
+                        title = lastSession.episodeTitle,
+                        description = "",
+                        audioUrl = lastSession.episodeAudioUrl ?: "",
+                        imageUrl = lastSession.episodeImageUrl,
+                        duration = (lastSession.durationMs / 1000).toInt(),
+                        publishedDate = 0L
+                    )
+                    val podcast = Podcast(
+                        id = lastSession.podcastId,
+                        title = lastSession.podcastName,
+                        artist = "",
+                        imageUrl = lastSession.podcastImageUrl ?: "",
+                        description = null,
+                        genre = "Podcast"
+                    )
+                    _playerState.value = PlayerState(
+                        currentEpisode = episode,
+                        currentPodcast = podcast,
+                        isPlaying = isPlaying,
+                        isLoading = isLoading,
+                        position = currentPosition,
+                        bufferedPosition = bufferedPosition,
+                        duration = if (duration > 0) duration else lastSession.durationMs
+                    )
+                    if (isPlaying) startProgressTicker()
+                }
+            }
+        } else {
+            // Just sync playback state
+            _playerState.value = _playerState.value.copy(
+                isPlaying = isPlaying,
+                isLoading = isLoading,
+                position = if (currentPosition > 0) currentPosition else _playerState.value.position,
+                bufferedPosition = bufferedPosition,
+                duration = if (duration > 0) duration else _playerState.value.duration
+            )
+            if (isPlaying) startProgressTicker()
+        }
     }
     
     private fun startProgressTicker() {
@@ -93,16 +169,46 @@ class PlaybackRepository(
         progressJob = repositoryScope.launch {
             while (true) {
                 mediaController?.let { controller ->
-                    if (controller.isPlaying) {
+                    if (controller.isPlaying || controller.isLoading) {
+                        val currentPos = controller.currentPosition
+                        val bufferedPos = controller.bufferedPosition
+                        val currentDur = controller.duration.coerceAtLeast(0)
+                        
                         _playerState.value = _playerState.value.copy(
-                            position = controller.currentPosition,
-                            duration = controller.duration.coerceAtLeast(0)
+                            position = currentPos,
+                            bufferedPosition = bufferedPos,
+                            duration = currentDur
                         )
+                        
+                        // Save progress periodically (every ~10 seconds)
+                        if (System.currentTimeMillis() % 10000 < 500) {
+                             saveCurrentState()
+                        }
                     }
                 }
                 kotlinx.coroutines.delay(500) // Update every 500ms
             }
         }
+    }
+    
+    // Helper to save current state
+    private suspend fun saveCurrentState() {
+        val state = _playerState.value
+        val episode = state.currentEpisode ?: return
+        val podcast = state.currentPodcast ?: return
+        
+        savePlaybackState(
+            podcastId = podcast.id,
+            episodeId = episode.id,
+            positionMs = state.position,
+            durationMs = state.duration,
+            episodeTitle = episode.title,
+            episodeImageUrl = episode.imageUrl,
+            podcastImageUrl = podcast.imageUrl,
+            episodeAudioUrl = episode.audioUrl,
+            podcastName = podcast.title,
+            isCompleted = false
+        )
     }
     
     private fun stopProgressTicker() {
@@ -111,59 +217,133 @@ class PlaybackRepository(
     }
 
     suspend fun playEpisode(episode: Episode, podcast: Podcast) {
+        Log.d("PlaybackRepo", "playEpisode() called: episode=${episode.title} (id=${episode.id}), podcast=${podcast.title}")
+        
+        // Reset dismissed flag - user is actively playing
+        prefs.edit().putBoolean(KEY_PLAYER_DISMISSED, false).apply()
+        
         if (mediaController == null) {
             mediaController = mediaControllerFuture?.await()
         }
         
         mediaController?.let { controller ->
-            // Check if already playing this episode to avoid restart
+            // Check if already playing this episode
             val isSame = _playerState.value.currentEpisode?.id == episode.id
-            if (isSame) {
-                controller.play()
+            // Only short-circuit if we actually have the media loaded
+            if (isSame && controller.mediaItemCount > 0) {
+                // If same episode and loaded, just resume
+                if (!controller.isPlaying) {
+                    controller.play()
+                }
                 return@let
+            }
+            
+            // Check for saved progress for this episode
+            var startPosition = 0L
+            val savedProgress = listeningHistoryDao.getHistoryItem(episode.id)
+            if (savedProgress != null && !savedProgress.isCompleted) {
+                startPosition = savedProgress.progressMs
+            }
+            
+            // Fallback: If we already have this episode loaded in memory (e.g. from restoreLastSession),
+            // and it has a valid position, use that if it's better than DB result.
+            if (_playerState.value.currentEpisode?.id == episode.id) {
+                if (_playerState.value.position > startPosition) {
+                    startPosition = _playerState.value.position
+                }
             }
             
             // Create MediaItem with Metadata
             val metadata = androidx.media3.common.MediaMetadata.Builder()
                 .setTitle(episode.title)
                 .setArtist(podcast.title)
-                .setArtworkUri(android.net.Uri.parse(episode.imageUrl ?: podcast.imageUrl))
+                .setArtworkUri(android.net.Uri.parse(episode.imageUrl?.takeIf { it.isNotBlank() } ?: podcast.imageUrl))
                 .setDisplayTitle(episode.title)
                 .setSubtitle(podcast.title)
                 .build()
-                
+           
             val mediaItem = MediaItem.Builder()
                 .setUri(episode.audioUrl)
                 .setMediaMetadata(metadata)
                 .build()
-                
-            controller.setMediaItem(mediaItem)
+            
+            // Use setMediaItem with start position to avoid race condition
+            controller.setMediaItem(mediaItem, startPosition.coerceAtLeast(0L))
             controller.prepare()
             controller.play()
             
             // Update local state immediately with metadata
+            val durationMs = if (savedProgress != null && savedProgress.durationMs > 0) {
+                savedProgress.durationMs
+            } else {
+                episode.duration.toLong() * 1000
+            }
+            
             _playerState.value = _playerState.value.copy(
                 currentEpisode = episode,
                 currentPodcast = podcast,
                 isPlaying = true,
-                position = 0,
-                duration = episode.duration.toLong() * 1000
+                position = startPosition,
+                duration = durationMs
             )
-
-            // Save initial state to DB
-            savePlaybackState(
-                podcastId = podcast.id,
-                episodeId = episode.id,
-                positionMs = 0,
-                durationMs = episode.duration.toLong() * 1000,
-                episodeTitle = episode.title,
-                episodeImageUrl = episode.imageUrl,
-                podcastImageUrl = podcast.imageUrl,
-                episodeAudioUrl = episode.audioUrl,
-                podcastName = podcast.title,
-                isCompleted = false
-            )
+            
+            // Note: We intentionally don't save to DB here to prevent list reordering during click
+            // Progress is saved on: pause, seek, and periodic ticker (every 10s)
         }
+    }
+    
+    /**
+     * Restore the last played session on app startup (does NOT auto-play)
+     */
+    suspend fun restoreLastSession(): Boolean {
+        // Don't restore if player was explicitly dismissed
+        if (prefs.getBoolean(KEY_PLAYER_DISMISSED, false)) {
+            return false
+        }
+        
+        val lastSession = listeningHistoryDao.getLastPlayedSession() ?: return false
+        
+        // Construct Episode and Podcast from cached data
+        val episode = Episode(
+            id = lastSession.episodeId,
+            title = lastSession.episodeTitle,
+            description = "",
+            audioUrl = lastSession.episodeAudioUrl ?: return false,
+            imageUrl = lastSession.episodeImageUrl,
+            duration = (lastSession.durationMs / 1000).toInt(),
+            publishedDate = 0L
+        )
+        
+        val podcast = Podcast(
+            id = lastSession.podcastId,
+            title = lastSession.podcastName,
+            artist = "",
+            imageUrl = lastSession.podcastImageUrl ?: "",
+            description = null,
+            genre = "Podcast"
+        )
+        
+        // Update state but don't play
+        _playerState.value = _playerState.value.copy(
+            currentEpisode = episode,
+            currentPodcast = podcast,
+            isPlaying = false,
+            position = lastSession.progressMs,
+            duration = lastSession.durationMs
+        )
+        return true
+    }
+    
+    /**
+     * Clear the current session (for swipe-to-dismiss)
+     */
+    fun clearSession() {
+        mediaController?.stop()
+        mediaController?.clearMediaItems()
+        stopProgressTicker()
+        _playerState.value = PlayerState()
+        // Mark as dismissed so we don't restore on next app launch
+        prefs.edit().putBoolean(KEY_PLAYER_DISMISSED, true).apply()
     }
     
     fun pause() {
@@ -171,12 +351,53 @@ class PlaybackRepository(
     }
     
     fun resume() {
-        mediaController?.play()
+        val controller = mediaController ?: return
+        
+        Log.d("PlaybackRepo", "resume() called: mediaItemCount=${controller.mediaItemCount}, statePos=${_playerState.value.position}")
+        
+        // If controller has no media but we have state, load the episode first
+        if (controller.mediaItemCount == 0 && _playerState.value.currentEpisode != null) {
+            val episode = _playerState.value.currentEpisode!!
+            val podcast = _playerState.value.currentPodcast
+            val savedPosition = _playerState.value.position
+            
+            Log.d("PlaybackRepo", "resume(): Loading media with savedPosition=$savedPosition")
+            
+            repositoryScope.launch {
+                // Build and load the media
+                val metadata = androidx.media3.common.MediaMetadata.Builder()
+                    .setTitle(episode.title)
+                    .setArtist(podcast?.title ?: "")
+                    .setArtworkUri(android.net.Uri.parse(episode.imageUrl?.takeIf { it.isNotBlank() } ?: podcast?.imageUrl ?: ""))
+                    .setDisplayTitle(episode.title)
+                    .setSubtitle(podcast?.title ?: "")
+                    .build()
+                
+                val mediaItem = MediaItem.Builder()
+                    .setUri(episode.audioUrl)
+                    .setMediaMetadata(metadata)
+                    .build()
+                
+                // Use setMediaItem with start position to avoid race condition
+                // This ensures the player starts at the correct position atomically
+                Log.d("PlaybackRepo", "resume(): Calling setMediaItem with position=$savedPosition")
+                controller.setMediaItem(mediaItem, savedPosition.coerceAtLeast(0L))
+                controller.prepare()
+                Log.d("PlaybackRepo", "resume(): After prepare, controller.currentPosition=${controller.currentPosition}")
+                controller.play()
+            }
+        } else {
+            Log.d("PlaybackRepo", "resume(): Media exists, just calling play()")
+            controller.play()
+        }
     }
     
     fun seekTo(positionMs: Long) {
         mediaController?.seekTo(positionMs)
         _playerState.value = _playerState.value.copy(position = positionMs)
+        
+        // Save state on seek
+        repositoryScope.launch { saveCurrentState() }
     }
     
     fun skipForward() {
