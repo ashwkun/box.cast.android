@@ -195,7 +195,7 @@ private fun PodcastFeed(
     LazyVerticalStaggeredGrid(
         state = gridState,
         columns = StaggeredGridCells.Adaptive(150.dp),
-        contentPadding = PaddingValues(bottom = 24.dp, start = 16.dp, end = 16.dp), 
+        contentPadding = PaddingValues(bottom = 160.dp, start = 16.dp, end = 16.dp), // Clear navbar + mini player 
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalItemSpacing = 16.dp,
         modifier = modifier.fillMaxSize()

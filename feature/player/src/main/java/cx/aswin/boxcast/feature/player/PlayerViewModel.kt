@@ -72,6 +72,40 @@ class PlayerViewModel(
         viewModelScope.launch {
             if (_uiState.value is PlayerUiState.Success) return@launch // Already loaded?
             
+            // OPTIMIZATION: Check if we are already playing this podcast globally
+            val globalState = playbackRepository.playerState.value
+            if (globalState.currentPodcast?.id == podcastId && globalState.currentEpisode != null) {
+                // Immediate Success from cache - NO LOADING STATE
+                _uiState.value = PlayerUiState.Success(
+                    podcast = globalState.currentPodcast!!,
+                    episodes = emptyList(), // We might need episodes, but for player playback, current is key. 
+                                            // Ideally we'd want the full list too, but let's see if we can fetch that in background 
+                                            // while showing the player immediately.
+                    currentEpisode = globalState.currentEpisode,
+                    isPlaying = globalState.isPlaying,
+                    positionMs = globalState.position,
+                    durationMs = globalState.duration
+                )
+                
+                // Fetch full episode list in background to populate playlist if needed
+                try {
+                    val fullPodcast = repository.getPodcastDetails(podcastId)
+                    val episodes = repository.getEpisodes(podcastId)
+                    
+                     val currentUi = _uiState.value
+                     if (currentUi is PlayerUiState.Success) {
+                         _uiState.value = currentUi.copy(
+                             podcast = fullPodcast ?: currentUi.podcast,
+                             episodes = episodes
+                         )
+                     }
+                } catch (e: Exception) {
+                    // Silent fail involves just keeping what we have
+                    e.printStackTrace()
+                }
+                return@launch
+            }
+
             _uiState.value = PlayerUiState.Loading
             try {
                 // Fetch podcast details and episodes using feed ID
@@ -81,10 +115,11 @@ class PlayerViewModel(
                      val episodes = repository.getEpisodes(podcastId)
                      
                      // Check if global player is already playing something from this podcast
-                     val globalState = playbackRepository.playerState.value
-                     val isSamePodcast = globalState.currentPodcast?.id == podcastId
+                     // (Might have changed during fetch)
+                     val updatedGlobal = playbackRepository.playerState.value
+                     val isSamePodcast = updatedGlobal.currentPodcast?.id == podcastId
                      
-                     val initialEpisode = if (isSamePodcast) globalState.currentEpisode else episodes.firstOrNull()
+                     val initialEpisode = if (isSamePodcast) updatedGlobal.currentEpisode else episodes.firstOrNull()
                      
                      _uiState.value = PlayerUiState.Success(
                          podcast = podcast, 
