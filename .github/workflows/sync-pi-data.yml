@@ -65,12 +65,18 @@ jobs:
               p.id,
               p.itunesId,
               p.title,
-              p.ownerName as author,
+              p.itunesAuthor as author,
               p.description,
-              p.artwork as image_url,
+              p.imageUrl as image_url,
               p.url as feed_url,
-              p.category1,
-              p.language
+              p.link as website_url,
+              p.category1 || ',' || p.category2 as categories,
+              p.language,
+              p.explicit,
+              p.itunesType as type,
+              p.episodeCount,
+              p.newestItemPubdate,
+              p.lastUpdate
             FROM podcasts p
             WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids);
           " > podcasts_export.csv
@@ -89,7 +95,12 @@ jobs:
               e.image as image_url,
               e.enclosureUrl as audio_url,
               e.duration,
-              e.datePublished as published_at
+              e.datePublished as published_at,
+              e.link,
+              e.season,
+              e.episode,
+              e.episodeType,
+              e.enclosureType
             FROM episodes e
             JOIN podcasts p ON e.feedId = p.id
             WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids)
