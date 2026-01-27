@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
@@ -45,6 +46,7 @@ fun Modifier.expressiveClickable(
     enabled: Boolean = true,
     onClick: () -> Unit
 ): Modifier = composed {
+    val currentOnClick by androidx.compose.runtime.rememberUpdatedState(onClick)
     val scale = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
 
@@ -75,7 +77,7 @@ fun Modifier.expressiveClickable(
                     }
                 },
                 onTap = {
-                    onClick()
+                    currentOnClick()
                 }
             )
         }

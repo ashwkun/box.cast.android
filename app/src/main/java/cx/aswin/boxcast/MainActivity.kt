@@ -26,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,11 +49,12 @@ import androidx.navigation.navArgument
 import cx.aswin.boxcast.core.designsystem.component.BoxCastNavigationBar
 import cx.aswin.boxcast.core.designsystem.component.bottomNavDestinations
 import cx.aswin.boxcast.core.designsystem.theme.BoxCastTheme
+import cx.aswin.boxcast.core.designsystem.component.PredictiveBackWrapper
 import cx.aswin.boxcast.feature.home.HomeRoute
 import cx.aswin.boxcast.feature.player.PlayerRoute
 
 // PixelPlayer-inspired transition specs
-private const val TRANSITION_DURATION = 500
+private const val TRANSITION_DURATION = 350
 private val TRANSITION_EASING = FastOutSlowInEasing
 
 class MainActivity : ComponentActivity() {
@@ -72,6 +74,9 @@ class MainActivity : ComponentActivity() {
                 // Show bottom nav on all screens except player
                 val showBottomNav = !currentRoute.startsWith("player")
                 
+                // Check if we can go back (for predictive back)
+                val canGoBack = navController.previousBackStackEntry != null
+                
                 // Playback Repository (Singleton-ish for UI)
                 val application = (applicationContext as android.app.Application)
                 val database = remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
@@ -88,16 +93,19 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         containerColor = MaterialTheme.colorScheme.surface // Match content background
                     ) { innerPadding ->
-                        NavHost(
-                            navController = navController,
-                            startDestination = "home",
-                            modifier = Modifier
-                                .padding(innerPadding), // No extra bottom padding - content scrolls behind overlays
-                            enterTransition = { slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { it }) },
-                            exitTransition = { slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { -it / 3 }) + fadeOut(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING)) },
-                            popEnterTransition = { slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { -it / 3 }) + fadeIn(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING)) },
-                            popExitTransition = { slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { it }) + fadeOut(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING)) }
+                        PredictiveBackWrapper(
+                            enabled = canGoBack,
+                            onBack = { navController.popBackStack() }
                         ) {
+                            NavHost(
+                                navController = navController,
+                                startDestination = "home",
+                                modifier = Modifier, // No padding(innerPadding) -> Fixes GAP issue
+                                enterTransition = { slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { it }) },
+                                exitTransition = { slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { -it / 3 }) + fadeOut(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING)) },
+                                popEnterTransition = { slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { -it / 3 }) + fadeIn(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING)) },
+                                popExitTransition = { slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { it }) + fadeOut(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING)) }
+                            ) {
                             // Main tabs
                             composable("home") {
                                 HomeRoute(
@@ -169,30 +177,39 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 )
-                                cx.aswin.boxcast.feature.info.PodcastInfoScreen(
-                                    podcastId = podcastId,
-                                    viewModel = viewModel,
-                                    onBack = { navController.popBackStack() },
-                                    onEpisodeClick = { episode ->
-                                        navController.navigate(
-                                            "episode/${episode.id}/${java.net.URLEncoder.encode(episode.title, "UTF-8")}/" +
-                                            "${java.net.URLEncoder.encode(episode.description.take(500), "UTF-8")}/" +
-                                            "${java.net.URLEncoder.encode(episode.imageUrl, "UTF-8")}/" +
-                                            "${java.net.URLEncoder.encode(episode.audioUrl, "UTF-8")}/" +
-                                            "${episode.duration}/${podcastId}/" +
-                                            java.net.URLEncoder.encode(viewModel.uiState.value.let { if (it is cx.aswin.boxcast.feature.info.PodcastInfoUiState.Success) it.podcast.title else "Podcast" }, "UTF-8")
-                                        )
-                                    },
-                                    onPlayEpisode = { episode ->
-                                        // Start Playback -> Mini Player
-                                        val state = viewModel.uiState.value
-                                        if (state is cx.aswin.boxcast.feature.info.PodcastInfoUiState.Success) {
-                                            scope.launch {
-                                                playbackRepository.playEpisode(episode, state.podcast)
+                                    // Calculate bottom padding for Mini Player
+                                    // PlayerState is a data class. If currentEpisode is not null, player is active.
+                                    val playerState by playbackRepository.playerState.collectAsState()
+                                    val isPlayerVisible = playerState.currentEpisode != null
+                                    
+                                    val miniPlayerPadding = if (isPlayerVisible) 72.dp else 0.dp
+                                    
+                                    cx.aswin.boxcast.feature.info.PodcastInfoScreen(
+                                        podcastId = podcastId,
+                                        viewModel = viewModel,
+                                        onBack = { navController.popBackStack() },
+                                        bottomContentPadding = miniPlayerPadding,
+                                        onEpisodeClick = { episode ->
+                                            fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                            navController.navigate(
+                                                "episode/${episode.id}/${encode(episode.title)}/" +
+                                                "${encode(episode.description.take(500))}/" +
+                                                "${encode(episode.imageUrl)}/" +
+                                                "${encode(episode.audioUrl)}/" +
+                                                "${episode.duration}/${podcastId}/" +
+                                                encode(viewModel.uiState.value.let { if (it is cx.aswin.boxcast.feature.info.PodcastInfoUiState.Success) it.podcast.title else "Podcast" })
+                                            )
+                                        },
+                                        onPlayEpisode = { episode ->
+                                            // Start Playback -> Mini Player
+                                            val state = viewModel.uiState.value
+                                            if (state is cx.aswin.boxcast.feature.info.PodcastInfoUiState.Success) {
+                                                scope.launch {
+                                                    playbackRepository.playEpisode(episode, state.podcast)
+                                                }
                                             }
                                         }
-                                    }
-                                )
+                                    )
                             }
 
                             // Episode Info Screen
@@ -264,6 +281,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                    }
 
                     // Calculate sheet positions
                     val configuration = LocalConfiguration.current
@@ -284,7 +302,6 @@ class MainActivity : ComponentActivity() {
                         (screenHeightDp - cx.aswin.boxcast.feature.player.MiniPlayerHeight - appNavBarHeight).toPx()
                     }
                     
-
 
                     // Navigation Bar
                     if (showBottomNav) {
