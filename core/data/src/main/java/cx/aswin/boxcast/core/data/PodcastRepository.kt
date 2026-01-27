@@ -5,6 +5,7 @@ import cx.aswin.boxcast.core.model.Podcast
 import cx.aswin.boxcast.core.network.BoxCastApi
 import cx.aswin.boxcast.core.network.NetworkModule
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import com.google.gson.Gson
 import com.google.gson.stream.JsonReader
@@ -95,7 +96,7 @@ class PodcastRepository(
             android.util.Log.e("BoxCastStream", "Stream Error after ${podcasts.size} items", e)
             if (podcasts.isNotEmpty()) emit(podcasts)
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     private fun mapFeedsToPodcasts(feeds: List<cx.aswin.boxcast.core.network.model.TrendingFeed>): List<Podcast> {
         return feeds.map { feed ->

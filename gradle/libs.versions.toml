@@ -6,7 +6,7 @@ junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.7.0"
-activityCompose = "1.8.2"
+activityCompose = "1.10.0"
 composeBom = "2024.06.00"
 material3 = "1.5.0-alpha11"
 material3-adaptive = "1.0.0-alpha06"
@@ -55,6 +55,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version = "4.12.0" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version = "1.7.3" }
 kotlinx-coroutines-guava = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-guava", version = "1.7.3" }
+smooth-corner-rect = { group = "com.github.racra", name = "smooth-corner-rect-android-compose", version = "v1.0.0" }
 
 # Media
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
