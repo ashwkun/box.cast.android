@@ -63,7 +63,7 @@ jobs:
           sqlite3 -header -csv podcastindex_feeds.db "
             SELECT 
               p.id,
-              p.itunesId,
+              p.itunesId as itunes_id,
               p.title,
               p.itunesAuthor as author,
               p.description,
