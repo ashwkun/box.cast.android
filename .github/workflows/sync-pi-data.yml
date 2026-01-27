@@ -3,7 +3,7 @@ name: Sync Podcast Index Data
 on:
   schedule:
     # Weekly on Sunday at 3 AM UTC
-    - cron: '0 3 * * 0'
+    - cron: '0 */8 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -82,37 +82,21 @@ jobs:
           " > podcasts_export.csv
           echo "Exported $(wc -l < podcasts_export.csv) podcasts"
           
-      - name: Export episodes from PI dump
-        run: |
-          echo "Exporting episodes..."
-          sqlite3 -header -csv podcastindex_feeds.db "
-            SELECT 
-              e.id,
-              e.feedId as podcast_id,
-              p.itunesId as itunes_id,
-              e.title,
-              e.description,
-              e.image as image_url,
-              e.enclosureUrl as audio_url,
-              e.duration,
-              e.datePublished as published_at,
-              e.link,
-              e.season,
-              e.episode,
-              e.episodeType,
-              e.enclosureType
-            FROM episodes e
-            JOIN podcasts p ON e.feedId = p.id
-            WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids)
-            ORDER BY e.feedId, e.datePublished DESC;
-          " > episodes_export.csv
-          echo "Exported $(wc -l < episodes_export.csv) episodes"
+
 
       - name: Import to Turso
         env:
           TURSO_URL: ${{ secrets.TURSO_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: node scripts/import-pi-data.js
+
+      - name: Sync Episodes via API
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          PODCAST_INDEX_API_KEY: ${{ secrets.PODCAST_INDEX_API_KEY }}
+          PODCAST_INDEX_API_SECRET: ${{ secrets.PODCAST_INDEX_API_SECRET }}
+        run: node scripts/sync-episodes.js
           
       - name: Cleanup
         run: rm -f *.db *.tgz *.csv *.txt
