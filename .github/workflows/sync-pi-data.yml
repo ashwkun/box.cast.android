@@ -28,6 +28,20 @@ jobs:
           tar -xzf podcastindex_feeds.db.tgz
           ls -la *.db
           
+      - name: Inspect PI dump schema
+        run: |
+          echo "=== Tables in PI dump ==="
+          sqlite3 podcastindex_feeds.db ".tables"
+          echo ""
+          echo "=== Podcasts/Feeds table schema ==="
+          sqlite3 podcastindex_feeds.db ".schema podcasts" || sqlite3 podcastindex_feeds.db ".schema newsfeeds" || true
+          echo ""
+          echo "=== Sample row ==="
+          sqlite3 podcastindex_feeds.db "SELECT * FROM podcasts LIMIT 1;" 2>/dev/null || sqlite3 podcastindex_feeds.db "SELECT * FROM newsfeeds LIMIT 1;" || true
+          echo ""
+          echo "=== Episodes table schema ==="
+          sqlite3 podcastindex_feeds.db ".schema episodes" || true
+          
       - name: Get chart iTunes IDs
         env:
           TURSO_URL: ${{ secrets.TURSO_URL }}
@@ -35,19 +49,52 @@ jobs:
         run: |
           node scripts/get-chart-itunes-ids.js > chart_itunes_ids.txt
           echo "Got $(wc -l < chart_itunes_ids.txt) iTunes IDs from charts"
+          head -5 chart_itunes_ids.txt
           
       - name: Export podcasts from PI dump
         run: |
+          # Create temp table with iTunes IDs
           sqlite3 podcastindex_feeds.db "CREATE TABLE chart_ids (itunes_id INTEGER);"
           sqlite3 -csv podcastindex_feeds.db ".import chart_itunes_ids.txt chart_ids"
+          echo "Imported $(sqlite3 podcastindex_feeds.db 'SELECT COUNT(*) FROM chart_ids;') iTunes IDs"
+          
+          # Export podcasts - using correct column names from PI dump
           echo "Exporting podcasts..."
-          sqlite3 -csv podcastindex_feeds.db "SELECT p.id, p.itunesId, p.title, p.author, p.description, p.artwork, p.url, p.category1, p.language FROM podcasts p WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids);" > podcasts_export.csv
+          sqlite3 -header -csv podcastindex_feeds.db "
+            SELECT 
+              p.id,
+              p.itunesId,
+              p.title,
+              p.ownerName as author,
+              p.description,
+              p.artwork as image_url,
+              p.url as feed_url,
+              p.category1,
+              p.language
+            FROM podcasts p
+            WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids);
+          " > podcasts_export.csv
           echo "Exported $(wc -l < podcasts_export.csv) podcasts"
           
       - name: Export episodes from PI dump
         run: |
           echo "Exporting episodes..."
-          sqlite3 -csv podcastindex_feeds.db "SELECT e.id, e.feedId, p.itunesId, e.title, e.description, e.image, e.enclosureUrl, e.duration, e.datePublished FROM episodes e JOIN podcasts p ON e.feedId = p.id WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids) ORDER BY e.feedId, e.datePublished DESC;" > episodes_export.csv
+          sqlite3 -header -csv podcastindex_feeds.db "
+            SELECT 
+              e.id,
+              e.feedId as podcast_id,
+              p.itunesId as itunes_id,
+              e.title,
+              e.description,
+              e.image as image_url,
+              e.enclosureUrl as audio_url,
+              e.duration,
+              e.datePublished as published_at
+            FROM episodes e
+            JOIN podcasts p ON e.feedId = p.id
+            WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids)
+            ORDER BY e.feedId, e.datePublished DESC;
+          " > episodes_export.csv
           echo "Exported $(wc -l < episodes_export.csv) episodes"
 
       - name: Import to Turso
