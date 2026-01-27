@@ -2,14 +2,14 @@ name: Sync Podcast Index Data
 
 on:
   schedule:
-    # Daily at 3 AM UTC (after charts cron has run)
-    - cron: '0 3 * * *'
+    # Weekly on Sunday at 3 AM UTC
+    - cron: '0 3 * * 0'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
   sync-pi-data:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     
     steps:
       - name: Checkout
@@ -19,11 +19,80 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Download Podcast Index Database
+        run: |
+          echo "Downloading PI database dump..."
+          curl -L -o podcastindex_feeds.db.tgz https://public.podcastindex.org/podcastindex_feeds.db.tgz
+          echo "Extracting..."
+          tar -xzf podcastindex_feeds.db.tgz
+          ls -la *.db
           
-      - name: Run PI Sync
+      - name: Export chart podcasts and episodes
         env:
           TURSO_URL: ${{ secrets.TURSO_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-          PODCAST_INDEX_API_KEY: ${{ secrets.PODCAST_INDEX_API_KEY }}
-          PODCAST_INDEX_API_SECRET: ${{ secrets.PODCAST_INDEX_API_SECRET }}
-        run: node scripts/sync-pi-data.js
+        run: |
+          # First, get iTunes IDs from our charts table
+          node scripts/get-chart-itunes-ids.js > chart_itunes_ids.txt
+          echo "Got $(wc -l < chart_itunes_ids.txt) iTunes IDs from charts"
+          
+          # Create a temp table with iTunes IDs for filtering
+          sqlite3 podcastindex_feeds.db <<EOF
+          CREATE TABLE chart_ids (itunes_id INTEGER);
+          .mode csv
+          .import chart_itunes_ids.txt chart_ids
+EOF
+          
+          # Export podcasts matching our chart iTunes IDs
+          echo "Exporting podcasts..."
+          sqlite3 podcastindex_feeds.db <<EOF
+          .mode csv
+          .output podcasts_export.csv
+          SELECT 
+            p.id,
+            p.itunesId,
+            p.title,
+            p.author,
+            p.description,
+            p.artwork,
+            p.url,
+            p.category1,
+            p.language
+          FROM podcasts p
+          WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids);
+          .quit
+EOF
+          echo "Exported $(wc -l < podcasts_export.csv) podcasts"
+          
+          # Export episodes for those podcasts (latest 200 per podcast)
+          echo "Exporting episodes..."
+          sqlite3 podcastindex_feeds.db <<EOF
+          .mode csv
+          .output episodes_export.csv
+          SELECT 
+            e.id,
+            e.feedId,
+            p.itunesId,
+            e.title,
+            e.description,
+            e.image,
+            e.enclosureUrl,
+            e.duration,
+            e.datePublished
+          FROM episodes e
+          JOIN podcasts p ON e.feedId = p.id
+          WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids)
+          ORDER BY e.feedId, e.datePublished DESC;
+          .quit
+EOF
+          echo "Exported $(wc -l < episodes_export.csv) episodes"
+
+      - name: Import to Turso
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: node scripts/import-pi-data.js
+          
+      - name: Cleanup
+        run: rm -f *.db *.tgz *.csv *.txt
