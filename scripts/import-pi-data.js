@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Import podcasts and episodes from CSV files to Turso
- * Used by GitHub Actions workflow after extracting from PI dump
+ * Automatically adapts DB schema to match CSV columns
  */
 
 const fs = require('fs');
@@ -64,97 +64,118 @@ async function executeBatch(statements) {
 }
 
 async function executeSQL(sql, args = []) {
-    return executeBatch([{ sql, args }]);
+    const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${TURSO_TOKEN}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            requests: [{
+                type: "execute",
+                stmt: { sql, args: args.map(a => ({ type: a === null ? "null" : "text", value: a === null ? null : String(a) })) }
+            }, { type: "close" }]
+        })
+    });
+    return response.json();
 }
 
-async function importPodcasts() {
-    const content = fs.readFileSync('podcasts_export.csv', 'utf-8');
+async function getTableColumns(tableName) {
+    const res = await executeSQL(`PRAGMA table_info(${tableName})`);
+    const rows = res?.results?.[0]?.response?.result?.rows || [];
+    return rows.map(r => r[1]?.value);
+}
+
+async function ensureColumns(tableName, csvHeaders) {
+    const existingColumns = await getTableColumns(tableName);
+    console.log(`Current columns in ${tableName}:`, existingColumns.join(', '));
+
+    for (const header of csvHeaders) {
+        // Map CSV header to DB column name (simple snake_case conversion if needed, 
+        // but our workflow exports mostly match DB style or snake_case already)
+        // The export query aliases are: id, itunes_id, title, author, description, image_url, feed_url...
+        // We assume the CSV header IS the column name we want.
+
+        if (!existingColumns.includes(header)) {
+            console.log(`Adding missing column '${header}' to ${tableName}...`);
+            try {
+                await executeSQL(`ALTER TABLE ${tableName} ADD COLUMN ${header} TEXT`);
+            } catch (e) {
+                console.error(`Failed to add column ${header}:`, e);
+            }
+        }
+    }
+}
+
+async function importTable(filename, tableName, limitPerGroupCol = null, limitCount = 0) {
+    if (!fs.existsSync(filename)) {
+        console.error(`File ${filename} not found`);
+        return 0;
+    }
+
+    const content = fs.readFileSync(filename, 'utf-8');
     const lines = content.split('\n').filter(l => l.trim());
 
-    console.log(`Importing ${lines.length} podcasts...`);
+    if (lines.length < 2) return 0;
+
+    const headers = parseCSVLine(lines[0]);
+    console.log(`Headers for ${tableName}:`, headers.join(', '));
+
+    // Ensure schema matches
+    await ensureColumns(tableName, headers);
 
     // Clear existing
-    await executeSQL("DELETE FROM podcasts", []);
+    console.log(`Clearing ${tableName}...`);
+    await executeSQL(`DELETE FROM ${tableName}`, []);
 
-    const BATCH_SIZE = 25;
+    const dataLines = lines.slice(1);
+    console.log(`Importing ${dataLines.length} rows into ${tableName}...`);
+
+    const BATCH_SIZE = 50;
     let imported = 0;
+    const groupCounts = {};
 
-    for (let i = 0; i < lines.length; i += BATCH_SIZE) {
-        const batch = lines.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < dataLines.length; i += BATCH_SIZE) {
+        const batch = dataLines.slice(i, i + BATCH_SIZE);
         const statements = [];
 
         for (const line of batch) {
-            const [id, itunesId, title, author, description, imageUrl, feedUrl, categories, language] = parseCSVLine(line);
-            if (!id) continue;
+            const values = parseCSVLine(line);
 
+            // Limit logic (e.g. 200 episodes per podcast)
+            if (limitPerGroupCol && limitCount > 0) {
+                const groupVal = values[headers.indexOf(limitPerGroupCol)];
+                groupCounts[groupVal] = (groupCounts[groupVal] || 0) + 1;
+                if (groupCounts[groupVal] > limitCount) continue;
+            }
+
+            const placeholders = values.map(() => '?').join(',');
             statements.push({
-                sql: "INSERT OR REPLACE INTO podcasts (id, itunes_id, title, author, description, image_url, feed_url, categories, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                args: [id, itunesId, title?.substring(0, 500), author?.substring(0, 200), description?.substring(0, 2000), imageUrl, feedUrl, categories, language]
+                sql: `INSERT OR REPLACE INTO ${tableName} (${headers.join(',')}) VALUES (${placeholders})`,
+                args: values
             });
         }
 
         if (statements.length > 0) {
             await executeBatch(statements);
             imported += statements.length;
-            if (imported % 500 === 0) console.log(`  Imported ${imported} podcasts...`);
+            if (imported % 1000 === 0) console.log(`  Imported ${imported} rows...`);
         }
     }
 
-    console.log(`Done: ${imported} podcasts imported`);
-    return imported;
-}
-
-async function importEpisodes() {
-    const content = fs.readFileSync('episodes_export.csv', 'utf-8');
-    const lines = content.split('\n').filter(l => l.trim());
-
-    console.log(`Importing ${lines.length} episodes...`);
-
-    // Clear existing
-    await executeSQL("DELETE FROM episodes", []);
-
-    const BATCH_SIZE = 25;
-    let imported = 0;
-
-    // Track episodes per podcast to limit to 200
-    const episodeCount = {};
-
-    for (let i = 0; i < lines.length; i += BATCH_SIZE) {
-        const batch = lines.slice(i, i + BATCH_SIZE);
-        const statements = [];
-
-        for (const line of batch) {
-            const [id, podcastId, itunesId, title, description, imageUrl, audioUrl, duration, publishedAt] = parseCSVLine(line);
-            if (!id || !podcastId) continue;
-
-            // Limit to 200 episodes per podcast
-            episodeCount[podcastId] = (episodeCount[podcastId] || 0) + 1;
-            if (episodeCount[podcastId] > 200) continue;
-
-            statements.push({
-                sql: "INSERT OR REPLACE INTO episodes (id, podcast_id, itunes_id, title, description, image_url, audio_url, duration, published_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                args: [id, podcastId, itunesId, title?.substring(0, 500), description?.substring(0, 2000), imageUrl, audioUrl, duration || "0", publishedAt || "0"]
-            });
-        }
-
-        if (statements.length > 0) {
-            await executeBatch(statements);
-            imported += statements.length;
-            if (imported % 5000 === 0) console.log(`  Imported ${imported} episodes...`);
-        }
-    }
-
-    console.log(`Done: ${imported} episodes imported`);
+    console.log(`Done: ${imported} rows imported into ${tableName}`);
     return imported;
 }
 
 async function main() {
-    console.log("Starting PI data import from CSV files...");
+    console.log("Starting PI data import...");
 
-    const podcasts = await importPodcasts();
-    const episodes = await importEpisodes();
+    await importTable('podcasts_export.csv', 'podcasts');
 
-    console.log(`\nImport complete: ${podcasts} podcasts, ${episodes} episodes`);
+    // Import episodes, limiting to 200 per podcast_id
+    await importTable('episodes_export.csv', 'episodes', 'podcast_id', 200);
+
+    console.log("\nImport complete!");
 }
 
 main().catch(err => {
