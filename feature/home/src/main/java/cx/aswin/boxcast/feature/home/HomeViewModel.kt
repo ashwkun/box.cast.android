@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 
 @Immutable
@@ -384,15 +385,14 @@ class HomeViewModel(
         
         // --- CATEGORY OBSERVER (Separate from base data) ---
         viewModelScope.launch {
-            _selectedCategory.collect { category ->
+            _selectedCategory.collectLatest { category ->
                 if (category == null) {
                     // "For You" - use cached data instantly
                     if (cachedHeroItems.isNotEmpty()) {
                         val discover = cachedForYouTrending.filter { pod ->
                             !cachedHeroItems.any { it.podcast.id == pod.id } &&
                             !cachedRisingPodcasts.any { it.id == pod.id }
-                            !cachedRisingPodcasts.any { it.id == pod.id }
-                        } // Removed .drop(10) to fix double-drop bug
+                        }
                         
                         _uiState.update { 
                             it.copy(
@@ -403,32 +403,38 @@ class HomeViewModel(
                         }
                     }
                 } else {
-                    // Category selected - show loader and fetch
+                    // Category selected - show loader (inline) and fetch
                     _uiState.update { it.copy(
                         isFilterLoading = true, 
                         selectedCategory = category,
-                        discoverPodcasts = emptyList() // Clear old data to prevent "stuck" UI on error
+                        discoverPodcasts = emptyList() // Clear old data
                     ) }
                     
                     try {
-                        // Fetch category-specific data using non-streaming API
-                        // This avoids Flow exception transparency issues
-                        val categoryTrending = repository.getTrendingPodcasts("in", 50, category)
-                        
-                        android.util.Log.d("HomeViewModel", "Fetch success: ${categoryTrending.size} items for $category")
-                        
-                        if (categoryTrending.isNotEmpty()) {
-                            _uiState.update { 
-                                it.copy(
-                                    discoverPodcasts = categoryTrending,
-                                    isFilterLoading = false
-                                )
+                        // Collect all emissions and use the final (complete) list
+                        // This avoids showing intermediate/partial data to the user
+                        var finalList: List<Podcast> = emptyList()
+                        repository.getTrendingPodcastsStream("in", 50, category)
+                            .collect { items ->
+                                finalList = items
+                                // Update UI progressively but flag as still loading
+                                // until stream completes
+                                _uiState.update { 
+                                    it.copy(
+                                        discoverPodcasts = items,
+                                        isFilterLoading = items.size < 10 // Show loader until we have reasonable data
+                                    )
+                                }
                             }
-                        } else {
-                            _uiState.update { it.copy(isFilterLoading = false) }
+                        // Final update after stream completes
+                        _uiState.update { 
+                            it.copy(
+                                discoverPodcasts = finalList,
+                                isFilterLoading = false
+                            )
                         }
                     } catch (e: Exception) {
-                        android.util.Log.e("HomeViewModel", "Category fetch error", e)
+                        android.util.Log.e("HomeViewModel", "Category stream error", e)
                         _uiState.update { it.copy(isFilterLoading = false) }
                     }
                 }

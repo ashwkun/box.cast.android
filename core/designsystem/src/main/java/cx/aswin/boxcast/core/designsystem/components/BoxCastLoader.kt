@@ -63,18 +63,21 @@ object BoxCastLoader {
         modifier: Modifier = Modifier,
         progress: Float? = null, // Null for indeterminate
         size: Dp = 48.dp,
-        color: Color = MaterialTheme.colorScheme.primary
+        color: Color = MaterialTheme.colorScheme.primary,
+        trackColor: Color = color.copy(alpha = 0.2f)
     ) {
         if (progress == null) {
             CircularWavyProgressIndicator(
                 modifier = modifier.size(size),
-                color = color
+                color = color,
+                trackColor = trackColor
             )
         } else {
             CircularWavyProgressIndicator(
                 progress = { progress },
                 modifier = modifier.size(size),
                 color = color,
+                trackColor = trackColor
             )
         }
     }

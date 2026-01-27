@@ -36,4 +36,5 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.graphics.shapes)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
 }

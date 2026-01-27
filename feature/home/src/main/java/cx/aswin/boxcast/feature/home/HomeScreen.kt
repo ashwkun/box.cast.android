@@ -276,7 +276,28 @@ private fun PodcastFeed(
                     )
                 }
             } else {
-                 GridSkeletonItems()
+                // Empty State (No Results)
+                item(span = StaggeredGridItemSpan.FullLine) {
+                     Box(
+                         modifier = Modifier
+                             .fillMaxWidth()
+                             .padding(top = 48.dp),
+                         contentAlignment = Alignment.Center
+                     ) {
+                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                             Text(
+                                 text = "No podcasts found",
+                                 style = MaterialTheme.typography.titleMedium,
+                                 fontWeight = FontWeight.SemiBold
+                             )
+                             Text(
+                                 text = "Try selecting a different category",
+                                 style = MaterialTheme.typography.bodyMedium,
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                             )
+                         }
+                     }
+                }
             }
         } else {
              GridSkeletonItems()
