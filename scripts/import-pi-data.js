@@ -173,7 +173,8 @@ async function main() {
     await importTable('podcasts_export.csv', 'podcasts');
 
     // Import episodes, limiting to 200 per podcast_id
-    await importTable('episodes_export.csv', 'episodes', 'podcast_id', 200);
+    // Episodes are now synced via API (scripts/sync-episodes.js) because public dump lacks them
+    // await importTable('episodes_export.csv', 'episodes', 'podcast_id', 200);
 
     console.log("\nImport complete!");
 }
