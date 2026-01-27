@@ -28,64 +28,26 @@ jobs:
           tar -xzf podcastindex_feeds.db.tgz
           ls -la *.db
           
-      - name: Export chart podcasts and episodes
+      - name: Get chart iTunes IDs
         env:
           TURSO_URL: ${{ secrets.TURSO_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: |
-          # First, get iTunes IDs from our charts table
           node scripts/get-chart-itunes-ids.js > chart_itunes_ids.txt
           echo "Got $(wc -l < chart_itunes_ids.txt) iTunes IDs from charts"
           
-          # Create a temp table with iTunes IDs for filtering
-          sqlite3 podcastindex_feeds.db <<EOF
-          CREATE TABLE chart_ids (itunes_id INTEGER);
-          .mode csv
-          .import chart_itunes_ids.txt chart_ids
-EOF
-          
-          # Export podcasts matching our chart iTunes IDs
+      - name: Export podcasts from PI dump
+        run: |
+          sqlite3 podcastindex_feeds.db "CREATE TABLE chart_ids (itunes_id INTEGER);"
+          sqlite3 -csv podcastindex_feeds.db ".import chart_itunes_ids.txt chart_ids"
           echo "Exporting podcasts..."
-          sqlite3 podcastindex_feeds.db <<EOF
-          .mode csv
-          .output podcasts_export.csv
-          SELECT 
-            p.id,
-            p.itunesId,
-            p.title,
-            p.author,
-            p.description,
-            p.artwork,
-            p.url,
-            p.category1,
-            p.language
-          FROM podcasts p
-          WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids);
-          .quit
-EOF
+          sqlite3 -csv podcastindex_feeds.db "SELECT p.id, p.itunesId, p.title, p.author, p.description, p.artwork, p.url, p.category1, p.language FROM podcasts p WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids);" > podcasts_export.csv
           echo "Exported $(wc -l < podcasts_export.csv) podcasts"
           
-          # Export episodes for those podcasts (latest 200 per podcast)
+      - name: Export episodes from PI dump
+        run: |
           echo "Exporting episodes..."
-          sqlite3 podcastindex_feeds.db <<EOF
-          .mode csv
-          .output episodes_export.csv
-          SELECT 
-            e.id,
-            e.feedId,
-            p.itunesId,
-            e.title,
-            e.description,
-            e.image,
-            e.enclosureUrl,
-            e.duration,
-            e.datePublished
-          FROM episodes e
-          JOIN podcasts p ON e.feedId = p.id
-          WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids)
-          ORDER BY e.feedId, e.datePublished DESC;
-          .quit
-EOF
+          sqlite3 -csv podcastindex_feeds.db "SELECT e.id, e.feedId, p.itunesId, e.title, e.description, e.image, e.enclosureUrl, e.duration, e.datePublished FROM episodes e JOIN podcasts p ON e.feedId = p.id WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids) ORDER BY e.feedId, e.datePublished DESC;" > episodes_export.csv
           echo "Exported $(wc -l < episodes_export.csv) episodes"
 
       - name: Import to Turso
