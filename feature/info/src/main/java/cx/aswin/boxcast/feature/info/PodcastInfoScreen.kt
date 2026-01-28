@@ -445,8 +445,8 @@ fun PodcastInfoScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(
-                            // Formula: NavBar + MiniPlayer (if present via bottomContentPadding) + 16dp margin
-                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 16.dp, 
+                            // Formula: NavBar + MiniPlayer (if present via bottomContentPadding) + 24dp margin
+                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 24.dp, 
                             end = 16.dp
                         )
                 ) {
