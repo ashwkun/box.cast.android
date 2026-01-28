@@ -182,7 +182,8 @@ class MainActivity : ComponentActivity() {
                                     val playerState by playbackRepository.playerState.collectAsState()
                                     val isPlayerVisible = playerState.currentEpisode != null
                                     
-                                    val miniPlayerPadding = if (isPlayerVisible) 100.dp else 0.dp
+                                    // Base: NavBar clearance (64dp) + optional MiniPlayer (56dp)
+                                    val miniPlayerPadding = if (isPlayerVisible) (64 + 56).dp else 64.dp
                                     
                                     cx.aswin.boxcast.feature.info.PodcastInfoScreen(
                                         podcastId = podcastId,
