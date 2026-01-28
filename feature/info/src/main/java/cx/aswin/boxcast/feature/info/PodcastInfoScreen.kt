@@ -370,10 +370,10 @@ fun PodcastInfoScreen(
                             onSubscribeClick = { viewModel.toggleSubscription() },
                             accentColor = accentColor,
                             onSearchFocused = {
-                                // Scroll toolbar to very top when search is focused
+                                // Scroll to show toolbar at top of visible area
                                 coroutineScope.launch {
-                                    // Scroll to item 1 (toolbar) with offset to push it to top of screen
-                                    listState.animateScrollToItem(index = 1, scrollOffset = -200)
+                                    // Scroll to hero (item 0) with large offset so toolbar appears at top
+                                    listState.animateScrollToItem(index = 0, scrollOffset = 500)
                                 }
                             }
                         )
