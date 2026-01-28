@@ -71,10 +71,12 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -96,6 +98,7 @@ import cx.aswin.boxcast.core.designsystem.theme.ExpressiveShapes
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
 import cx.aswin.boxcast.core.model.Episode
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private fun stripHtml(html: String?): String {
     if (html.isNullOrEmpty()) return ""
@@ -130,6 +133,7 @@ fun PodcastInfoScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     
     // Dynamic color
@@ -347,14 +351,6 @@ fun PodcastInfoScreen(
                     
                     // EPISODE TOOLBAR (M3 Expressive)
                     item(key = "toolbar") {
-                        // Scroll toolbar to top when searching
-                        LaunchedEffect(state.searchQuery.isNotEmpty()) {
-                            if (state.searchQuery.isNotEmpty()) {
-                                // Index 1 = toolbar (after hero section)
-                                listState.animateScrollToItem(1)
-                            }
-                        }
-                        
                         EpisodeToolbar(
                             searchQuery = state.searchQuery,
                             onSearchChange = { viewModel.searchEpisodes(it) },
@@ -363,7 +359,13 @@ fun PodcastInfoScreen(
                             onSortToggle = { viewModel.toggleSort() },
                             isSubscribed = state.isSubscribed,
                             onSubscribeClick = { viewModel.toggleSubscription() },
-                            accentColor = accentColor
+                            accentColor = accentColor,
+                            onSearchFocused = {
+                                // Scroll toolbar to top when search is focused
+                                coroutineScope.launch {
+                                    listState.animateScrollToItem(1)
+                                }
+                            }
                         )
                     }
                     
@@ -396,10 +398,7 @@ fun PodcastInfoScreen(
                                     .padding(24.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(32.dp),
-                                    strokeWidth = 3.dp
-                                )
+                                BoxCastLoader.CircularWavy(size = 32.dp)
                             }
                         }
                     }
@@ -613,8 +612,12 @@ private fun EpisodeToolbar(
     isSubscribed: Boolean,
     onSubscribeClick: () -> Unit,
     accentColor: Color,
+    onSearchFocused: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    var isFocused by remember { mutableStateOf(false) }
+    
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -637,7 +640,7 @@ private fun EpisodeToolbar(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    color = if (isFocused) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer,
                     shape = ExpressiveShapes.Pill
                 ) {
                     Row(
@@ -650,7 +653,7 @@ private fun EpisodeToolbar(
                         Icon(
                             imageVector = Icons.Rounded.Search,
                             contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
                         androidx.compose.foundation.text.BasicTextField(
@@ -660,10 +663,18 @@ private fun EpisodeToolbar(
                             textStyle = MaterialTheme.typography.bodyMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
-                            modifier = Modifier.weight(1f),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(accentColor),
+                            modifier = Modifier
+                                .weight(1f)
+                                .onFocusChanged { focusState ->
+                                    isFocused = focusState.isFocused
+                                    if (focusState.isFocused) {
+                                        onSearchFocused()
+                                    }
+                                },
                             decorationBox = { innerTextField ->
                                 Box {
-                                    if (searchQuery.isEmpty()) {
+                                    if (searchQuery.isEmpty() && !isFocused) {
                                         Text(
                                             text = "Search episodes...",
                                             style = MaterialTheme.typography.bodyMedium,
@@ -676,7 +687,10 @@ private fun EpisodeToolbar(
                         )
                         if (searchQuery.isNotEmpty()) {
                             IconButton(
-                                onClick = { onSearchChange("") },
+                                onClick = { 
+                                    onSearchChange("")
+                                    focusManager.clearFocus()
+                                },
                                 modifier = Modifier.size(24.dp)
                             ) {
                                 Icon(
@@ -688,10 +702,7 @@ private fun EpisodeToolbar(
                             }
                         }
                         if (isSearching) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp
-                            )
+                            BoxCastLoader.Expressive(size = 20.dp)
                         }
                     }
                 }
@@ -703,7 +714,7 @@ private fun EpisodeToolbar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Sort Chip
+                // Sort Chip (no expressiveClickable - built-in ripple)
                 FilterChip(
                     selected = true,
                     onClick = onSortToggle,
@@ -724,18 +735,16 @@ private fun EpisodeToolbar(
                         selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ),
-                    modifier = Modifier.expressiveClickable(onClick = onSortToggle)
+                    )
                 )
                 
-                // Subscribe Button
+                // Subscribe Button (no expressiveClickable - built-in ripple)
                 FilledTonalButton(
                     onClick = onSubscribeClick,
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = if (isSubscribed) accentColor.copy(alpha = 0.15f) else accentColor,
                         contentColor = if (isSubscribed) accentColor else Color.White
-                    ),
-                    modifier = Modifier.expressiveClickable(onClick = onSubscribeClick)
+                    )
                 ) {
                     Icon(
                         imageVector = if (isSubscribed) Icons.Rounded.Check else Icons.Rounded.Add,
