@@ -141,6 +141,29 @@ class PodcastRepository(
         }
     }
 
+    data class EpisodePage(
+        val episodes: List<Episode>,
+        val hasMore: Boolean
+    )
+
+    suspend fun getEpisodesPaginated(
+        feedId: String,
+        limit: Int = 20,
+        offset: Int = 0,
+        sort: String = "newest"
+    ): EpisodePage = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getEpisodesPaginated(apiKey, feedId, limit, offset, sort)
+            EpisodePage(
+                episodes = response.items.mapNotNull { mapToEpisode(it) },
+                hasMore = response.hasMore
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            EpisodePage(emptyList(), false)
+        }
+    }
+
     suspend fun getPodcastDetails(feedId: String): Podcast? = withContext(Dispatchers.IO) {
         try {
             val response = api.getPodcast(apiKey, feedId)

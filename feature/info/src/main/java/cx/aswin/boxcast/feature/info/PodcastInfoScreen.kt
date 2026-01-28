@@ -54,6 +54,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -246,7 +256,7 @@ fun PodcastInfoScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         top = 140.dp + statusBarHeight + 16.dp, // Match expandedHeight + padding
-                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 88.dp // Extra for FAB
+                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 16.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -335,39 +345,24 @@ fun PodcastInfoScreen(
                     
                     // Old Description Removed (Integrated into Hero Row)
                     
-                    // Episodes Header
+                    // EPISODE TOOLBAR (M3 Expressive)
                     item {
-                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = "Episodes",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .background(
-                                        color = accentColor.copy(alpha = 0.15f),
-                                        shape = ExpressiveShapes.Cookie6
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "${state.episodes.size}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = accentColor,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
+                        EpisodeToolbar(
+                            searchQuery = state.searchQuery,
+                            onSearchChange = { viewModel.searchEpisodes(it) },
+                            isSearching = state.isSearching,
+                            currentSort = state.currentSort,
+                            onSortToggle = { viewModel.toggleSort() },
+                            isSubscribed = state.isSubscribed,
+                            onSubscribeClick = { viewModel.toggleSubscription() },
+                            accentColor = accentColor
+                        )
                     }
                     
-                    // Episodes
-                    itemsIndexed(state.episodes, key = { _, ep -> ep.id }) { index, episode ->
+                    // Episodes (Use search results if searching, else main list)
+                    val displayEpisodes = state.searchResults ?: state.episodes
+                    
+                    itemsIndexed(displayEpisodes, key = { _, ep -> ep.id }) { index, episode ->
                          EpisodeListItem(
                             episode = episode,
                             accentColor = accentColor,
@@ -375,6 +370,48 @@ fun PodcastInfoScreen(
                             onPlayClick = { onPlayEpisode(episode) },
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
+                        
+                        // Infinite scroll trigger (when not searching)
+                        if (state.searchResults == null && index == displayEpisodes.lastIndex && state.hasMoreEpisodes && !state.isLoadingMore) {
+                            LaunchedEffect(displayEpisodes.size) {
+                                viewModel.loadMoreEpisodes()
+                            }
+                        }
+                    }
+                    
+                    // Loading indicator for pagination
+                    if (state.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(32.dp),
+                                    strokeWidth = 3.dp
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Empty search results message
+                    if (state.searchResults?.isEmpty() == true) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(48.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No episodes found",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
                 
@@ -440,22 +477,7 @@ fun PodcastInfoScreen(
                     }
                 }
                 
-                // FAB - Correct position accounting for MiniPlayer
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(
-                            // Formula: NavBar + MiniPlayer (if present via bottomContentPadding) + 24dp margin
-                            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 24.dp, 
-                            end = 16.dp
-                        )
-                ) {
-                    ExpressiveExtendedFab(
-                        text = if (state.isSubscribed) "Subscribed" else "Subscribe",
-                        icon = if (state.isSubscribed) Icons.Rounded.Check else Icons.Rounded.Add,
-                        onClick = { viewModel.toggleSubscription() }
-                    )
-                }
+
             }
         }
     }
@@ -527,6 +549,161 @@ fun EpisodeListItem(
                     contentDescription = "Play",
                     tint = Color.White
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Episode Toolbar - M3 Expressive
+ * Contains: Search, Sort Toggle, Subscribe Button
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EpisodeToolbar(
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    isSearching: Boolean,
+    currentSort: EpisodeSort,
+    onSortToggle: () -> Unit,
+    isSubscribed: Boolean,
+    onSubscribeClick: () -> Unit,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Search Bar Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Search Field
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = ExpressiveShapes.Pill
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = searchQuery,
+                            onValueChange = onSearchChange,
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            modifier = Modifier.weight(1f),
+                            decorationBox = { innerTextField ->
+                                Box {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "Search episodes...",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
+                        )
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { onSearchChange("") },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Clear,
+                                    contentDescription = "Clear",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                        if (isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // Controls Row: Sort + Subscribe
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Sort Chip
+                FilterChip(
+                    selected = true,
+                    onClick = onSortToggle,
+                    label = { 
+                        Text(
+                            text = if (currentSort == EpisodeSort.NEWEST) "Newest" else "Oldest",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = if (currentSort == EpisodeSort.NEWEST) Icons.Rounded.ArrowDownward else Icons.Rounded.ArrowUpward,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    modifier = Modifier.expressiveClickable(onClick = onSortToggle)
+                )
+                
+                // Subscribe Button
+                FilledTonalButton(
+                    onClick = onSubscribeClick,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (isSubscribed) accentColor.copy(alpha = 0.15f) else accentColor,
+                        contentColor = if (isSubscribed) accentColor else Color.White
+                    ),
+                    modifier = Modifier.expressiveClickable(onClick = onSubscribeClick)
+                ) {
+                    Icon(
+                        imageVector = if (isSubscribed) Icons.Rounded.Check else Icons.Rounded.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isSubscribed) "Subscribed" else "Subscribe",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
             }
         }
     }

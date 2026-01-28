@@ -55,6 +55,14 @@ data class EpisodesResponse(
 )
 
 @Serializable
+data class EpisodesPaginatedResponse(
+    val items: List<EpisodeItem> = emptyList(),
+    val hasMore: Boolean = false,
+    val offset: Int = 0,
+    val limit: Int = 20
+)
+
+@Serializable
 data class EpisodeItem(
     val id: Long,
     val title: String,

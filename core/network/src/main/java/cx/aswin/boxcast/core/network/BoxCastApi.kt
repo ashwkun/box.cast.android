@@ -1,6 +1,7 @@
 package cx.aswin.boxcast.core.network
 
 import cx.aswin.boxcast.core.network.model.EpisodesResponse
+import cx.aswin.boxcast.core.network.model.EpisodesPaginatedResponse
 import cx.aswin.boxcast.core.network.model.PodcastResponse
 import cx.aswin.boxcast.core.network.model.SearchResponse
 import cx.aswin.boxcast.core.network.model.TrendingResponse
@@ -45,6 +46,15 @@ interface BoxCastApi {
         @Header("X-App-Key") apiKey: String,
         @Query("id") feedId: String
     ): EpisodesResponse
+    
+    @GET("episodes")
+    suspend fun getEpisodesPaginated(
+        @Header("X-App-Key") apiKey: String,
+        @Query("id") feedId: String,
+        @Query("limit") limit: Int = 20,
+        @Query("offset") offset: Int = 0,
+        @Query("sort") sort: String = "newest"
+    ): EpisodesPaginatedResponse
     
     @GET("podcast")
     suspend fun getPodcast(
