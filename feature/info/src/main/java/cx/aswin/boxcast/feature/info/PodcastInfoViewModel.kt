@@ -169,9 +169,9 @@ class PodcastInfoViewModel(
             delay(SEARCH_DEBOUNCE_MS)
             
             try {
-                // Search using podcast name + user query for better results
+                // Search using user query + podcast name for better results
                 val podcast = (uiState.value as? PodcastInfoUiState.Success)?.podcast
-                val fullQuery = "${podcast?.title} $query"
+                val fullQuery = "$query ${podcast?.title}"
                 
                 // Use global search and filter to this podcast
                 val searchResults = repository.searchPodcasts(fullQuery)
