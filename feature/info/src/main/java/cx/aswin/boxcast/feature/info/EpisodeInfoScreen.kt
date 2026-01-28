@@ -67,6 +67,7 @@ import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import cx.aswin.boxcast.core.designsystem.component.HtmlText
 import cx.aswin.boxcast.core.designsystem.components.BoxCastLoader
 import cx.aswin.boxcast.core.designsystem.theme.ExpressiveShapes
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
@@ -329,7 +330,7 @@ fun EpisodeInfoScreen(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
+                                    HtmlText(
                                         text = state.episode.description,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
