@@ -79,6 +79,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -255,9 +258,15 @@ fun PodcastInfoScreen(
                 }
                 
                 // Content
+                val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+                
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { focusManager.clearFocus() })
+                        },
                     contentPadding = PaddingValues(
                         top = 140.dp + statusBarHeight + 16.dp, // Match expandedHeight + padding
                         bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 16.dp
@@ -361,9 +370,10 @@ fun PodcastInfoScreen(
                             onSubscribeClick = { viewModel.toggleSubscription() },
                             accentColor = accentColor,
                             onSearchFocused = {
-                                // Scroll toolbar to top when search is focused
+                                // Scroll toolbar to very top when search is focused
                                 coroutineScope.launch {
-                                    listState.animateScrollToItem(1)
+                                    // Scroll to item 1 (toolbar) with offset to push it to top of screen
+                                    listState.animateScrollToItem(index = 1, scrollOffset = -200)
                                 }
                             }
                         )
