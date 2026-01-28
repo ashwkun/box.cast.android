@@ -196,11 +196,7 @@ fun PodcastInfoScreen(
     )
     
     // Back button alpha (fade in as we scroll for better contrast)
-    val backButtonBgAlpha by animateFloatAsState(
-        targetValue = if (morphFraction > 0.5f) 0.9f else 0.6f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "backButtonBgAlpha"
-    )
+    // Removed: backButtonBgAlpha - no longer using container
 
     // Scaffold removed - using Box overlay structure below for correct Edge-to-Edge behavior
     
@@ -307,8 +303,13 @@ fun PodcastInfoScreen(
                                         lineHeight = 16.sp,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { isDescExpanded = !isDescExpanded }
-                                            .animateContentSize()
+                                            .expressiveClickable { isDescExpanded = !isDescExpanded }
+                                            .animateContentSize(
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
+                                                )
+                                            )
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
@@ -388,27 +389,21 @@ fun PodcastInfoScreen(
                         .statusBarsPadding(), // Ensures it respects system bars
                     contentAlignment = Alignment.BottomStart // Align text to Bottom Left
                 ) {
-                    // Back Button (Top Left) - Polished with background
+                    // Back Button (Top Left) - Clean, no container
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(8.dp)
+                            .padding(4.dp)
                     ) {
-                        Surface(
-                            shape = MaterialTheme.shapes.medium,
-                            color = MaterialTheme.colorScheme.surface.copy(alpha = backButtonBgAlpha),
-                            tonalElevation = 2.dp
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.expressiveClickable(onClick = onBack)
                         ) {
-                            IconButton(
-                                onClick = onBack,
-                                modifier = Modifier.expressiveClickable(onClick = onBack)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                     
@@ -422,8 +417,16 @@ fun PodcastInfoScreen(
                         // Interpolated Text Size
                         // Use Larger Sizes as requested
                         val startSize = MaterialTheme.typography.headlineSmall.fontSize // 24sp
-                        val endSize = MaterialTheme.typography.titleLarge.fontSize // 22sp (Larger than Medium)
+                        val endSize = MaterialTheme.typography.titleLarge.fontSize // 22sp
                         val currentSize = androidx.compose.ui.unit.lerp(startSize, endSize, morphFraction)
+                        
+                        // Smooth transition: Always show 2 lines but fade overflow
+                        // Instead of abrupt maxLines change, use alpha crossfade
+                        val textAlpha by animateFloatAsState(
+                            targetValue = if (morphFraction < 0.7f) 1f else 0.95f,
+                            animationSpec = spring(stiffness = Spring.StiffnessLow),
+                            label = "textAlpha"
+                        )
                         
                         Text(
                             text = state.podcast.title,
