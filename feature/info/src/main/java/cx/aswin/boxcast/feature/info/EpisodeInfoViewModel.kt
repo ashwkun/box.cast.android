@@ -48,8 +48,8 @@ class EpisodeInfoViewModel(
         viewModelScope.launch {
             _uiState.value = EpisodeInfoUiState.Loading
             try {
-                // Build Episode from passed data
-                val episode = Episode(
+                // 1. Show immediate data (partial)
+                var currentEpisode = Episode(
                     id = episodeId,
                     title = episodeTitle,
                     description = episodeDescription,
@@ -59,21 +59,46 @@ class EpisodeInfoViewModel(
                     publishedDate = 0L
                 )
                 
-                // Check for resume position
+                // Check for resume position immediately
                 val resumeSession = playbackRepository.getSession(episodeId)
                 val resumeMs = resumeSession?.positionMs ?: 0L
                 val durationMs = resumeSession?.durationMs ?: (episodeDuration * 1000L)
 
                 _uiState.value = EpisodeInfoUiState.Success(
-                    episode = episode,
+                    episode = currentEpisode,
                     podcastId = podcastId,
                     podcastTitle = podcastTitle,
                     resumePositionMs = resumeMs,
                     durationMs = durationMs
                 )
+                
+                // 2. Fetch full details (description, etc.)
+                // Only if description is empty or we suspect it's partial? Always fetch to be safe.
+                // 2. Fetch full details from Network (since we don't have local Episode table yet)
+                val repository = cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, apiKey, getApplication())
+                val fullEpisode = repository.getEpisode(episodeId)
+
+                if (fullEpisode != null) {
+                    val netImage = fullEpisode.imageUrl
+                    currentEpisode = fullEpisode.copy(
+                        // Preserve passed image if network one is missing
+                        imageUrl = if (!netImage.isNullOrEmpty()) netImage else episodeImageUrl
+                    )
+                    
+                    _uiState.value = EpisodeInfoUiState.Success(
+                        episode = currentEpisode,
+                        podcastId = podcastId,
+                        podcastTitle = podcastTitle,
+                        resumePositionMs = resumeMs,
+                        durationMs = durationMs
+                    )
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
-                _uiState.value = EpisodeInfoUiState.Error
+                // Keep showing partial data if success was already emitted?
+                if (_uiState.value is EpisodeInfoUiState.Loading) {
+                    _uiState.value = EpisodeInfoUiState.Error
+                }
             }
         }
     }

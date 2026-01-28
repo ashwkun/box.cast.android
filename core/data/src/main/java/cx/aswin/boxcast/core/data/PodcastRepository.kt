@@ -141,6 +141,16 @@ class PodcastRepository(
         }
     }
 
+    suspend fun getEpisode(episodeId: String): Episode? = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getEpisode(apiKey, episodeId)
+            response.episode?.let { mapToEpisode(it) }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     data class EpisodePage(
         val episodes: List<Episode>,
         val hasMore: Boolean

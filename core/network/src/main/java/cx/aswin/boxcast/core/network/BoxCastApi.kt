@@ -7,6 +7,7 @@ import cx.aswin.boxcast.core.network.model.SearchResponse
 import cx.aswin.boxcast.core.network.model.TrendingResponse
 import cx.aswin.boxcast.core.network.model.SyncRequest
 import cx.aswin.boxcast.core.network.model.SyncResponse
+import cx.aswin.boxcast.core.network.model.SingleEpisodeResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -55,6 +56,12 @@ interface BoxCastApi {
         @Query("offset") offset: Int = 0,
         @Query("sort") sort: String = "newest"
     ): EpisodesPaginatedResponse
+
+    @GET("episode")
+    suspend fun getEpisode(
+        @Header("X-App-Key") apiKey: String,
+        @Query("id") id: String
+    ): SingleEpisodeResponse
     
     @GET("podcast")
     suspend fun getPodcast(

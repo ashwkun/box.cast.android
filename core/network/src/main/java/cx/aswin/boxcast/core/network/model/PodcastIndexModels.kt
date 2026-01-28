@@ -63,6 +63,12 @@ data class EpisodesPaginatedResponse(
 )
 
 @Serializable
+data class SingleEpisodeResponse(
+    val status: String,
+    val episode: EpisodeItem? = null
+)
+
+@Serializable
 data class EpisodeItem(
     val id: Long,
     val title: String,
