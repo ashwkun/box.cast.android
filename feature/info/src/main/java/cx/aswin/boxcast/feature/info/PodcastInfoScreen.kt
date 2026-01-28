@@ -104,6 +104,9 @@ private fun extractDominantColor(bitmap: Bitmap): Color {
 // Navbar height constant
 private val NAVBAR_HEIGHT = 80.dp
 
+// M3 Expressive Easing (Standard decelerate curve)
+private val ExpressiveEasing = androidx.compose.animation.core.CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PodcastInfoScreen(
@@ -149,30 +152,54 @@ fun PodcastInfoScreen(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     
-    // Height: Compact expanded state (120dp + SB) -> Standard toolbar (64dp + SB)
-    // We reduce expanded height to minimize gap, as title is mostly 1-2 lines.
-    val expandedHeight = 120.dp + statusBarHeight
+    // Height: Compact expanded state (140dp + SB) -> Standard toolbar (64dp + SB)
+    val expandedHeight = 140.dp + statusBarHeight
     val collapsedHeight = 64.dp + statusBarHeight
     
+    // Polished animation with M3 Expressive easing
     val headerHeight by animateDpAsState(
         targetValue = androidx.compose.ui.unit.lerp(expandedHeight, collapsedHeight, morphFraction),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
         label = "headerHeight"
     )
     val headerColor by animateColorAsState(
-        targetValue = androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceContainer, morphFraction),
+        targetValue = androidx.compose.ui.graphics.lerp(
+            MaterialTheme.colorScheme.surface, 
+            MaterialTheme.colorScheme.surfaceContainer, 
+            morphFraction
+        ),
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
         label = "headerColor"
     )
     
-    // Left Padding Interpolation: 20dp (Expanded) -> 64dp (Collapsed, standard keyline)
+    // Left Padding Interpolation: 20dp (Expanded) -> 56dp (Collapsed, standard keyline)
     val titleStartPadding by animateDpAsState(
-        targetValue = androidx.compose.ui.unit.lerp(20.dp, 64.dp, morphFraction),
+        targetValue = androidx.compose.ui.unit.lerp(20.dp, 56.dp, morphFraction),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "titleStartPadding"
     )
     
-    // Bottom Padding Interpolation: 12dp (Expanded) -> 18.dp (Collapsed - Vertically centered in 64dp)
+    // Bottom Padding Interpolation: 16dp (Expanded) -> 20dp (Collapsed - Vertically centered)
     val titleBottomPadding by animateDpAsState(
-        targetValue = androidx.compose.ui.unit.lerp(12.dp, 18.dp, morphFraction),
+        targetValue = androidx.compose.ui.unit.lerp(16.dp, 20.dp, morphFraction),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
         label = "titleBottomPadding"
+    )
+    
+    // Back button alpha (fade in as we scroll for better contrast)
+    val backButtonBgAlpha by animateFloatAsState(
+        targetValue = if (morphFraction > 0.5f) 0.9f else 0.6f,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "backButtonBgAlpha"
     )
 
     // Scaffold removed - using Box overlay structure below for correct Edge-to-Edge behavior
@@ -222,8 +249,8 @@ fun PodcastInfoScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        top = 120.dp + statusBarHeight + 16.dp, // Match expandedHeight + padding
-                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 80.dp
+                        top = 140.dp + statusBarHeight + 16.dp, // Match expandedHeight + padding
+                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 88.dp // Extra for FAB
                     ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -361,18 +388,27 @@ fun PodcastInfoScreen(
                         .statusBarsPadding(), // Ensures it respects system bars
                     contentAlignment = Alignment.BottomStart // Align text to Bottom Left
                 ) {
-                    // Back Button (Top Left)
+                    // Back Button (Top Left) - Polished with background
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(8.dp)
                     ) {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                        Surface(
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = backButtonBgAlpha),
+                            tonalElevation = 2.dp
+                        ) {
+                            IconButton(
+                                onClick = onBack,
+                                modifier = Modifier.expressiveClickable(onClick = onBack)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
                         }
                     }
                     
@@ -401,11 +437,12 @@ fun PodcastInfoScreen(
                     }
                 }
                 
-                // FAB
+                // FAB - Correct position accounting for MiniPlayer
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(
+                            // Formula: NavBar + MiniPlayer (if present via bottomContentPadding) + 16dp margin
                             bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 16.dp, 
                             end = 16.dp
                         )
