@@ -309,12 +309,17 @@ class MainActivity : ComponentActivity() {
                         BoxCastNavigationBar(
                             currentRoute = currentRoute,
                             onNavigate = { route ->
-                                navController.navigate(route) {
-                                    popUpTo("home") {
-                                        saveState = true
+                                if (route == "home") {
+                                    // Use popBackStack to reliably return to home
+                                    navController.popBackStack("home", inclusive = false)
+                                } else {
+                                    navController.navigate(route) {
+                                        popUpTo("home") {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             modifier = Modifier.align(Alignment.BottomCenter)
