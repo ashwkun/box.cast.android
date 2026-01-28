@@ -346,7 +346,15 @@ fun PodcastInfoScreen(
                     // Old Description Removed (Integrated into Hero Row)
                     
                     // EPISODE TOOLBAR (M3 Expressive)
-                    item {
+                    item(key = "toolbar") {
+                        // Scroll toolbar to top when searching
+                        LaunchedEffect(state.searchQuery.isNotEmpty()) {
+                            if (state.searchQuery.isNotEmpty()) {
+                                // Index 1 = toolbar (after hero section)
+                                listState.animateScrollToItem(1)
+                            }
+                        }
+                        
                         EpisodeToolbar(
                             searchQuery = state.searchQuery,
                             onSearchChange = { viewModel.searchEpisodes(it) },
@@ -525,16 +533,52 @@ fun EpisodeListItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+                
+                // Duration and Release Date
                 fun formatDuration(seconds: Int): String {
                     val hours = seconds / 3600
                     val minutes = (seconds % 3600) / 60
                     return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
                 }
-                Text(
-                    text = formatDuration(episode.duration),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                
+                fun formatRelativeDate(timestampSeconds: Long): String {
+                    if (timestampSeconds == 0L) return ""
+                    val now = System.currentTimeMillis() / 1000
+                    val diff = now - timestampSeconds
+                    return when {
+                        diff < 3600 -> "${diff / 60}m ago"
+                        diff < 86400 -> "${diff / 3600}h ago"
+                        diff < 604800 -> "${diff / 86400}d ago"
+                        diff < 2592000 -> "${diff / 604800}w ago"
+                        diff < 31536000 -> "${diff / 2592000}mo ago"
+                        else -> "${diff / 31536000}y ago"
+                    }
+                }
+                
+                val relativeDate = formatRelativeDate(episode.publishedDate)
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formatDuration(episode.duration),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (relativeDate.isNotEmpty()) {
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = relativeDate,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
             
             FilledIconButton(
