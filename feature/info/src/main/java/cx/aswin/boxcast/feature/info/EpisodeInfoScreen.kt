@@ -194,7 +194,7 @@ fun EpisodeInfoScreen(
             // Color extraction
             val painter = rememberAsyncImagePainter(
                 model = ImageRequest.Builder(context)
-                    .data(state.episode.imageUrl?.ifEmpty { null })
+                    .data(state.episode.podcastImageUrl?.ifEmpty { state.episode.imageUrl?.ifEmpty { null } })
                     .allowHardware(false)
                     .build()
             )
@@ -214,38 +214,40 @@ fun EpisodeInfoScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        top = expandedHeight + statusBarHeight + 16.dp,
+                        top = expandedHeight + statusBarHeight + 4.dp, // Reduced padding
                         bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 120.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     // HERO SECTION
                     item {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(horizontal = 24.dp)
                         ) {
-                            // Artwork
-                            Surface(
-                                modifier = Modifier.size(100.dp),
-                                shape = MaterialTheme.shapes.extraLarge, // Squircle-ish
-                                shadowElevation = 8.dp
+                            // Row 1: Artwork + Episode Title
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                AsyncImage(
-                                    model = state.episode.imageUrl?.ifEmpty { null },
-                                    contentDescription = state.episode.title,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                            
-                            Spacer(modifier = Modifier.width(16.dp))
-                            
-                            // Metadata
-                            Column(modifier = Modifier.weight(1f)) {
-                                // Episode Title (Was missing!)
+                                // Artwork
+                                Surface(
+                                    modifier = Modifier.size(80.dp),
+                                    shape = MaterialTheme.shapes.medium, // Subtler rounded corners for list look
+                                    shadowElevation = 4.dp
+                                ) {
+                                    AsyncImage(
+                                        model = state.episode.imageUrl?.ifEmpty { null },
+                                        contentDescription = state.episode.title,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                
+                                Spacer(modifier = Modifier.width(16.dp))
+                                
+                                // Episode Title
                                 Text(
                                     text = state.episode.title,
                                     style = MaterialTheme.typography.titleMedium,
@@ -254,27 +256,46 @@ fun EpisodeInfoScreen(
                                     maxLines = 3,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                
-                                // Podcast Title
+                            }
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            // Row 2: Podcast Title & Metadata
+                            Column {
                                 Text(
                                     text = state.podcastTitle,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Medium,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.primary, // Using primary color
+                                    fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier.expressiveClickable { onPodcastClick(state.podcastId) }
                                 )
+                                
                                 Spacer(modifier = Modifier.height(4.dp))
                                 
                                 val durationText = if (episodeDuration > 3600) 
-                                    "${episodeDuration / 3600}h ${(episodeDuration % 3600) / 60}m" 
-                                else "${(episodeDuration % 3600) / 60}m"
+                                    "${episodeDuration / 3600}hr ${(episodeDuration % 3600) / 60}min" 
+                                else "${(episodeDuration % 3600) / 60} min"
                                 
-                                Text(
-                                    text = durationText,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                     Text(
+                                        text = durationText,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    // Separator
+                                    Text(
+                                        text = " • ",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    // Simple Date (assuming we can format it, or just use duration for now)
+                                    // Adding a placeholder for date if available or just keeping duration clean
+                                     Text(
+                                        text = "Audio",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }

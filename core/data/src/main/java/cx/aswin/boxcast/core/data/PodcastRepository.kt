@@ -224,6 +224,7 @@ class PodcastRepository(
             description = item.description ?: "",
             audioUrl = audioUrl,
             imageUrl = item.image ?: item.feedImage ?: "",
+            podcastImageUrl = item.feedImage,
             duration = item.duration ?: 0,
             publishedDate = item.datePublished ?: 0L
         )
