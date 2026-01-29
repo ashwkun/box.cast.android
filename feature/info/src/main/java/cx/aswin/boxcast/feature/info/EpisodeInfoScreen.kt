@@ -208,94 +208,106 @@ fun EpisodeInfoScreen(
                 }
             }
             
-            Box(modifier = modifier.fillMaxSize()) {
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.4f),
+                                MaterialTheme.colorScheme.surface
+                            ),
+                            startY = 0f,
+                            endY = 1000f
+                        )
+                    )
+            ) {
                 // Content List
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        top = expandedHeight + statusBarHeight + 4.dp, // Reduced padding
+                        top = statusBarHeight + 16.dp, // Minimal padding to start right below status bar
                         bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 120.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally // Center everything
                 ) {
                     // HERO SECTION
                     item {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 24.dp)
+                                .padding(horizontal = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Row 1: Artwork + Episode Title
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
+                            Spacer(modifier = Modifier.height(40.dp)) // Space for Back Button
+
+                            // Artwork (Centered & Large)
+                            Surface(
+                                modifier = Modifier.size(200.dp),
+                                shape = MaterialTheme.shapes.extraLarge,
+                                shadowElevation = 12.dp
                             ) {
-                                // Artwork
-                                Surface(
-                                    modifier = Modifier.size(80.dp),
-                                    shape = MaterialTheme.shapes.medium, // Subtler rounded corners for list look
-                                    shadowElevation = 4.dp
-                                ) {
-                                    AsyncImage(
-                                        model = state.episode.imageUrl?.ifEmpty { null },
-                                        contentDescription = state.episode.title,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.width(16.dp))
-                                
-                                // Episode Title
-                                Text(
-                                    text = state.episode.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis
+                                AsyncImage(
+                                    model = state.episode.imageUrl?.ifEmpty { null },
+                                    contentDescription = state.episode.title,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
                                 )
                             }
                             
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(24.dp))
                             
-                            // Row 2: Podcast Title & Metadata
-                            Column {
+                            // Episode Title
+                            Text(
+                                text = state.episode.title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Podcast Title
+                            Text(
+                                text = state.podcastTitle,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.expressiveClickable { onPodcastClick(state.podcastId) }
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Metadata Row
+                            val durationText = if (episodeDuration > 3600) 
+                                "${episodeDuration / 3600}hr ${(episodeDuration % 3600) / 60}min" 
+                            else "${(episodeDuration % 3600) / 60} min"
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
                                 Text(
-                                    text = state.podcastTitle,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.primary, // Using primary color
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.expressiveClickable { onPodcastClick(state.podcastId) }
+                                    text = durationText,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                
-                                Spacer(modifier = Modifier.height(4.dp))
-                                
-                                val durationText = if (episodeDuration > 3600) 
-                                    "${episodeDuration / 3600}hr ${(episodeDuration % 3600) / 60}min" 
-                                else "${(episodeDuration % 3600) / 60} min"
-                                
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                     Text(
-                                        text = durationText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    // Separator
-                                    Text(
-                                        text = " • ",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    // Simple Date (assuming we can format it, or just use duration for now)
-                                    // Adding a placeholder for date if available or just keeping duration clean
-                                     Text(
-                                        text = "Audio",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                Text(
+                                    text = " • ",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Audio", // Placeholder type
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -303,13 +315,17 @@ fun EpisodeInfoScreen(
                     // ACTION ROW
                     item {
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            // Main Play Button (Full Width preference for center layout?)
+                            // Let's keep the row but maybe center align if just button?
+                            // User liked "Action Row", so keeping Button + Progress
+                            
                             // Main Play Button
                             FilledTonalButton(
                                 onClick = onPlay,
-                                modifier = Modifier.weight(1f).height(48.dp),
+                                modifier = Modifier.weight(1f).height(56.dp), // Taller button
                                 colors = ButtonDefaults.filledTonalButtonColors(
                                     containerColor = accentColor,
                                     contentColor = Color.White
@@ -318,22 +334,26 @@ fun EpisodeInfoScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.PlayArrow,
                                     contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = if (state.resumePositionMs > 0) "Resume" else "Play",
-                                    style = MaterialTheme.typography.labelLarge,
+                                    style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
-                            
-                            // Resume Progress if active
-                            if (state.resumePositionMs > 0 && state.durationMs > 0) {
-                                val progress = (state.resumePositionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
+                        }
+                        
+                        // Progress bar separate item or below? 
+                        // Previous layout had it in row. Let's move progress BELOW button for vertical stack feel.
+                        if (state.resumePositionMs > 0 && state.durationMs > 0) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            val progress = (state.resumePositionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
+                            Box(modifier = Modifier.padding(horizontal = 24.dp)) {
                                 LinearWavyProgressIndicator(
                                     progress = { progress },
-                                    modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
+                                    modifier = Modifier.fillMaxWidth(),
                                     color = accentColor,
                                     trackColor = accentColor.copy(alpha = 0.2f)
                                 )
