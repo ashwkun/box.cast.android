@@ -214,8 +214,8 @@ fun EpisodeInfoScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        top = 140.dp + statusBarHeight + 16.dp,
-                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 16.dp
+                        top = expandedHeight + statusBarHeight + 16.dp,
+                        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 120.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
@@ -230,7 +230,7 @@ fun EpisodeInfoScreen(
                             // Artwork
                             Surface(
                                 modifier = Modifier.size(100.dp),
-                                shape = ExpressiveShapes.Cookie4,
+                                shape = MaterialTheme.shapes.extraLarge, // Squircle-ish
                                 shadowElevation = 8.dp
                             ) {
                                 AsyncImage(
@@ -245,10 +245,22 @@ fun EpisodeInfoScreen(
                             
                             // Metadata
                             Column(modifier = Modifier.weight(1f)) {
+                                // Episode Title (Was missing!)
+                                Text(
+                                    text = state.episode.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                
+                                // Podcast Title
                                 Text(
                                     text = state.podcastTitle,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Medium,
                                     modifier = Modifier.expressiveClickable { onPodcastClick(state.podcastId) }
                                 )
@@ -260,7 +272,7 @@ fun EpisodeInfoScreen(
                                 
                                 Text(
                                     text = durationText,
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                                 )
                             }
