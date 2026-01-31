@@ -156,7 +156,7 @@ fun EpisodeInfoScreen(
     
     val headerColor by animateColorAsState(
         targetValue = androidx.compose.ui.graphics.lerp(
-            MaterialTheme.colorScheme.surface.copy(alpha = 0f), // Start transparent to show gradient
+            MaterialTheme.colorScheme.surface, // Start Opaque Surface (Match Podcast Screen)
             MaterialTheme.colorScheme.surfaceContainer, 
             morphFraction
         ),
