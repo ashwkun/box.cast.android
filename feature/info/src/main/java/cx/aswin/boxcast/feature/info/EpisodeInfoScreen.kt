@@ -163,13 +163,6 @@ fun EpisodeInfoScreen(
         label = "headerColor"
     )
     
-    // Left Padding Interpolation: 20dp (Expanded) -> 56dp (Collapsed, standard keyline)
-    val titleStartPadding by androidx.compose.animation.core.animateDpAsState(
-        targetValue = androidx.compose.ui.unit.lerp(20.dp, 56.dp, morphFraction),
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "titleStartPadding"
-    )
-    
     // Bottom Padding Interpolation: 16dp (Expanded) -> 20dp (Collapsed - Vertically centered)
     val titleBottomPadding by androidx.compose.animation.core.animateDpAsState(
         targetValue = androidx.compose.ui.unit.lerp(16.dp, 20.dp, morphFraction),
@@ -388,7 +381,7 @@ fun EpisodeInfoScreen(
                         .height(headerHeight)
                         .background(headerColor)
                         .statusBarsPadding(),
-                    contentAlignment = Alignment.BottomStart
+                    contentAlignment = Alignment.BottomCenter // Centered Alignment
                 ) {
                     // Back Button
                     Box(modifier = Modifier.align(Alignment.TopStart).padding(4.dp)) {
@@ -402,7 +395,7 @@ fun EpisodeInfoScreen(
                     }
                     
                     // Morphing Title
-                    // Always visible, interpolating size and position
+                    // Always visible, interpolating size
                     
                     // Interpolated Text Size
                     val startSize = MaterialTheme.typography.headlineSmall.fontSize // Start Large
@@ -417,8 +410,9 @@ fun EpisodeInfoScreen(
                         maxLines = 2,
                         minLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier
-                            .padding(start = titleStartPadding, end = 16.dp, bottom = titleBottomPadding)
+                            .padding(start = 48.dp, end = 48.dp, bottom = titleBottomPadding) // Symmetric padding
                             .fillMaxWidth()
                     )
                 }
