@@ -295,8 +295,11 @@ fun EpisodeInfoScreen(
                         ) {
                             // Main Play Button
                             FilledTonalButton(
-                                onClick = onPlay,
-                                modifier = Modifier.weight(1f).height(56.dp), // Taller button
+                                onClick = {}, // Handled by expressiveClickable for bounce effect
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp)
+                                    .expressiveClickable(onClick = onPlay),
                                 colors = ButtonDefaults.filledTonalButtonColors(
                                     containerColor = accentColor,
                                     contentColor = Color.White

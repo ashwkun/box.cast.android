@@ -724,10 +724,10 @@ private fun EpisodeToolbar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Sort Chip (no expressiveClickable - built-in ripple)
+                // Sort Chip
                 FilterChip(
                     selected = true,
-                    onClick = onSortToggle,
+                    onClick = {}, // Handled by expressiveClickable
                     label = { 
                         Text(
                             text = if (currentSort == EpisodeSort.NEWEST) "Newest" else "Oldest",
@@ -745,16 +745,18 @@ private fun EpisodeToolbar(
                         selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    ),
+                    modifier = Modifier.expressiveClickable(onClick = onSortToggle)
                 )
                 
-                // Subscribe Button (no expressiveClickable - built-in ripple)
+                // Subscribe Button
                 FilledTonalButton(
-                    onClick = onSubscribeClick,
+                    onClick = {}, // Handled by expressiveClickable
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = if (isSubscribed) accentColor.copy(alpha = 0.15f) else accentColor,
                         contentColor = if (isSubscribed) accentColor else Color.White
-                    )
+                    ),
+                    modifier = Modifier.expressiveClickable(onClick = onSubscribeClick)
                 ) {
                     Icon(
                         imageVector = if (isSubscribed) Icons.Rounded.Check else Icons.Rounded.Add,
