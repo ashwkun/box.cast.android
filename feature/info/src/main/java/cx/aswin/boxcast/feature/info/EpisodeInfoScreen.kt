@@ -135,11 +135,11 @@ fun EpisodeInfoScreen(
             } else 2000f // Fully collapsed
         }
     }
-    val morphThreshold = 300f
+    val density = LocalDensity.current
+    val morphThreshold = with(density) { 200.dp.toPx() } // Density-aware threshold
     val morphFraction = (scrollOffset / morphThreshold).coerceIn(0f, 1f)
     
     // Header dimensions
-    val density = LocalDensity.current
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val expandedHeight = 140.dp + statusBarHeight
     val collapsedHeight = 64.dp + statusBarHeight
@@ -243,7 +243,9 @@ fun EpisodeInfoScreen(
                         ) {
                             Spacer(modifier = Modifier.height(40.dp)) // Space for Back Button
 
-                            // Episode Title
+                            // Episode Title (Body)
+                            // Fade out as we scroll up
+                            val bodyTitleAlpha = (1f - (morphFraction * 1.5f)).coerceIn(0f, 1f)
                             Text(
                                 text = state.episode.title,
                                 style = MaterialTheme.typography.headlineSmall,
@@ -251,7 +253,8 @@ fun EpisodeInfoScreen(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 maxLines = 3,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.graphicsLayer { alpha = bodyTitleAlpha }
                             )
                             
                             Spacer(modifier = Modifier.height(24.dp))
@@ -414,17 +417,10 @@ fun EpisodeInfoScreen(
                     }
                     
                     // Morphing Title
-                    // Fade text alpha based on scroll to avoid clutter when expanded
-                    // Unlike podcast page, we might want title always visible or fade in?
-                    // Podcast page fades OUT title when expanded (mostly).
-                    // Let's fade IN title as we collapse.
-                    val titleAlpha by androidx.compose.animation.core.animateFloatAsState(
-                         targetValue = if (morphFraction > 0.5f) 1f else 0f,
-                         animationSpec = spring(stiffness = Spring.StiffnessLow),
-                         label = "titleAlpha"
-                    )
+                    // Reveal header title as body title fades out
+                    val headerTitleAlpha = ((morphFraction - 0.6f) / 0.4f).coerceIn(0f, 1f)
                     
-                    if (morphFraction > 0.1f) {
+                    if (morphFraction > 0.5f) {
                         Text(
                             text = episodeTitle,
                             style = MaterialTheme.typography.titleMedium,
@@ -432,8 +428,7 @@ fun EpisodeInfoScreen(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
-                                .padding(start = titleStartPadding, end = 16.dp, bottom = titleBottomPadding) // Using interpolated padding
-                                .graphicsLayer { alpha = titleAlpha }
+                                .graphicsLayer { alpha = headerTitleAlpha }
                         )
                     }
                 }
