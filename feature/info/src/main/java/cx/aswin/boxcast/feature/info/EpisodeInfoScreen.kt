@@ -139,12 +139,14 @@ fun EpisodeInfoScreen(
     val morphThreshold = with(density) { 200.dp.toPx() } // Density-aware threshold
     val morphFraction = (scrollOffset / morphThreshold).coerceIn(0f, 1f)
     
-    // Header dimensions
+    // Interpolated Values
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    
+    // Height: Compact expanded state (140dp + SB) -> Standard toolbar (64dp + SB)
     val expandedHeight = 140.dp + statusBarHeight
     val collapsedHeight = 64.dp + statusBarHeight
     
-    // Interpolated values for smooth transitions
+    // Polished animation with M3 Expressive easing
     val headerHeight by androidx.compose.animation.core.animateDpAsState(
         targetValue = androidx.compose.ui.unit.lerp(expandedHeight, collapsedHeight, morphFraction),
         animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -153,7 +155,7 @@ fun EpisodeInfoScreen(
     
     val headerColor by animateColorAsState(
         targetValue = androidx.compose.ui.graphics.lerp(
-            MaterialTheme.colorScheme.surface.copy(alpha = 0f), 
+            MaterialTheme.colorScheme.surface.copy(alpha = 0f), // Start transparent to show gradient
             MaterialTheme.colorScheme.surfaceContainer, 
             morphFraction
         ),
@@ -161,12 +163,14 @@ fun EpisodeInfoScreen(
         label = "headerColor"
     )
     
+    // Left Padding Interpolation: 20dp (Expanded) -> 56dp (Collapsed, standard keyline)
     val titleStartPadding by androidx.compose.animation.core.animateDpAsState(
         targetValue = androidx.compose.ui.unit.lerp(20.dp, 56.dp, morphFraction),
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "titleStartPadding"
     )
     
+    // Bottom Padding Interpolation: 16dp (Expanded) -> 20dp (Collapsed - Vertically centered)
     val titleBottomPadding by androidx.compose.animation.core.animateDpAsState(
         targetValue = androidx.compose.ui.unit.lerp(16.dp, 20.dp, morphFraction),
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
@@ -227,7 +231,7 @@ fun EpisodeInfoScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        top = statusBarHeight + 16.dp, // Minimal padding to start right below status bar
+                        top = expandedHeight + 16.dp, // Start content BELOW the expanded header
                         bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + bottomContentPadding + 120.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -241,21 +245,8 @@ fun EpisodeInfoScreen(
                                 .padding(horizontal = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Spacer(modifier = Modifier.height(40.dp)) // Space for Back Button
-
-                            // Episode Title (Body)
-                            // Fade out as we scroll up
-                            val bodyTitleAlpha = (1f - (morphFraction * 1.5f)).coerceIn(0f, 1f)
-                            Text(
-                                text = state.episode.title,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.graphicsLayer { alpha = bodyTitleAlpha }
-                            )
+                            // No Spacer needed for Back Button as Header handles it
+                            // No Body Title - moved to Header Overlay
                             
                             Spacer(modifier = Modifier.height(24.dp))
 
@@ -321,10 +312,6 @@ fun EpisodeInfoScreen(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Main Play Button (Full Width preference for center layout?)
-                            // Let's keep the row but maybe center align if just button?
-                            // User liked "Action Row", so keeping Button + Progress
-                            
                             // Main Play Button
                             FilledTonalButton(
                                 onClick = onPlay,
@@ -348,8 +335,6 @@ fun EpisodeInfoScreen(
                             }
                         }
                         
-                        // Progress bar separate item or below? 
-                        // Previous layout had it in row. Let's move progress BELOW button for vertical stack feel.
                         if (state.resumePositionMs > 0 && state.durationMs > 0) {
                             Spacer(modifier = Modifier.height(12.dp))
                             val progress = (state.resumePositionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
@@ -417,20 +402,25 @@ fun EpisodeInfoScreen(
                     }
                     
                     // Morphing Title
-                    // Reveal header title as body title fades out
-                    val headerTitleAlpha = ((morphFraction - 0.6f) / 0.4f).coerceIn(0f, 1f)
+                    // Always visible, interpolating size and position
                     
-                    if (morphFraction > 0.5f) {
-                        Text(
-                            text = episodeTitle,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .graphicsLayer { alpha = headerTitleAlpha }
-                        )
-                    }
+                    // Interpolated Text Size
+                    val startSize = MaterialTheme.typography.headlineSmall.fontSize // Start Large
+                    val endSize = MaterialTheme.typography.titleMedium.fontSize // End Small
+                    val currentSize = androidx.compose.ui.unit.lerp(startSize, endSize, morphFraction)
+                    
+                    Text(
+                        text = episodeTitle,
+                        fontSize = currentSize,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        minLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .padding(start = titleStartPadding, end = 16.dp, bottom = titleBottomPadding)
+                            .fillMaxWidth()
+                    )
                 }
             }
         }
