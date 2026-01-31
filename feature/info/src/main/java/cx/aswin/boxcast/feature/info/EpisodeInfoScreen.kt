@@ -143,7 +143,8 @@ fun EpisodeInfoScreen(
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     
     // Height: Compact expanded state (140dp + SB) -> Standard toolbar (64dp + SB)
-    val expandedHeight = 140.dp + statusBarHeight
+    // Increased to 200dp to accommodate longer titles (3-4 lines) without truncation
+    val expandedHeight = 200.dp + statusBarHeight
     val collapsedHeight = 64.dp + statusBarHeight
     
     // Polished animation with M3 Expressive easing
@@ -407,7 +408,7 @@ fun EpisodeInfoScreen(
                         fontSize = currentSize,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
+                        maxLines = if (morphFraction > 0.5f) 1 else 4, // Allow up to 4 lines when expanded
                         minLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
