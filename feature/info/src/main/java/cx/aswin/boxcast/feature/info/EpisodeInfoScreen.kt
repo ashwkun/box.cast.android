@@ -156,7 +156,7 @@ fun EpisodeInfoScreen(
     
     val headerColor by animateColorAsState(
         targetValue = androidx.compose.ui.graphics.lerp(
-            MaterialTheme.colorScheme.surface, // Start Opaque Surface (Match Podcast Screen)
+            MaterialTheme.colorScheme.surface, 
             MaterialTheme.colorScheme.surfaceContainer, 
             morphFraction
         ),
@@ -206,20 +206,7 @@ fun EpisodeInfoScreen(
                 }
             }
             
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                accentColor.copy(alpha = 0.4f),
-                                MaterialTheme.colorScheme.surface
-                            ),
-                            startY = 0f,
-                            endY = 1000f
-                        )
-                    )
-            ) {
+            Box(modifier = modifier.fillMaxSize()) {
                 // Content List
                 LazyColumn(
                     state = listState,
