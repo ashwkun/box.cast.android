@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -725,9 +726,17 @@ private fun EpisodeToolbar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Sort Chip
+                val sortInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val isSortPressed by sortInteractionSource.collectIsPressedAsState()
+                val sortScale by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (isSortPressed) 0.9f else 1f,
+                    animationSpec = if (isSortPressed) cx.aswin.boxcast.core.designsystem.theme.ExpressiveMotion.QuickSpring else cx.aswin.boxcast.core.designsystem.theme.ExpressiveMotion.BouncySpring,
+                    label = "sortScale"
+                )
+                
                 FilterChip(
                     selected = true,
-                    onClick = {}, // Handled by expressiveClickable
+                    onClick = onSortToggle,
                     label = { 
                         Text(
                             text = if (currentSort == EpisodeSort.NEWEST) "Newest" else "Oldest",
@@ -746,17 +755,33 @@ private fun EpisodeToolbar(
                         selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         selectedLeadingIconColor = MaterialTheme.colorScheme.onSecondaryContainer
                     ),
-                    modifier = Modifier.expressiveClickable(onClick = onSortToggle)
+                    interactionSource = sortInteractionSource,
+                    modifier = Modifier.graphicsLayer { 
+                        scaleX = sortScale
+                        scaleY = sortScale
+                    }
                 )
                 
                 // Subscribe Button
+                val subInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                val isSubPressed by subInteractionSource.collectIsPressedAsState()
+                val subScale by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (isSubPressed) 0.9f else 1f,
+                    animationSpec = if (isSubPressed) cx.aswin.boxcast.core.designsystem.theme.ExpressiveMotion.QuickSpring else cx.aswin.boxcast.core.designsystem.theme.ExpressiveMotion.BouncySpring,
+                    label = "subScale"
+                )
+
                 FilledTonalButton(
-                    onClick = {}, // Handled by expressiveClickable
+                    onClick = onSubscribeClick,
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = if (isSubscribed) accentColor.copy(alpha = 0.15f) else accentColor,
                         contentColor = if (isSubscribed) accentColor else Color.White
                     ),
-                    modifier = Modifier.expressiveClickable(onClick = onSubscribeClick)
+                    interactionSource = subInteractionSource,
+                    modifier = Modifier.graphicsLayer { 
+                        scaleX = subScale
+                        scaleY = subScale
+                    }
                 ) {
                     Icon(
                         imageVector = if (isSubscribed) Icons.Rounded.Check else Icons.Rounded.Add,

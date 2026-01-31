@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -294,12 +295,25 @@ fun EpisodeInfoScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             // Main Play Button
+                            val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                            val isPressed by interactionSource.collectIsPressedAsState()
+                            
+                            val scale by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = if (isPressed) 0.9f else 1f,
+                                animationSpec = if (isPressed) cx.aswin.boxcast.core.designsystem.theme.ExpressiveMotion.QuickSpring else cx.aswin.boxcast.core.designsystem.theme.ExpressiveMotion.BouncySpring,
+                                label = "buttonScale"
+                            )
+                            
                             FilledTonalButton(
-                                onClick = {}, // Handled by expressiveClickable for bounce effect
+                                onClick = onPlay,
+                                interactionSource = interactionSource,
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(56.dp)
-                                    .expressiveClickable(onClick = onPlay),
+                                    .graphicsLayer { 
+                                        scaleX = scale
+                                        scaleY = scale
+                                    },
                                 colors = ButtonDefaults.filledTonalButtonColors(
                                     containerColor = accentColor,
                                     contentColor = Color.White
