@@ -243,6 +243,19 @@ fun EpisodeInfoScreen(
                         ) {
                             Spacer(modifier = Modifier.height(40.dp)) // Space for Back Button
 
+                            // Episode Title
+                            Text(
+                                text = state.episode.title,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            
+                            Spacer(modifier = Modifier.height(24.dp))
+
                             // Artwork (Centered & Large)
                             Surface(
                                 modifier = Modifier.size(200.dp),
@@ -256,19 +269,6 @@ fun EpisodeInfoScreen(
                                     contentScale = ContentScale.Crop
                                 )
                             }
-                            
-                            Spacer(modifier = Modifier.height(24.dp))
-                            
-                            // Episode Title
-                            Text(
-                                text = state.episode.title,
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                maxLines = 3,
-                                overflow = TextOverflow.Ellipsis
-                            )
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
