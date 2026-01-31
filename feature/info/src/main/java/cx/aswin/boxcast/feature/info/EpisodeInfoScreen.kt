@@ -400,8 +400,15 @@ fun EpisodeInfoScreen(
                     
                     // Interpolated Text Size
                     val startSize = MaterialTheme.typography.headlineSmall.fontSize // Start Large
-                    val endSize = MaterialTheme.typography.titleMedium.fontSize // End Small
+                    val endSize = MaterialTheme.typography.titleLarge.fontSize // End Small (Match Podcast Screen)
                     val currentSize = androidx.compose.ui.unit.lerp(startSize, endSize, morphFraction)
+                    
+                    // Smooth transition: Fade alpha during maxLines change
+                    val textAlpha by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (morphFraction < 0.7f) 1f else 0.95f,
+                        animationSpec = spring(stiffness = Spring.StiffnessLow),
+                        label = "textAlpha"
+                    )
                     
                     Text(
                         text = episodeTitle,
@@ -415,6 +422,7 @@ fun EpisodeInfoScreen(
                         modifier = Modifier
                             .padding(start = 48.dp, end = 48.dp, bottom = titleBottomPadding) // Symmetric padding
                             .fillMaxWidth()
+                            .graphicsLayer { alpha = textAlpha }
                     )
                 }
             }
