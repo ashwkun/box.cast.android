@@ -19,7 +19,7 @@ import cx.aswin.boxcast.core.network.model.TrendingFeed
  */
 class PodcastRepository(
     private val baseUrl: String,
-    private val apiKey: String,
+    private val publicKey: String,
     context: android.content.Context
 ) {
     private val api: BoxCastApi = NetworkModule.createBoxCastApi(baseUrl, context)
@@ -28,7 +28,7 @@ class PodcastRepository(
         // Fallback or non-streaming implementation
         return try {
             android.util.Log.d("BoxCastRepo", "Fetching category: $category for country: $country")
-            val response = api.getTrending(apiKey, country, limit, category)
+            val response = api.getTrending(publicKey, country, limit, category)
             android.util.Log.d("BoxCastRepo", "Category response count: ${response.feeds.size}, First: ${response.feeds.firstOrNull()?.title}")
             mapFeedsToPodcasts(response.feeds)
         } catch (e: Exception) {
@@ -40,46 +40,55 @@ class PodcastRepository(
     fun getTrendingPodcastsStream(country: String = "us", limit: Int = 50, category: String? = null): kotlinx.coroutines.flow.Flow<List<Podcast>> = kotlinx.coroutines.flow.flow {
         val podcasts = mutableListOf<Podcast>()
         val startTime = System.currentTimeMillis()
-        android.util.Log.d("BoxCastTiming", "Repo: Requesting stream... cat=$category")
+        android.util.Log.e("BoxCastConfig", "Repo: Requesting stream... cat=$category, key=$publicKey")
         try {
-            val responseBody = api.getTrendingStream(apiKey, country, limit, category)
-            android.util.Log.d("BoxCastTiming", "Repo: Response headers received in ${System.currentTimeMillis() - startTime}ms")
+            val responseBody = api.getTrendingStream(publicKey, country, limit, category)
+            android.util.Log.e("BoxCastConfig", "Repo: Response headers received in ${System.currentTimeMillis() - startTime}ms. Content-Length: ${responseBody.contentLength()}")
             
             val stream = responseBody.byteStream()
             val reader = com.google.gson.stream.JsonReader(java.io.InputStreamReader(stream, "UTF-8"))
             
+            // Debug: Check if leniency helps (sometimes proxies return malformed json)
+            reader.isLenient = true
+            
             reader.beginObject() // {
+            android.util.Log.e("BoxCastConfig", "Stream: Started parsing object")
             while (reader.hasNext()) {
                 val name = reader.nextName()
                 if (name == "feeds") {
+                    android.util.Log.e("BoxCastConfig", "Stream: Found 'feeds' array")
                     reader.beginArray() // [
                     while (reader.hasNext()) {
                         // Parse one feed object
-                        val feed = com.google.gson.Gson().fromJson<cx.aswin.boxcast.core.network.model.TrendingFeed>(
-                            reader, 
-                            cx.aswin.boxcast.core.network.model.TrendingFeed::class.java
-                        )
-                        
-                        val podcast = Podcast(
-                            id = feed.id.toString(),
-                            title = feed.title,
-                            artist = feed.author ?: "Unknown",
-                            imageUrl = feed.artwork ?: feed.image ?: "",
-                            description = feed.description,
-                            genre = feed.categories.values.firstOrNull() ?: "Podcast",
-                            latestEpisode = feed.latestEpisode?.let { mapToEpisode(it) }
-                        )
-                        podcasts.add(podcast)
-                        // android.util.Log.d("BoxCastStream", "Parsed item #${podcasts.size}: ${podcast.title}")
-                        
-                        // PROGRESSIVE EMISSION STRATEGY
-                        // Emit every 4 items to ensure UI updates frequently
-                        if (podcasts.size % 4 == 0 || podcasts.size == 2) {
-                             // android.util.Log.d("BoxCastStream", "Emitting ${podcasts.size} items")
-                             emit(podcasts.toList())
+                        try {
+                            val feed = com.google.gson.Gson().fromJson<cx.aswin.boxcast.core.network.model.TrendingFeed>(
+                                reader, 
+                                cx.aswin.boxcast.core.network.model.TrendingFeed::class.java
+                            )
+                            
+                            val podcast = Podcast(
+                                id = feed.id.toString(),
+                                title = feed.title,
+                                artist = feed.author ?: "Unknown",
+                                imageUrl = feed.artwork ?: feed.image ?: "",
+                                description = feed.description,
+                                genre = feed.categories.values.firstOrNull() ?: "Podcast",
+                                latestEpisode = feed.latestEpisode?.let { mapToEpisode(it) }
+                            )
+                            podcasts.add(podcast)
+                            // android.util.Log.e("BoxCastConfig", "Parsed item #${podcasts.size}: ${podcast.title}")
+                            
+                            // PROGRESSIVE EMISSION STRATEGY
+                            if (podcasts.size % 4 == 0 || podcasts.size == 1) {
+                                 // android.util.Log.e("BoxCastConfig", "Emitting ${podcasts.size} items")
+                                 emit(podcasts.toList())
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("BoxCastConfig", "Error parsing individual feed item", e)
                         }
                     }
                     reader.endArray()
+                    android.util.Log.e("BoxCastConfig", "Stream: Finished 'feeds' array")
                 } else {
                     reader.skipValue()
                 }
@@ -88,12 +97,14 @@ class PodcastRepository(
             
             // Final emission
             if (podcasts.isNotEmpty()) {
-                android.util.Log.d("BoxCastStream", "Stream Complete. Total: ${podcasts.size}")
+                android.util.Log.e("BoxCastConfig", "Stream Complete. Total: ${podcasts.size}")
                 emit(podcasts)
+            } else {
+                android.util.Log.e("BoxCastConfig", "Stream Complete. NO items found.")
             }
             
         } catch (e: Exception) {
-            android.util.Log.e("BoxCastStream", "Stream Error after ${podcasts.size} items", e)
+            android.util.Log.e("BoxCastConfig", "Stream Error after ${podcasts.size} items", e)
             if (podcasts.isNotEmpty()) emit(podcasts)
         }
     }.flowOn(Dispatchers.IO)
@@ -114,7 +125,7 @@ class PodcastRepository(
 
     suspend fun searchPodcasts(query: String): List<Podcast> = withContext(Dispatchers.IO) {
         try {
-            val response = api.search(apiKey, query)
+            val response = api.search(publicKey, query)
             response.feeds.map { feed ->
                 Podcast(
                     id = feed.id.toString(),
@@ -133,7 +144,7 @@ class PodcastRepository(
 
     suspend fun getEpisodes(feedId: String): List<Episode> = withContext(Dispatchers.IO) {
         try {
-            val response = api.getEpisodes(apiKey, feedId)
+            val response = api.getEpisodes(publicKey, feedId)
             response.items.mapNotNull { mapToEpisode(it) }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -143,7 +154,7 @@ class PodcastRepository(
 
     suspend fun getEpisode(episodeId: String): Episode? = withContext(Dispatchers.IO) {
         try {
-            val response = api.getEpisode(apiKey, episodeId)
+            val response = api.getEpisode(publicKey, episodeId)
             response.episode?.let { mapToEpisode(it) }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -163,7 +174,7 @@ class PodcastRepository(
         sort: String = "newest"
     ): EpisodePage = withContext(Dispatchers.IO) {
         try {
-            val response = api.getEpisodesPaginated(apiKey, feedId, limit, offset, sort)
+            val response = api.getEpisodesPaginated(publicKey, feedId, limit, offset, sort)
             EpisodePage(
                 episodes = response.items.mapNotNull { mapToEpisode(it) },
                 hasMore = response.hasMore
@@ -176,7 +187,7 @@ class PodcastRepository(
 
     suspend fun getPodcastDetails(feedId: String): Podcast? = withContext(Dispatchers.IO) {
         try {
-            val response = api.getPodcast(apiKey, feedId)
+            val response = api.getPodcast(publicKey, feedId)
             val feed = response.feed ?: return@withContext null
             Podcast(
                 id = feed.id.toString(),
@@ -203,7 +214,7 @@ class PodcastRepository(
             // Better to let VM handle logic of *what* to sync, Repo just syncs.
             
             val request = cx.aswin.boxcast.core.network.model.SyncRequest(feedIds)
-            val response = api.syncSubscriptions(apiKey, request)
+            val response = api.syncSubscriptions(publicKey, request)
             
             response.items.mapNotNull { item ->
                 val ep = item.latestEpisode?.let { mapToEpisode(it) }
@@ -223,8 +234,8 @@ class PodcastRepository(
             title = item.title,
             description = item.description ?: "",
             audioUrl = audioUrl,
-            imageUrl = item.image ?: item.feedImage ?: "",
-            podcastImageUrl = item.feedImage,
+            imageUrl = item.image?.takeIf { it.isNotBlank() } ?: item.feedImage?.takeIf { it.isNotBlank() } ?: "",
+            podcastImageUrl = item.feedImage?.takeIf { it.isNotBlank() },
             duration = item.duration ?: 0,
             publishedDate = item.datePublished ?: 0L
         )

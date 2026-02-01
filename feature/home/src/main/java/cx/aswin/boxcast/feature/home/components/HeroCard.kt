@@ -44,6 +44,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import cx.aswin.boxcast.feature.home.HeroType
 import cx.aswin.boxcast.feature.home.SmartHeroItem
+import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 
 @Composable
 fun HeroCard(

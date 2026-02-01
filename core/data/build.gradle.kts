@@ -39,4 +39,8 @@ dependencies {
     // Media
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
+    
+    // Analytics
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
 }

@@ -21,7 +21,7 @@ interface BoxCastApi {
     
     @GET("trending")
     suspend fun getTrending(
-        @Header("X-App-Key") apiKey: String,
+        @Header("X-App-Key") publicKey: String,
         @Query("country") country: String? = "us",
         @Query("limit") limit: Int? = 50,
         @Query("cat") category: String? = null // New: Genre Filter
@@ -30,7 +30,7 @@ interface BoxCastApi {
     @GET("trending")
     @retrofit2.http.Streaming
     suspend fun getTrendingStream(
-        @Header("X-App-Key") apiKey: String,
+        @Header("X-App-Key") publicKey: String,
         @Query("country") country: String? = "us",
         @Query("limit") limit: Int? = 50,
         @Query("cat") category: String? = null // New: Genre Filter
@@ -38,19 +38,19 @@ interface BoxCastApi {
 
     @GET("search")
     suspend fun search(
-        @Header("X-App-Key") apiKey: String,
+        @Header("X-App-Key") publicKey: String,
         @Query("q") query: String
     ): SearchResponse
 
     @GET("episodes")
     suspend fun getEpisodes(
-        @Header("X-App-Key") apiKey: String,
+        @Header("X-App-Key") publicKey: String,
         @Query("id") feedId: String
     ): EpisodesResponse
     
     @GET("episodes")
     suspend fun getEpisodesPaginated(
-        @Header("X-App-Key") apiKey: String,
+        @Header("X-App-Key") publicKey: String,
         @Query("id") feedId: String,
         @Query("limit") limit: Int = 20,
         @Query("offset") offset: Int = 0,
@@ -59,19 +59,19 @@ interface BoxCastApi {
 
     @GET("episode")
     suspend fun getEpisode(
-        @Header("X-App-Key") apiKey: String,
+        @Header("X-App-Key") publicKey: String,
         @Query("id") id: String
     ): SingleEpisodeResponse
     
     @GET("podcast")
     suspend fun getPodcast(
-        @Header("X-App-Key") apiKey: String,
+        @Header("X-App-Key") publicKey: String,
         @Query("id") feedId: String
     ): PodcastResponse
     
     @POST("sync")
     suspend fun syncSubscriptions(
-        @Header("X-App-Key") apiKey: String,
+        @Header("X-App-Key") publicKey: String,
         @Body request: SyncRequest
     ): SyncResponse
 }

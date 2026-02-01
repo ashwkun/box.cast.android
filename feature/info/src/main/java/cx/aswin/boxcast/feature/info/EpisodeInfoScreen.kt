@@ -72,8 +72,10 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import cx.aswin.boxcast.core.designsystem.component.HtmlText
 import cx.aswin.boxcast.core.designsystem.components.BoxCastLoader
+import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 import cx.aswin.boxcast.core.designsystem.theme.ExpressiveShapes
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
+import coil.compose.SubcomposeAsyncImage
 
 // Color extraction helper
 private fun extractDominantColor(bitmap: android.graphics.Bitmap): Color {
@@ -238,11 +240,13 @@ fun EpisodeInfoScreen(
                                 shape = MaterialTheme.shapes.extraLarge,
                                 shadowElevation = 12.dp
                             ) {
-                                AsyncImage(
+                                SubcomposeAsyncImage(
                                     model = state.episode.imageUrl?.ifEmpty { null },
                                     contentDescription = state.episode.title,
                                     modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.Crop,
+                                    loading = { AnimatedShapesFallback() },
+                                    error = { AnimatedShapesFallback() }
                                 )
                             }
                             

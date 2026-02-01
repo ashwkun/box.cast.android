@@ -98,11 +98,13 @@ import coil.request.ImageRequest
 import coil.size.Size
 import cx.aswin.boxcast.core.designsystem.component.ExpressiveExtendedFab
 import cx.aswin.boxcast.core.designsystem.components.BoxCastLoader
+import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 import cx.aswin.boxcast.core.designsystem.theme.ExpressiveShapes
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
 import cx.aswin.boxcast.core.model.Episode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import coil.compose.SubcomposeAsyncImage
 
 private fun stripHtml(html: String?): String {
     if (html.isNullOrEmpty()) return ""
@@ -289,11 +291,13 @@ fun PodcastInfoScreen(
                                 shape = MaterialTheme.shapes.large, // Squircle
                                 elevation = androidx.compose.material3.CardDefaults.elevatedCardElevation(defaultElevation = 4.dp)
                             ) {
-                                AsyncImage(
+                                SubcomposeAsyncImage(
                                     model = state.podcast.imageUrl,
                                     contentDescription = state.podcast.title,
                                     modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.Crop,
+                                    loading = { AnimatedShapesFallback() },
+                                    error = { AnimatedShapesFallback() }
                                 )
                             }
                             
@@ -524,11 +528,13 @@ fun EpisodeListItem(
                 shape = MaterialTheme.shapes.medium, // Regular rounded
                 color = MaterialTheme.colorScheme.surfaceVariant
             ) {
-                AsyncImage(
+                 SubcomposeAsyncImage(
                     model = episode.imageUrl,
                     contentDescription = episode.title,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    loading = { AnimatedShapesFallback() },
+                    error = { AnimatedShapesFallback() }
                 )
             }
             

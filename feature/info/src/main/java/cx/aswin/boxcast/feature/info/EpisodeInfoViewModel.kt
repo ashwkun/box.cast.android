@@ -26,7 +26,7 @@ sealed interface EpisodeInfoUiState {
 class EpisodeInfoViewModel(
     application: Application,
     private val apiBaseUrl: String,
-    private val apiKey: String
+    private val publicKey: String
 ) : AndroidViewModel(application) {
 
     private val database = cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application)
@@ -45,6 +45,12 @@ class EpisodeInfoViewModel(
         podcastId: String,
         podcastTitle: String
     ) {
+        val currentState = _uiState.value
+        // If we already have this episode loaded, don't reload
+        if (currentState is EpisodeInfoUiState.Success && currentState.episode.id == episodeId) {
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = EpisodeInfoUiState.Loading
             try {
@@ -75,7 +81,7 @@ class EpisodeInfoViewModel(
                 // 2. Fetch full details (description, etc.)
                 // Only if description is empty or we suspect it's partial? Always fetch to be safe.
                 // 2. Fetch full details from Network (since we don't have local Episode table yet)
-                val repository = cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, apiKey, getApplication())
+                val repository = cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, getApplication())
                 val fullEpisode = repository.getEpisode(episodeId)
 
                 if (fullEpisode != null) {

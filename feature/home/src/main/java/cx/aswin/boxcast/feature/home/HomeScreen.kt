@@ -43,6 +43,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import cx.aswin.boxcast.core.model.Episode
 import cx.aswin.boxcast.core.model.Podcast
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+
 import cx.aswin.boxcast.feature.home.components.HeroCarousel
 import cx.aswin.boxcast.feature.home.components.PodcastCard
 import cx.aswin.boxcast.feature.home.components.RisingCard
@@ -56,12 +62,13 @@ import cx.aswin.boxcast.core.data.database.PodcastEntity
 @Composable
 fun HomeRoute(
     apiBaseUrl: String,
-    apiKey: String,
+    publicKey: String,
     onPodcastClick: (Podcast) -> Unit,
     onHeroArrowClick: (SmartHeroItem) -> Unit,
     onEpisodeClick: ((Episode, Podcast) -> Unit)? = null, // Navigate to EpisodeInfo
     onPlayClick: ((Podcast) -> Unit)? = null, // Navigate directly to Player (Resume)
     onNavigateToLibrary: (() -> Unit)? = null,
+    onNavigateToExplore: ((String?) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val application = LocalContext.current.applicationContext as android.app.Application
@@ -69,7 +76,7 @@ fun HomeRoute(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return HomeViewModel(application, apiBaseUrl, apiKey) as T
+                return HomeViewModel(application, apiBaseUrl, publicKey) as T
             }
         }
     )
@@ -86,6 +93,7 @@ fun HomeRoute(
         onEpisodeClick = onEpisodeClick,
         onPlayClick = onPlayClick,
         onNavigateToLibrary = onNavigateToLibrary,
+        onNavigateToExplore = onNavigateToExplore,
         onToggleSubscription = viewModel::toggleSubscription,
         onSelectCategory = viewModel::selectCategory,
         onDeleteHistoryItem = viewModel::deleteHistoryItem,
@@ -104,6 +112,7 @@ fun HomeScreen(
     onEpisodeClick: ((Episode, Podcast) -> Unit)?,
     onPlayClick: ((Podcast) -> Unit)?,
     onNavigateToLibrary: (() -> Unit)?,
+    onNavigateToExplore: ((String?) -> Unit)?,
     onToggleSubscription: (String) -> Unit,
     onSelectCategory: (String?) -> Unit,
     onDeleteHistoryItem: (String) -> Unit,
@@ -163,6 +172,7 @@ fun HomeScreen(
                     onEpisodeClick = onEpisodeClick,
                     onPlayClick = onPlayClick,
                     onNavigateToLibrary = onNavigateToLibrary,
+                    onNavigateToExplore = onNavigateToExplore,
                     onToggleSubscription = onToggleSubscription,
                     onSelectCategory = onSelectCategory,
                     gridState = gridState
@@ -187,6 +197,7 @@ private fun PodcastFeed(
     onEpisodeClick: ((Episode, Podcast) -> Unit)?,
     onPlayClick: ((Podcast) -> Unit)?,
     onNavigateToLibrary: (() -> Unit)?,
+    onNavigateToExplore: ((String?) -> Unit)?,
     onToggleSubscription: (String) -> Unit,
     onSelectCategory: (String?) -> Unit,
     gridState: androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState,
@@ -242,7 +253,9 @@ private fun PodcastFeed(
         // 3. "On The Rise" (Header Always Visible)
         item(span = StaggeredGridItemSpan.FullLine) {
             Column {
-                cx.aswin.boxcast.feature.home.components.OnTheRiseHeader()
+                cx.aswin.boxcast.feature.home.components.OnTheRiseHeader(
+                    onHeaderClick = { onNavigateToExplore?.invoke(null) } // On The Rise -> Explore Global
+                )
                 
                 if (risingItems.isNotEmpty()) {
                     cx.aswin.boxcast.feature.home.components.OnTheRiseRail(
@@ -260,47 +273,74 @@ private fun PodcastFeed(
             cx.aswin.boxcast.feature.home.components.DiscoverSection(
                 selectedCategory = selectedCategory,
                 isLoading = isFilterLoading,
-                onCategorySelected = onSelectCategory
+                onCategorySelected = onSelectCategory,
+                onHeaderClick = { onNavigateToExplore?.invoke(selectedCategory ?: "All") }
             )
         }
 
-        // 5. Masonry Grid Content (Discover Podcasts)
-        if (!isFilterLoading) {
-            if (gridItems.isNotEmpty()) {
-                items(gridItems, key = { it.id }) { podcast ->
-                    val isTall = podcast.id.hashCode() % 3 == 0
-                    PodcastCard(
-                        podcast = podcast,
-                        isTall = isTall,
-                        onClick = { onPodcastClick(podcast) }
-                    )
-                }
-            } else {
-                // Empty State (No Results)
-                item(span = StaggeredGridItemSpan.FullLine) {
-                     Box(
-                         modifier = Modifier
-                             .fillMaxWidth()
-                             .padding(top = 48.dp),
-                         contentAlignment = Alignment.Center
-                     ) {
-                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                             Text(
-                                 text = "No podcasts found",
-                                 style = MaterialTheme.typography.titleMedium,
-                                 fontWeight = FontWeight.SemiBold
-                             )
-                             Text(
-                                 text = "Try selecting a different category",
-                                 style = MaterialTheme.typography.bodyMedium,
-                                 color = MaterialTheme.colorScheme.onSurfaceVariant
-                             )
-                         }
-                     }
+        // 5. Masonry Grid Content (Discover Podcasts) - LIMITED TO 6
+        if (!isFilterLoading && gridItems.isNotEmpty()) {
+            val limitedItems = gridItems.take(6)
+            items(limitedItems, key = { it.id }) { podcast ->
+                val isTall = podcast.id.hashCode() % 3 == 0
+                PodcastCard(
+                    podcast = podcast,
+                    isTall = isTall,
+                    onClick = { onPodcastClick(podcast) }
+                )
+            }
+            
+            // "View More" Button (Full Line)
+            item(span = StaggeredGridItemSpan.FullLine) {
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.FilledTonalButton(
+                        onClick = { onNavigateToExplore?.invoke(selectedCategory ?: "All") }
+                    ) {
+                            Text("View more in ${selectedCategory ?: "Explore"}")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.ChevronRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                    }
                 }
             }
-        } else {
-             GridSkeletonItems()
+        } else if (isFilterLoading || gridItems.isEmpty()) { 
+             // Logic: If loading, Show Skeleton. 
+             // If NOT loading but empty, show "No Results" (Only if we are sure we are not loading)
+             
+             if (isFilterLoading) {
+                 GridSkeletonItems()
+             } else {
+                // Empty State (No Results) - Only when strictly NOT loading and empty
+                item(span = StaggeredGridItemSpan.FullLine) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "No podcasts found",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = "Try selecting a different category",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                }
+             }
         }
     }
 }

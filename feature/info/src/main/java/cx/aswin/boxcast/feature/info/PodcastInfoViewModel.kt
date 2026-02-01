@@ -36,16 +36,17 @@ sealed interface PodcastInfoUiState {
 class PodcastInfoViewModel(
     application: Application,
     private val apiBaseUrl: String,
-    private val apiKey: String
+    private val publicKey: String,
+    private val analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper
 ) : AndroidViewModel(application) {
 
     private val repository = PodcastRepository(
         baseUrl = apiBaseUrl,
-        apiKey = apiKey,
+        publicKey = publicKey,
         context = application
     )
     private val database = cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application)
-    private val subscriptionRepository = cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao())
+    private val subscriptionRepository = cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao(), analyticsHelper)
 
     private val _uiState = MutableStateFlow<PodcastInfoUiState>(PodcastInfoUiState.Loading)
     val uiState: StateFlow<PodcastInfoUiState> = _uiState.asStateFlow()
@@ -60,6 +61,9 @@ class PodcastInfoViewModel(
     }
 
     fun loadPodcast(podcastId: String) {
+        if (currentPodcastId == podcastId && (_uiState.value is PodcastInfoUiState.Success || _uiState.value is PodcastInfoUiState.Error)) {
+            return
+        }
         currentPodcastId = podcastId
         currentOffset = 0
         viewModelScope.launch {
