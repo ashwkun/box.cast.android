@@ -143,9 +143,20 @@ async function main() {
 
     // Create indexes for optimized queries (latest episode per podcast)
     console.log("Ensuring indexes exist...");
-    try { await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_id ON episodes(podcast_id)"); } catch (e) { }
-    try { await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_pub ON episodes(podcast_id, published_at DESC)"); } catch (e) { }
-    try { await executeSQL("CREATE INDEX IF NOT EXISTS idx_podcasts_itunes_id ON podcasts(itunes_id)"); } catch (e) { }
+    try {
+        await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_id ON episodes(podcast_id)");
+        console.log("  - idx_episodes_podcast_id: OK");
+    } catch (e) { console.error("  - idx_episodes_podcast_id: FAILED", e.message); }
+
+    try {
+        await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_pub ON episodes(podcast_id, published_at)");
+        console.log("  - idx_episodes_podcast_pub: OK");
+    } catch (e) { console.error("  - idx_episodes_podcast_pub: FAILED", e.message); }
+
+    try {
+        await executeSQL("CREATE INDEX IF NOT EXISTS idx_podcasts_itunes_id ON podcasts(itunes_id)");
+        console.log("  - idx_podcasts_itunes_id: OK");
+    } catch (e) { console.error("  - idx_podcasts_itunes_id: FAILED", e.message); }
 
     let totalEpisodes = 0;
 
