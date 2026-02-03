@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "74591511411",
+        "project_id": "boxcasts",
+        "storage_bucket": "boxcasts.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:74591511411:android:5829e85001c03d951b1b06",
+                "android_client_info": {
+                    "package_name": "cx.aswin.boxcast"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyCCy-3mOR8Q6CxAc_gphuPsa-aHnL486bQ"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}

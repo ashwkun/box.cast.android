@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.material.icons.Icons
+import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 
 
 @Composable
@@ -206,7 +207,7 @@ private fun GridItem(podcast: Podcast, onPlayClick: (Podcast) -> Unit, onDetails
             ) {
                 val state = painter.state
                 if (state is AsyncImagePainter.State.Loading || state is AsyncImagePainter.State.Error || currentModel == null) {
-                    cx.aswin.boxcast.feature.home.components.AnimatedShapesFallback()
+                    AnimatedShapesFallback()
                 } else {
                     SubcomposeAsyncImageContent()
                 }

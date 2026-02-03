@@ -81,6 +81,7 @@ fun UnifiedPlayerSheet(
     sheetCollapsedTargetY: Float,
     containerHeight: Dp,
     collapsedStateHorizontalPadding: Dp = 12.dp,
+    expandTrigger: Long = 0L, // New param: timestamp to force expansion
     modifier: Modifier = Modifier
 ) {
     val state by playbackRepository.playerState.collectAsState()
@@ -123,7 +124,7 @@ fun UnifiedPlayerSheet(
             .build()
     )
     
-    LaunchedEffect(episode.imageUrl, painter.state) {
+    LaunchedEffect(episode.imageUrl, painter.state, isDarkTheme) {
         val painterState = painter.state
         if (painterState is AsyncImagePainter.State.Success) {
             val bitmap = (painterState.result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
@@ -140,6 +141,9 @@ fun UnifiedPlayerSheet(
     // Core expansion fraction (0f = collapsed, 1f = expanded)
     val playerContentExpansionFraction = remember { Animatable(0f) }
     val sheetAnimationMutex = remember { MutatorMutex() }
+    
+    // External Expansion Trigger
+
     
     // Visual overshoot for bounce effect
     val visualOvershootScaleY = remember { Animatable(1f) }
@@ -242,6 +246,15 @@ fun UnifiedPlayerSheet(
                     )
                 }
             }
+        }
+    }
+
+    // External Expansion Trigger - Must be after animatePlayerSheet declaration
+    LaunchedEffect(expandTrigger) {
+        if (expandTrigger > 0L) {
+            // Force Expand
+            currentSheetContentState = PlayerSheetState.EXPANDED
+            animatePlayerSheet(targetExpanded = true)
         }
     }
     

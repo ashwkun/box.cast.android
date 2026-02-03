@@ -12,8 +12,33 @@ class BoxCastPlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
-        val player = ExoPlayer.Builder(this).build()
-        mediaSession = MediaLibrarySession.Builder(this, player, LibrarySessionCallback()).build()
+        
+        // Configure AudioAttributes for Focus and Background Playback
+        val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+            .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
+            .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+            .build()
+            
+        val player = ExoPlayer.Builder(this)
+            .setAudioAttributes(audioAttributes, true) // Handle Audio Focus
+            .setWakeMode(androidx.media3.common.C.WAKE_MODE_NETWORK) // Prevent CPU sleep during streaming
+            .setHandleAudioBecomingNoisy(true) // Pause on headphone disconnect
+            .build()
+
+        val intent = Intent()
+        intent.component = android.content.ComponentName("cx.aswin.boxcast", "cx.aswin.boxcast.MainActivity")
+        intent.putExtra("EXTRA_OPEN_PLAYER", true) // Notification Click -> Open Player
+        
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        mediaSession = MediaLibrarySession.Builder(this, player, LibrarySessionCallback())
+            .setSessionActivity(pendingIntent)
+            .build()
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? {

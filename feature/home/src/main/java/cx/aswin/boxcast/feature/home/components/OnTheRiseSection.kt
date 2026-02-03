@@ -30,16 +30,18 @@ import cx.aswin.boxcast.core.designsystem.theme.SectionHeaderFontFamily
 fun OnTheRiseSection(
     podcasts: List<Podcast>,
     onPodcastClick: (Podcast) -> Unit,
+    onHeaderClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) { 
-        OnTheRiseHeader()
+        OnTheRiseHeader(onHeaderClick = onHeaderClick)
         OnTheRiseRail(podcasts = podcasts, onPodcastClick = onPodcastClick)
     }
 }
 
 @Composable
 fun OnTheRiseHeader(
+    onHeaderClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -71,7 +73,7 @@ fun OnTheRiseHeader(
 
         // Action / Decorator
         androidx.compose.material3.FilledTonalIconButton(
-            onClick = { /* TODO: Navigate to full list */ },
+            onClick = onHeaderClick,
             modifier = Modifier.size(32.dp)
         ) {
             Icon(

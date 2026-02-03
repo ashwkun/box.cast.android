@@ -1,0 +1,82 @@
+package cx.aswin.boxcast.core.designsystem.component
+
+import android.text.Html
+import android.text.method.LinkMovementMethod
+import android.util.TypedValue
+import android.widget.TextView
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.core.text.HtmlCompat
+
+/**
+ * A Text component that renders HTML content using a native TextView.
+ * Handles styling (bold, italic, links) natively.
+ */
+@Composable
+fun HtmlText(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = LocalTextStyle.current,
+    color: Color = LocalContentColor.current,
+    linkColor: Color = MaterialTheme.colorScheme.primary,
+    maxLines: Int = Int.MAX_VALUE
+) {
+    val context = LocalContext.current
+    val linkTextColor = remember(linkColor) { linkColor.toArgb() }
+    val textColor = remember(color) { color.toArgb() }
+    
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            TextView(ctx).apply {
+                movementMethod = LinkMovementMethod.getInstance()
+                params(this, style, textColor, linkTextColor, maxLines)
+            }
+        },
+        update = { textView ->
+            params(textView, style, textColor, linkTextColor, maxLines)
+            textView.text = HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_COMPACT)
+        }
+    )
+}
+
+private fun params(
+    textView: TextView,
+    style: TextStyle,
+    textColor: Int,
+    linkTextColor: Int,
+    maxLines: Int
+) {
+    textView.apply {
+        setTextColor(textColor)
+        setLinkTextColor(linkTextColor)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, style.fontSize.value)
+        
+        // Basic line height / spacing
+        // Note: fully bridging Compose TextStyle to TextView is complex (font family etc)
+        // For now relying on default system font or maybe simplified handling.
+        // Ideally we'd map style.fontFamily to Typeface but M3 typography uses custom fonts potentially.
+        
+        this.maxLines = maxLines
+        ellipsize = android.text.TextUtils.TruncateAt.END
+        
+        // Line spacing
+        if (style.lineHeight.isSp) {
+            // approximate
+            // setLineSpacing(style.lineHeight.value - style.fontSize.value, 1f) 
+            // Simple way for basic readability:
+            val spacingExtra = 4f // dp/sp
+             setLineSpacing(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4f, resources.displayMetrics), 1.0f)
+        }
+    }
+}

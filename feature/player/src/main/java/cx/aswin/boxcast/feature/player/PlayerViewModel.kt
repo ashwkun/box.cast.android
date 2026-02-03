@@ -30,12 +30,13 @@ sealed interface PlayerUiState {
 class PlayerViewModel(
     application: Application,
     private val apiBaseUrl: String,
-    private val apiKey: String
+    private val publicKey: String,
+    private val analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper
 ) : AndroidViewModel(application) {
 
     private val repository = PodcastRepository(
         baseUrl = apiBaseUrl,
-        apiKey = apiKey,
+        publicKey = publicKey,
         context = application
     )
     private val database = cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application)
@@ -56,6 +57,12 @@ class PlayerViewModel(
                      // Sync player state to UI
                      // Note: We might want to trust the Repository's current episode if it matches the podcast context
                      val syncedEpisode = playerState.currentEpisode ?: currentUi.currentEpisode
+                     
+                     // Deep Analytics: Log state changes
+                     if (currentUi.isPlaying != playerState.isPlaying) {
+                         val stateName = if (playerState.isPlaying) "playing" else "paused"
+                         analyticsHelper.logPlaybackState(stateName, playerState.currentPodcast?.id, playerState.currentEpisode?.id)
+                     }
                      
                      _uiState.value = currentUi.copy(
                          currentEpisode = syncedEpisode,
@@ -115,7 +122,6 @@ class PlayerViewModel(
                      val episodes = repository.getEpisodes(podcastId)
                      
                      // Check if global player is already playing something from this podcast
-                     // (Might have changed during fetch)
                      val updatedGlobal = playbackRepository.playerState.value
                      val isSamePodcast = updatedGlobal.currentPodcast?.id == podcastId
                      
@@ -133,10 +139,12 @@ class PlayerViewModel(
                      }
                 } else {
                     _uiState.value = PlayerUiState.Error
+                    analyticsHelper.logEvent("playback_load_error", mapOf("reason" to "podcast_null", "id" to podcastId))
                 }
             } catch (e: Exception) {
                 _uiState.value = PlayerUiState.Error
                 e.printStackTrace()
+                analyticsHelper.logEvent("playback_load_error", mapOf("reason" to "exception", "message" to (e.message ?: "unknown")))
             }
         }
     }
@@ -145,6 +153,7 @@ class PlayerViewModel(
         val currentState = _uiState.value
         if (currentState is PlayerUiState.Success) {
             viewModelScope.launch {
+                analyticsHelper.logPlayEpisode(currentState.podcast.title, episode.title)
                 playbackRepository.playEpisode(episode, currentState.podcast)
             }
         }

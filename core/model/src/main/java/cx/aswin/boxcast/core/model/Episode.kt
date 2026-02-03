@@ -9,6 +9,7 @@ data class Episode(
     val description: String,
     val audioUrl: String,
     val imageUrl: String? = null,
+    val podcastImageUrl: String? = null,
     val duration: Int = 0, // seconds
     val publishedDate: Long = 0L // Unix timestamp
 )
