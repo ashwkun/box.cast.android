@@ -141,6 +141,12 @@ async function main() {
     try { await executeSQL("ALTER TABLE episodes ADD COLUMN episodeType TEXT"); } catch (e) { }
     try { await executeSQL("ALTER TABLE episodes ADD COLUMN enclosureType TEXT"); } catch (e) { }
 
+    // Create indexes for optimized queries (latest episode per podcast)
+    console.log("Ensuring indexes exist...");
+    try { await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_id ON episodes(podcast_id)"); } catch (e) { }
+    try { await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_pub ON episodes(podcast_id, published_at DESC)"); } catch (e) { }
+    try { await executeSQL("CREATE INDEX IF NOT EXISTS idx_podcasts_itunes_id ON podcasts(itunes_id)"); } catch (e) { }
+
     let totalEpisodes = 0;
 
     // 3. Process in batches (parallel requests)
