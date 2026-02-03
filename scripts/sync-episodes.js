@@ -83,7 +83,6 @@ async function getPodcasts() {
     JOIN podcasts p ON c.itunes_id = p.itunes_id
     WHERE c.category = 'all' 
     ORDER BY c.rank ASC
-    LIMIT 50
   `;
 
     const res = await executeSQL(sql);

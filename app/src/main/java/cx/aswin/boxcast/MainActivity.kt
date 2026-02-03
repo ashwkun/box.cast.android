@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,9 +59,34 @@ private const val TRANSITION_DURATION = 350
 private val TRANSITION_EASING = FastOutSlowInEasing
 
 class MainActivity : ComponentActivity() {
+    // State for Player Expansion (Notification handling)
+    private var expandPlayerTrigger by androidx.compose.runtime.mutableLongStateOf(0L)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handlePlayerIntent(intent)
+    }
+
+    private fun handlePlayerIntent(intent: android.content.Intent) {
+        val shouldOpenPlayer = intent.getBooleanExtra("EXTRA_OPEN_PLAYER", false)
+        if (shouldOpenPlayer) {
+            expandPlayerTrigger = System.currentTimeMillis()
+            // Note: 'android:usesCleartextTraffic="false"' is an AndroidManifest.xml attribute,
+            // and cannot be set directly in Kotlin code.
+            // If you intended to set this, please modify your AndroidManifest.xml file.
+            // Clear extra to prevent re-triggering on rotation/re-creation
+            intent.removeExtra("EXTRA_OPEN_PLAYER") 
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        // Handle initial launch intent
+        handlePlayerIntent(intent)
+        
         setContent {
             BoxCastTheme {
                 val navController = rememberNavController()
@@ -69,7 +95,7 @@ class MainActivity : ComponentActivity() {
                 
                 // API config from BuildConfig
                 val apiBaseUrl = BuildConfig.BOXCAST_API_BASE_URL
-                val apiKey = BuildConfig.BOXCAST_API_KEY
+                val publicKey = BuildConfig.BOXCAST_PUBLIC_KEY
                 
                 // Show bottom nav on all screens except player
                 val showBottomNav = !currentRoute.startsWith("player")
@@ -82,11 +108,25 @@ class MainActivity : ComponentActivity() {
                 val database = remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
                 val playbackRepository = remember { cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao()) }
                 
+                // Privacy & Analytics
+                val consentManager = remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
+                val analyticsHelper = remember { cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, consentManager) }
+                
+                // Check Consent Status
+                // Initial = true to prevent flashing dialog while DataStore loads.
+                // If user hasn't set consent, this will become false shortly and show dialog.
+                val hasUserSetConsent by consentManager.hasUserSetConsent.collectAsState(initial = true)
+                
                 val scope = rememberCoroutineScope() // Scope for playback actions
                 
                 // Restore last session on app startup
                 LaunchedEffect(Unit) {
                     playbackRepository.restoreLastSession()
+                }
+
+                // Global Screen View Tracking
+                LaunchedEffect(currentRoute) {
+                    analyticsHelper.logScreenView(currentRoute)
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -97,20 +137,81 @@ class MainActivity : ComponentActivity() {
                             enabled = canGoBack,
                             onBack = { navController.popBackStack() }
                         ) {
+
+                            
+                            // Define route order for directional transitions
+                            val routeOrder = mapOf(
+                                "home" to 0,
+                                "explore" to 1,
+                                "library" to 2
+                            )
+                            
+                            fun getRouteIndex(route: String?): Int {
+                                if (route == null) return 0
+                                // Detail screens are "deeper" -> higher index
+                                if (route.startsWith("podcast/")) return 10
+                                if (route.startsWith("episode/")) return 11
+                                
+                                // Direct matches or parametrized base routes
+                                if (route.startsWith("explore")) return 1
+                                
+                                return routeOrder[route] ?: 0
+                            }
+
                             NavHost(
                                 navController = navController,
                                 startDestination = "home",
                                 modifier = Modifier, // No padding(innerPadding) -> Fixes GAP issue
-                                enterTransition = { slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { it }) },
-                                exitTransition = { slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { -it / 3 }) + fadeOut(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING)) },
-                                popEnterTransition = { slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { -it / 3 }) + fadeIn(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING)) },
-                                popExitTransition = { slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { it }) + fadeOut(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING)) }
+                                enterTransition = {
+                                    val fromIndex = getRouteIndex(initialState.destination.route)
+                                    val toIndex = getRouteIndex(targetState.destination.route)
+                                    if (toIndex > fromIndex) {
+                                        // Moving Right (Push Left)
+                                        slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { it }) 
+                                    } else {
+                                        // Moving Left (Push Right)
+                                        slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { -it })
+                                    }
+                                },
+                                exitTransition = {
+                                    val fromIndex = getRouteIndex(initialState.destination.route)
+                                    val toIndex = getRouteIndex(targetState.destination.route)
+                                    if (toIndex > fromIndex) {
+                                        // Moving Right (Push Left) -> Exit to Left
+                                        slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { -it / 3 }) + fadeOut(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING))
+                                    } else {
+                                        // Moving Left (Push Right) -> Exit to Right
+                                        slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { it / 3 }) + fadeOut(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING))
+                                    }
+                                },
+                                popEnterTransition = {
+                                    val fromIndex = getRouteIndex(initialState.destination.route)
+                                    val toIndex = getRouteIndex(targetState.destination.route)
+                                    if (toIndex > fromIndex) {
+                                        // Popping "Forward" (rare, usually popping back) -> Slide In Right
+                                         slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { it }) + fadeIn(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING))
+                                    } else {
+                                        // Popping Back (e.g. Back from Detail) -> Slide In Left (or Center)
+                                        slideInHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), initialOffsetX = { -it / 3 }) + fadeIn(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING))
+                                    }
+                                },
+                                popExitTransition = {
+                                    val fromIndex = getRouteIndex(initialState.destination.route)
+                                    val toIndex = getRouteIndex(targetState.destination.route)
+                                     if (toIndex > fromIndex) {
+                                        // Popping Forward -> Exit Left
+                                        slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { -it }) + fadeOut(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING))
+                                    } else {
+                                        // Popping Back -> Exit Right
+                                        slideOutHorizontally(animationSpec = tween(TRANSITION_DURATION, easing = TRANSITION_EASING), targetOffsetX = { it }) + fadeOut(animationSpec = tween(TRANSITION_DURATION / 2, easing = TRANSITION_EASING))
+                                    }
+                                }
                             ) {
                             // Main tabs
                             composable("home") {
                                 HomeRoute(
                                     apiBaseUrl = apiBaseUrl,
-                                    apiKey = apiKey,
+                                    publicKey = publicKey,
                                     onPodcastClick = { podcast ->
                                         navController.navigate("podcast/${podcast.id}")
                                     },
@@ -157,12 +258,85 @@ class MainActivity : ComponentActivity() {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
+                                    },
+                                    onNavigateToExplore = { category ->
+                                        val route = if (category != null) "explore?category=$category" else "explore"
+                                        navController.navigate(route) {
+                                            popUpTo("home") { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                 )
                             }
                             
-                            composable("explore") { PlaceholderScreen(title = "Explore") }
-                            composable("library") { PlaceholderScreen(title = "Library") }
+                            composable(
+                                route = "explore?category={category}",
+                                arguments = listOf(
+                                    navArgument("category") { 
+                                        type = NavType.StringType
+                                        nullable = true
+                                        defaultValue = null 
+                                    }
+                                )
+                            ) { backStackEntry -> 
+                                val podcastDao = remember { database.podcastDao() }
+                                val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(podcastDao, analyticsHelper) }
+                                val podcastRepository = remember { cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, application) }
+                                
+                                // Handle Argument
+                                val category = backStackEntry.arguments?.getString("category")
+                                
+                                val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<cx.aswin.boxcast.feature.explore.ExploreViewModel>(
+                                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                        @Suppress("UNCHECKED_CAST")
+                                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                            return cx.aswin.boxcast.feature.explore.ExploreViewModel(
+                                                application, 
+                                                podcastRepository, 
+                                                subscriptionRepository,
+                                                analyticsHelper,
+                                                initialCategory = category 
+                                            ) as T
+                                        }
+                                    }
+                                )
+                                
+                                cx.aswin.boxcast.feature.explore.ExploreScreen(
+                                    viewModel = viewModel,
+                                    onPodcastClick = { podcastId ->
+                                        // Navigate to Podcast Info
+                                        navController.navigate("podcast/$podcastId")
+                                    }
+                                )
+                            }
+                            composable("library") { 
+                                val podcastDao = remember { database.podcastDao() }
+                                val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(podcastDao, analyticsHelper) }
+                                
+                                val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<cx.aswin.boxcast.feature.library.LibraryViewModel>(
+                                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                        @Suppress("UNCHECKED_CAST")
+                                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                            return cx.aswin.boxcast.feature.library.LibraryViewModel(subscriptionRepository) as T
+                                        }
+                                    }
+                                )
+                                
+                                cx.aswin.boxcast.feature.library.LibraryScreen(
+                                    viewModel = viewModel,
+                                    onPodcastClick = { podcastId ->
+                                        navController.navigate("podcast/$podcastId")
+                                    },
+                                    onExploreClick = {
+                                        navController.navigate("explore") {
+                                            popUpTo("home") { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                            }
                             
                             // REMOVED PlayerRoute logic from NavGraph
 
@@ -173,7 +347,7 @@ class MainActivity : ComponentActivity() {
                                     factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                                         @Suppress("UNCHECKED_CAST")
                                         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                                            return cx.aswin.boxcast.feature.info.PodcastInfoViewModel(application, apiBaseUrl, apiKey) as T
+                                            return cx.aswin.boxcast.feature.info.PodcastInfoViewModel(application, apiBaseUrl, publicKey, analyticsHelper) as T
                                         }
                                     }
                                 )
@@ -182,7 +356,8 @@ class MainActivity : ComponentActivity() {
                                     val playerState by playbackRepository.playerState.collectAsState()
                                     val isPlayerVisible = playerState.currentEpisode != null
                                     
-                                    val miniPlayerPadding = if (isPlayerVisible) 72.dp else 0.dp
+                                    // Base: NavBar clearance (64dp) + optional MiniPlayer (56dp)
+                                    val miniPlayerPadding = if (isPlayerVisible) (64 + 56).dp else 64.dp
                                     
                                     cx.aswin.boxcast.feature.info.PodcastInfoScreen(
                                         podcastId = podcastId,
@@ -231,7 +406,7 @@ class MainActivity : ComponentActivity() {
                                     factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                                         @Suppress("UNCHECKED_CAST")
                                         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                                            return cx.aswin.boxcast.feature.info.EpisodeInfoViewModel(application, apiBaseUrl, apiKey) as T
+                                            return cx.aswin.boxcast.feature.info.EpisodeInfoViewModel(application, apiBaseUrl, publicKey) as T
                                         }
                                     }
                                 )
@@ -291,15 +466,16 @@ class MainActivity : ComponentActivity() {
                     // Get system nav bar height for full-screen expanded player
                     val systemNavBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
                     
-                    // Only app navbar height - reduced for tighter positioning
-                    val appNavBarHeight = 24.dp 
+                    // Only app navbar height - matches BoxCastNavigationBar content height
+                    val appNavBarHeight = 62.dp 
                     
                     // Container height = full screen + system nav bar + extra buffer to ensure full coverage
                     val containerHeight = screenHeightDp + systemNavBarHeight + 50.dp
                     
-                    // Collapsed position: mini player sits directly above app navbar
+                    // Collapsed position: mini player sits above app navbar with a small margin
+                    val miniPlayerBottomMargin = 8.dp
                     val collapsedTargetY = with(density) {
-                        (screenHeightDp - cx.aswin.boxcast.feature.player.MiniPlayerHeight - appNavBarHeight).toPx()
+                        (screenHeightDp - cx.aswin.boxcast.feature.player.MiniPlayerHeight - appNavBarHeight - systemNavBarHeight - miniPlayerBottomMargin).toPx()
                     }
                     
 
@@ -308,12 +484,17 @@ class MainActivity : ComponentActivity() {
                         BoxCastNavigationBar(
                             currentRoute = currentRoute,
                             onNavigate = { route ->
-                                navController.navigate(route) {
-                                    popUpTo("home") {
-                                        saveState = true
+                                if (route == "home") {
+                                    // Use popBackStack to reliably return to home
+                                    navController.popBackStack("home", inclusive = false)
+                                } else {
+                                    navController.navigate(route) {
+                                        popUpTo("home") {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
                                     }
-                                    launchSingleTop = true
-                                    restoreState = true
                                 }
                             },
                             modifier = Modifier.align(Alignment.BottomCenter)
@@ -326,8 +507,20 @@ class MainActivity : ComponentActivity() {
                         sheetCollapsedTargetY = collapsedTargetY,
                         containerHeight = containerHeight,
                         collapsedStateHorizontalPadding = 12.dp,
+                        expandTrigger = expandPlayerTrigger, // Pass the trigger here
                         modifier = Modifier.align(Alignment.TopStart)
                     )
+                    
+                    // Privacy Consent Dialog (Overlay on everything)
+                    if (!hasUserSetConsent) {
+                        cx.aswin.boxcast.core.designsystem.components.PrivacyConsentDialog(
+                            onConsentDecided = { crash, usage ->
+                                scope.launch {
+                                    consentManager.setConsent(crash, usage)
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }

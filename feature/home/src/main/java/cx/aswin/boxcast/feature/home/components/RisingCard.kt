@@ -22,6 +22,7 @@ import coil.compose.SubcomposeAsyncImageContent
 import androidx.compose.material3.Card
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
 import cx.aswin.boxcast.core.model.Podcast
+import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 
 @Composable
 fun RisingCard(
@@ -54,7 +55,7 @@ fun RisingCard(
                     if (state is coil.compose.AsyncImagePainter.State.Loading || 
                         state is coil.compose.AsyncImagePainter.State.Error || 
                         podcast.imageUrl.isEmpty()) {
-                        cx.aswin.boxcast.feature.home.components.AnimatedShapesFallback()
+                        AnimatedShapesFallback()
                     } else {
                         SubcomposeAsyncImageContent()
                     }

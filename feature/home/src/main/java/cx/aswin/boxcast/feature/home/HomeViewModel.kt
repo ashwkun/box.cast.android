@@ -51,10 +51,10 @@ data class HomeUiState(
 class HomeViewModel(
     application: Application,
     apiBaseUrl: String,
-    apiKey: String
+    publicKey: String
 ) : AndroidViewModel(application) {
     
-    private val repository = PodcastRepository(baseUrl = apiBaseUrl, apiKey = apiKey, context = application)
+    private val repository = PodcastRepository(baseUrl = apiBaseUrl, publicKey = publicKey, context = application)
     private val database = cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application)
     private val subscriptionRepository = cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao())
     private val playbackRepository = cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao())

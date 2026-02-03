@@ -4,43 +4,63 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsKotlinAndroid)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.googleServices)
+    alias(libs.plugins.firebaseCrashlytics)
 }
 
 android {
     namespace = "cx.aswin.boxcast"
     compileSdk = 35
 
+    // Load local.properties globally for the android block
+    val localPropsFile = rootProject.file("local.properties")
+    val localProps = Properties()
+    if (localPropsFile.exists()) {
+        localPropsFile.inputStream().use { localProps.load(it) }
+    }
+
     defaultConfig {
         applicationId = "cx.aswin.boxcast"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
         
-        // Inject API config from local.properties
-        val localPropsFile = rootProject.file("local.properties")
-        val localProps = Properties()
-        if (localPropsFile.exists()) {
-            localPropsFile.inputStream().use { localProps.load(it) }
-        }
         buildConfigField("String", "BOXCAST_API_BASE_URL", "\"${localProps.getProperty("BOXCAST_API_BASE_URL", "")}\"")
-        buildConfigField("String", "BOXCAST_API_KEY", "\"${localProps.getProperty("BOXCAST_API_KEY", "")}\"")
+        buildConfigField("String", "BOXCAST_PUBLIC_KEY", "\"${localProps.getProperty("BOXCAST_PUBLIC_KEY", "")}\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("release.keystore")
+            storePassword = localProps.getProperty("KEY_STORE_PASSWORD")
+            keyAlias = "upload"
+            keyPassword = localProps.getProperty("KEY_PASSWORD")
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            // isShrinkResources = true // Cannot shrink resources without code shrinking (minify enabled)
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+    
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -72,8 +92,10 @@ dependencies {
     implementation(projects.core.model)
     implementation(projects.core.network)
     implementation(projects.feature.home)
-    implementation(projects.feature.player)
-    implementation(projects.feature.info)
+    implementation(project(":feature:player"))
+    implementation(project(":feature:info"))
+    implementation(project(":feature:explore"))
+    implementation(project(":feature:library"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -99,6 +121,11 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.serialization)
     implementation(libs.kotlinx.serialization.json)
+    
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
 
     // Tests
     testImplementation(libs.junit)

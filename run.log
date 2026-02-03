@@ -1,0 +1,265 @@
+sync-pi-data	Set up job	﻿2026-01-27T19:46:26.0389104Z Current runner version: '2.331.0'
+sync-pi-data	Set up job	2026-01-27T19:46:26.0423412Z ##[group]Runner Image Provisioner
+sync-pi-data	Set up job	2026-01-27T19:46:26.0424726Z Hosted Compute Agent
+sync-pi-data	Set up job	2026-01-27T19:46:26.0425689Z Version: 20260115.477
+sync-pi-data	Set up job	2026-01-27T19:46:26.0426828Z Commit: 4b342d620503cbe250a3154040964899ea7c9b00
+sync-pi-data	Set up job	2026-01-27T19:46:26.0428299Z Build Date: 2026-01-15T22:32:41Z
+sync-pi-data	Set up job	2026-01-27T19:46:26.0429462Z Worker ID: {e0572b0a-bea5-4c8c-a1ec-5b48b41c1fe9}
+sync-pi-data	Set up job	2026-01-27T19:46:26.0430739Z Azure Region: eastus2
+sync-pi-data	Set up job	2026-01-27T19:46:26.0431708Z ##[endgroup]
+sync-pi-data	Set up job	2026-01-27T19:46:26.0433821Z ##[group]Operating System
+sync-pi-data	Set up job	2026-01-27T19:46:26.0434998Z Ubuntu
+sync-pi-data	Set up job	2026-01-27T19:46:26.0435892Z 24.04.3
+sync-pi-data	Set up job	2026-01-27T19:46:26.0436618Z LTS
+sync-pi-data	Set up job	2026-01-27T19:46:26.0437708Z ##[endgroup]
+sync-pi-data	Set up job	2026-01-27T19:46:26.0438685Z ##[group]Runner Image
+sync-pi-data	Set up job	2026-01-27T19:46:26.0439590Z Image: ubuntu-24.04
+sync-pi-data	Set up job	2026-01-27T19:46:26.0440602Z Version: 20260119.4.1
+sync-pi-data	Set up job	2026-01-27T19:46:26.0442264Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260119.4/images/ubuntu/Ubuntu2404-Readme.md
+sync-pi-data	Set up job	2026-01-27T19:46:26.0445054Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260119.4
+sync-pi-data	Set up job	2026-01-27T19:46:26.0446655Z ##[endgroup]
+sync-pi-data	Set up job	2026-01-27T19:46:26.0448910Z ##[group]GITHUB_TOKEN Permissions
+sync-pi-data	Set up job	2026-01-27T19:46:26.0451877Z Contents: read
+sync-pi-data	Set up job	2026-01-27T19:46:26.0452853Z Metadata: read
+sync-pi-data	Set up job	2026-01-27T19:46:26.0453653Z Packages: read
+sync-pi-data	Set up job	2026-01-27T19:46:26.0454488Z ##[endgroup]
+sync-pi-data	Set up job	2026-01-27T19:46:26.0457919Z Secret source: Actions
+sync-pi-data	Set up job	2026-01-27T19:46:26.0458968Z Prepare workflow directory
+sync-pi-data	Set up job	2026-01-27T19:46:26.0914620Z Prepare all required actions
+sync-pi-data	Set up job	2026-01-27T19:46:26.0970014Z Getting action download info
+sync-pi-data	Set up job	2026-01-27T19:46:26.3817912Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+sync-pi-data	Set up job	2026-01-27T19:46:26.5181386Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+sync-pi-data	Set up job	2026-01-27T19:46:26.7092367Z Complete job name: sync-pi-data
+sync-pi-data	Checkout	﻿2026-01-27T19:46:26.7785095Z ##[group]Run actions/checkout@v4
+sync-pi-data	Checkout	2026-01-27T19:46:26.7785942Z with:
+sync-pi-data	Checkout	2026-01-27T19:46:26.7786382Z   repository: ashwkun/box.cast.android
+sync-pi-data	Checkout	2026-01-27T19:46:26.7787054Z   token: ***
+sync-pi-data	Checkout	2026-01-27T19:46:26.7787648Z   ssh-strict: true
+sync-pi-data	Checkout	2026-01-27T19:46:26.7788045Z   ssh-user: git
+sync-pi-data	Checkout	2026-01-27T19:46:26.7788453Z   persist-credentials: true
+sync-pi-data	Checkout	2026-01-27T19:46:26.7788899Z   clean: true
+sync-pi-data	Checkout	2026-01-27T19:46:26.7789300Z   sparse-checkout-cone-mode: true
+sync-pi-data	Checkout	2026-01-27T19:46:26.7789788Z   fetch-depth: 1
+sync-pi-data	Checkout	2026-01-27T19:46:26.7790176Z   fetch-tags: false
+sync-pi-data	Checkout	2026-01-27T19:46:26.7790579Z   show-progress: true
+sync-pi-data	Checkout	2026-01-27T19:46:26.7790983Z   lfs: false
+sync-pi-data	Checkout	2026-01-27T19:46:26.7791349Z   submodules: false
+sync-pi-data	Checkout	2026-01-27T19:46:26.7791754Z   set-safe-directory: true
+sync-pi-data	Checkout	2026-01-27T19:46:26.7792446Z ##[endgroup]
+sync-pi-data	Checkout	2026-01-27T19:46:26.8862947Z Syncing repository: ashwkun/box.cast.android
+sync-pi-data	Checkout	2026-01-27T19:46:26.8864839Z ##[group]Getting Git version info
+sync-pi-data	Checkout	2026-01-27T19:46:26.8865631Z Working directory is '/home/runner/work/box.cast.android/box.cast.android'
+sync-pi-data	Checkout	2026-01-27T19:46:26.8866731Z [command]/usr/bin/git version
+sync-pi-data	Checkout	2026-01-27T19:46:26.8937905Z git version 2.52.0
+sync-pi-data	Checkout	2026-01-27T19:46:26.8964133Z ##[endgroup]
+sync-pi-data	Checkout	2026-01-27T19:46:26.8987651Z Temporarily overriding HOME='/home/runner/work/_temp/2f02b045-3b7d-4028-a454-179498c4389d' before making global git config changes
+sync-pi-data	Checkout	2026-01-27T19:46:26.8989092Z Adding repository directory to the temporary git global config as a safe directory
+sync-pi-data	Checkout	2026-01-27T19:46:26.8992830Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/box.cast.android/box.cast.android
+sync-pi-data	Checkout	2026-01-27T19:46:26.9032404Z Deleting the contents of '/home/runner/work/box.cast.android/box.cast.android'
+sync-pi-data	Checkout	2026-01-27T19:46:26.9035782Z ##[group]Initializing the repository
+sync-pi-data	Checkout	2026-01-27T19:46:26.9040079Z [command]/usr/bin/git init /home/runner/work/box.cast.android/box.cast.android
+sync-pi-data	Checkout	2026-01-27T19:46:26.9149686Z hint: Using 'master' as the name for the initial branch. This default branch name
+sync-pi-data	Checkout	2026-01-27T19:46:26.9150808Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+sync-pi-data	Checkout	2026-01-27T19:46:26.9151763Z hint: to use in all of your new repositories, which will suppress this warning,
+sync-pi-data	Checkout	2026-01-27T19:46:26.9152722Z hint: call:
+sync-pi-data	Checkout	2026-01-27T19:46:26.9153089Z hint:
+sync-pi-data	Checkout	2026-01-27T19:46:26.9153895Z hint: 	git config --global init.defaultBranch <name>
+sync-pi-data	Checkout	2026-01-27T19:46:26.9154862Z hint:
+sync-pi-data	Checkout	2026-01-27T19:46:26.9155444Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+sync-pi-data	Checkout	2026-01-27T19:46:26.9156342Z hint: 'development'. The just-created branch can be renamed via this command:
+sync-pi-data	Checkout	2026-01-27T19:46:26.9157046Z hint:
+sync-pi-data	Checkout	2026-01-27T19:46:26.9157649Z hint: 	git branch -m <name>
+sync-pi-data	Checkout	2026-01-27T19:46:26.9158110Z hint:
+sync-pi-data	Checkout	2026-01-27T19:46:26.9158725Z hint: Disable this message with "git config set advice.defaultBranchName false"
+sync-pi-data	Checkout	2026-01-27T19:46:26.9160166Z Initialized empty Git repository in /home/runner/work/box.cast.android/box.cast.android/.git/
+sync-pi-data	Checkout	2026-01-27T19:46:26.9165248Z [command]/usr/bin/git remote add origin https://github.com/ashwkun/box.cast.android
+sync-pi-data	Checkout	2026-01-27T19:46:26.9199294Z ##[endgroup]
+sync-pi-data	Checkout	2026-01-27T19:46:26.9200523Z ##[group]Disabling automatic garbage collection
+sync-pi-data	Checkout	2026-01-27T19:46:26.9204175Z [command]/usr/bin/git config --local gc.auto 0
+sync-pi-data	Checkout	2026-01-27T19:46:26.9233630Z ##[endgroup]
+sync-pi-data	Checkout	2026-01-27T19:46:26.9234842Z ##[group]Setting up auth
+sync-pi-data	Checkout	2026-01-27T19:46:26.9241128Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+sync-pi-data	Checkout	2026-01-27T19:46:26.9272805Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+sync-pi-data	Checkout	2026-01-27T19:46:26.9612546Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+sync-pi-data	Checkout	2026-01-27T19:46:26.9644846Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+sync-pi-data	Checkout	2026-01-27T19:46:26.9863909Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+sync-pi-data	Checkout	2026-01-27T19:46:26.9896621Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+sync-pi-data	Checkout	2026-01-27T19:46:27.0138574Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+sync-pi-data	Checkout	2026-01-27T19:46:27.0178232Z ##[endgroup]
+sync-pi-data	Checkout	2026-01-27T19:46:27.0179397Z ##[group]Fetching the repository
+sync-pi-data	Checkout	2026-01-27T19:46:27.0190668Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +0799ffcd8ffc50ae4ffd04b50a0b54e994dee515:refs/remotes/origin/master
+sync-pi-data	Checkout	2026-01-27T19:46:27.2596626Z From https://github.com/ashwkun/box.cast.android
+sync-pi-data	Checkout	2026-01-27T19:46:27.2626142Z  * [new ref]         0799ffcd8ffc50ae4ffd04b50a0b54e994dee515 -> origin/master
+sync-pi-data	Checkout	2026-01-27T19:46:27.2629001Z ##[endgroup]
+sync-pi-data	Checkout	2026-01-27T19:46:27.2630062Z ##[group]Determining the checkout info
+sync-pi-data	Checkout	2026-01-27T19:46:27.2631280Z ##[endgroup]
+sync-pi-data	Checkout	2026-01-27T19:46:27.2634684Z [command]/usr/bin/git sparse-checkout disable
+sync-pi-data	Checkout	2026-01-27T19:46:27.2673387Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+sync-pi-data	Checkout	2026-01-27T19:46:27.2698629Z ##[group]Checking out the ref
+sync-pi-data	Checkout	2026-01-27T19:46:27.2702397Z [command]/usr/bin/git checkout --progress --force -B master refs/remotes/origin/master
+sync-pi-data	Checkout	2026-01-27T19:46:27.2924197Z Reset branch 'master'
+sync-pi-data	Checkout	2026-01-27T19:46:27.2925983Z branch 'master' set up to track 'origin/master'.
+sync-pi-data	Checkout	2026-01-27T19:46:27.2934203Z ##[endgroup]
+sync-pi-data	Checkout	2026-01-27T19:46:27.2971021Z [command]/usr/bin/git log -1 --format=%H
+sync-pi-data	Checkout	2026-01-27T19:46:27.2993192Z 0799ffcd8ffc50ae4ffd04b50a0b54e994dee515
+sync-pi-data	Setup Node.js	﻿2026-01-27T19:46:27.3241293Z ##[group]Run actions/setup-node@v4
+sync-pi-data	Setup Node.js	2026-01-27T19:46:27.3241835Z with:
+sync-pi-data	Setup Node.js	2026-01-27T19:46:27.3242203Z   node-version: 20
+sync-pi-data	Setup Node.js	2026-01-27T19:46:27.3242616Z   always-auth: false
+sync-pi-data	Setup Node.js	2026-01-27T19:46:27.3243011Z   check-latest: false
+sync-pi-data	Setup Node.js	2026-01-27T19:46:27.3243554Z   token: ***
+sync-pi-data	Setup Node.js	2026-01-27T19:46:27.3243923Z ##[endgroup]
+sync-pi-data	Setup Node.js	2026-01-27T19:46:27.5009319Z Found in cache @ /opt/hostedtoolcache/node/20.20.0/x64
+sync-pi-data	Setup Node.js	2026-01-27T19:46:27.5014204Z ##[group]Environment details
+sync-pi-data	Setup Node.js	2026-01-27T19:46:29.7938117Z node: v20.20.0
+sync-pi-data	Setup Node.js	2026-01-27T19:46:29.7938935Z npm: 10.8.2
+sync-pi-data	Setup Node.js	2026-01-27T19:46:29.7939349Z yarn: 1.22.22
+sync-pi-data	Setup Node.js	2026-01-27T19:46:29.7940577Z ##[endgroup]
+sync-pi-data	Download Podcast Index Database	﻿2026-01-27T19:46:29.8054872Z ##[group]Run echo "Downloading PI database dump..."
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8055399Z [36;1mecho "Downloading PI database dump..."[0m
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8056028Z [36;1mcurl -L -o podcastindex_feeds.db.tgz https://public.podcastindex.org/podcastindex_feeds.db.tgz[0m
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8056601Z [36;1mecho "Extracting..."[0m
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8056910Z [36;1mtar -xzf podcastindex_feeds.db.tgz[0m
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8057224Z [36;1mls -la *.db[0m
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8137642Z shell: /usr/bin/bash -e {0}
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8138005Z ##[endgroup]
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8217030Z Downloading PI database dump...
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8263481Z   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8264570Z                                  Dload  Upload   Total   Spent    Left  Speed
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:29.8264944Z 
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:30.2310394Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:31.1640473Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:32.1645110Z   7 1660M    7  129M    0     0  96.4M      0  0:00:17  0:00:01  0:00:16 96.4M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:33.1640622Z  19 1660M   19  330M    0     0   141M      0  0:00:11  0:00:02  0:00:09  141M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:34.1640015Z  32 1660M   32  544M    0     0   163M      0  0:00:10  0:00:03  0:00:07  163M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:35.1640052Z  44 1660M   44  731M    0     0   168M      0  0:00:09  0:00:04  0:00:05  168M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:36.1639483Z  55 1660M   55  925M    0     0   173M      0  0:00:09  0:00:05  0:00:04  187M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:37.1681200Z  67 1660M   67 1116M    0     0   176M      0  0:00:09  0:00:06  0:00:03  197M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:38.1639738Z  78 1660M   78 1304M    0     0   177M      0  0:00:09  0:00:07  0:00:02  194M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:39.1639637Z  89 1660M   89 1491M    0     0   178M      0  0:00:09  0:00:08  0:00:01  189M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:39.2517223Z  98 1660M   98 1643M    0     0   175M      0  0:00:09  0:00:09 --:--:--  182M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:39.2518606Z 100 1660M  100 1660M    0     0   176M      0  0:00:09  0:00:09 --:--:--  179M
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:46:39.2541908Z Extracting...
+sync-pi-data	Download Podcast Index Database	2026-01-27T19:47:13.3481256Z -rw-r--r-- 1 runner runner 4890329088 Jan 25 07:59 podcastindex_feeds.db
+sync-pi-data	Inspect PI dump schema	﻿2026-01-27T19:47:13.4314394Z ##[group]Run echo "=== Tables in PI dump ==="
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4314797Z [36;1mecho "=== Tables in PI dump ==="[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4315144Z [36;1msqlite3 podcastindex_feeds.db ".tables"[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4315425Z [36;1mecho ""[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4315651Z [36;1mecho "=== Podcasts/Feeds table schema ==="[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4316196Z [36;1msqlite3 podcastindex_feeds.db ".schema podcasts" || sqlite3 podcastindex_feeds.db ".schema newsfeeds" || true[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4316691Z [36;1mecho ""[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4316893Z [36;1mecho "=== Sample row ==="[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4317691Z [36;1msqlite3 podcastindex_feeds.db "SELECT * FROM podcasts LIMIT 1;" 2>/dev/null || sqlite3 podcastindex_feeds.db "SELECT * FROM newsfeeds LIMIT 1;" || true[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4318315Z [36;1mecho ""[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4318532Z [36;1mecho "=== Episodes table schema ==="[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4318903Z [36;1msqlite3 podcastindex_feeds.db ".schema episodes" || true[0m
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4351986Z shell: /usr/bin/bash -e {0}
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.4352241Z ##[endgroup]
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.5214063Z === Tables in PI dump ===
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7551394Z podcasts
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7554131Z 
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7554447Z === Podcasts/Feeds table schema ===
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7573611Z CREATE TABLE podcasts (
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7574116Z     id INTEGER PRIMARY KEY,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7574480Z     url TEXT NOT NULL UNIQUE,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7575028Z     title TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7576233Z     lastUpdate INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7576746Z     link TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7577231Z     lastHttpStatus INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7578075Z     dead INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7578588Z     contentType TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7579149Z     itunesId INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7579660Z     originalUrl TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7580102Z     itunesAuthor TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7580669Z     itunesOwnerName TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7581334Z     explicit INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7581578Z     imageUrl TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7581830Z     itunesType TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7582105Z     generator TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7582381Z     newestItemPubdate INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7582634Z     language TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7582896Z     oldestItemPubdate INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7583139Z     episodeCount INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7583384Z     popularityScore INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7583629Z     priority INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7583857Z     createdOn INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7584076Z     updateFrequency INTEGER,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7584319Z     chash TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7584550Z     host TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7584817Z     newestEnclosureUrl TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7585119Z     podcastGuid TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7585391Z     description TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7585641Z     category1 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7585892Z     category2 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7586125Z     category3 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7586366Z     category4 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7586599Z     category5 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7586833Z     category6 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7587062Z     category7 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7587497Z     category8 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7587787Z     category9 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7588029Z     category10 TEXT NOT NULL,
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7588323Z     newestEnclosureDuration INTEGER
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7588584Z );
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7588686Z 
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7588788Z === Sample row ===
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7599275Z 1|https://markalanwilliams.libsyn.com/rss|Christianity Questions and Answers|1769199765|http://markalanwilliams.libsyn.com/webpage|200|0|application/rss+xml; charset=utf-8|1000000618|https://markalanwilliams.libsyn.com/rss|Dr. Mark Alan Williams|Mark Williams|0|https://static.libsyn.com/p/assets/e/7/5/d/e75de19145e2153b/thumb.jpg|episodic|Libsyn RSSgen 1.0|1610226815|en|1432837532|90|9|-1|1596752487|9|cfc6e8dbaacbcba9f0b341c89df9a703|libsyn.com|https://traffic.libsyn.com/secure/markalanwilliams/001_Are_all_sins_equal.mp3?dest-id=278964|78e9f51b-0ac3-5711-a921-1f2c7b5dbb35|Dr. Mark Alan Williams and friends answer questions about the Christian faith: questions about the God, Jesus, the Bible, eternity, belief, religion the reasonableness of faith and others.|religion|spirituality|christianity||||||||384
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7602495Z 
+sync-pi-data	Inspect PI dump schema	2026-01-27T19:47:13.7602647Z === Episodes table schema ===
+sync-pi-data	Get chart iTunes IDs	﻿2026-01-27T19:47:13.8216808Z ##[group]Run node scripts/get-chart-itunes-ids.js > chart_itunes_ids.txt
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:13.8217844Z [36;1mnode scripts/get-chart-itunes-ids.js > chart_itunes_ids.txt[0m
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:13.8218583Z [36;1mecho "Got $(wc -l < chart_itunes_ids.txt) iTunes IDs from charts"[0m
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:13.8219175Z [36;1mhead -5 chart_itunes_ids.txt[0m
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:13.8259370Z shell: /usr/bin/bash -e {0}
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:13.8259613Z env:
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:13.8260113Z   TURSO_URL: ***
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:13.8261663Z   TURSO_AUTH_TOKEN: ***
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:13.8261878Z ##[endgroup]
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:15.8832949Z Got 2690 iTunes IDs from charts
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:15.8842179Z 1001591696
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:15.8842482Z 1005078157
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:15.8842756Z 1005774516
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:15.8842996Z 1008577710
+sync-pi-data	Get chart iTunes IDs	2026-01-27T19:47:15.8843162Z 1011668648
+sync-pi-data	Export podcasts from PI dump	﻿2026-01-27T19:47:15.8870509Z ##[group]Run # Create temp table with iTunes IDs
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8871082Z [36;1m# Create temp table with iTunes IDs[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8871505Z [36;1msqlite3 podcastindex_feeds.db "CREATE TABLE chart_ids (itunes_id INTEGER);"[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8872066Z [36;1msqlite3 -csv podcastindex_feeds.db ".import chart_itunes_ids.txt chart_ids"[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8872658Z [36;1mecho "Imported $(sqlite3 podcastindex_feeds.db 'SELECT COUNT(*) FROM chart_ids;') iTunes IDs"[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8873095Z [36;1m[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8873363Z [36;1m# Export podcasts - using correct column names from PI dump[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8873706Z [36;1mecho "Exporting podcasts..."[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8874008Z [36;1msqlite3 -header -csv podcastindex_feeds.db "[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8874291Z [36;1m  SELECT [0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8874470Z [36;1m    p.id,[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8874655Z [36;1m    p.itunesId,[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8874858Z [36;1m    p.title,[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8875052Z [36;1m    p.ownerName as author,[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8875326Z [36;1m    p.description,[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8875551Z [36;1m    p.artwork as image_url,[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8875791Z [36;1m    p.url as feed_url,[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8876014Z [36;1m    p.category1,[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8876215Z [36;1m    p.language[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8876416Z [36;1m  FROM podcasts p[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8876709Z [36;1m  WHERE p.itunesId IN (SELECT itunes_id FROM chart_ids);[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8877032Z [36;1m" > podcasts_export.csv[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8877527Z [36;1mecho "Exported $(wc -l < podcasts_export.csv) podcasts"[0m
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8908836Z shell: /usr/bin/bash -e {0}
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:15.8909074Z ##[endgroup]
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:16.1238775Z Imported 2690 iTunes IDs
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:16.1239357Z Exporting podcasts...
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:16.1254538Z Error: in prepare, no such column: p.ownerName
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:16.1255374Z   ELECT      p.id,     p.itunesId,     p.title,     p.ownerName as author,     p
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:16.1256154Z                                       error here ---^
+sync-pi-data	Export podcasts from PI dump	2026-01-27T19:47:16.1272166Z ##[error]Process completed with exit code 1.
+sync-pi-data	Post Checkout	﻿2026-01-27T19:47:16.1382856Z Post job cleanup.
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2312419Z [command]/usr/bin/git version
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2347882Z git version 2.52.0
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2391702Z Temporarily overriding HOME='/home/runner/work/_temp/dfed2031-319c-4c32-822a-e40541ba0984' before making global git config changes
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2393174Z Adding repository directory to the temporary git global config as a safe directory
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2397096Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/box.cast.android/box.cast.android
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2432241Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2463625Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2678471Z fatal: No url found for submodule path 'proxy' in .gitmodules
+sync-pi-data	Post Checkout	2026-01-27T19:47:16.2716216Z ##[warning]The process '/usr/bin/git' failed with exit code 128
+sync-pi-data	Complete job	﻿2026-01-27T19:47:16.2793048Z Cleaning up orphan processes

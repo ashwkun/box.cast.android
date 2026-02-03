@@ -33,6 +33,7 @@ fun DiscoverSection(
     selectedCategory: String?,
     isLoading: Boolean,
     onCategorySelected: (String?) -> Unit,
+    onHeaderClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -64,7 +65,7 @@ fun DiscoverSection(
 
             // Action / Decorator
             androidx.compose.material3.FilledTonalIconButton(
-                onClick = { /* No-op for now */ },
+                onClick = onHeaderClick,
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(

@@ -6,7 +6,10 @@ import cx.aswin.boxcast.core.model.Podcast
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class SubscriptionRepository(private val podcastDao: PodcastDao) {
+class SubscriptionRepository(
+    private val podcastDao: PodcastDao,
+    private val analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper? = null // Optional for ease of migration/testing
+) {
 
     val subscribedPodcastIds: Flow<Set<String>> = podcastDao.getSubscribedPodcasts()
         .map { list -> list.map { it.podcastId }.toSet() }
@@ -36,6 +39,7 @@ class SubscriptionRepository(private val podcastDao: PodcastDao) {
         if (isCurrentlySubscribed) {
             // Unsubscribe
             podcastDao.setSubscribed(podcast.id, false)
+            analyticsHelper?.logUnsubscribe(podcast.title)
         } else {
             // Subscribe (Upsert to ensure we have data for offline/Jump Back In)
             val entity = PodcastEntity(
@@ -48,6 +52,7 @@ class SubscriptionRepository(private val podcastDao: PodcastDao) {
                 lastRefreshed = System.currentTimeMillis()
             )
             podcastDao.upsert(entity)
+            analyticsHelper?.logSubscribe(podcast.title)
         }
     }
 

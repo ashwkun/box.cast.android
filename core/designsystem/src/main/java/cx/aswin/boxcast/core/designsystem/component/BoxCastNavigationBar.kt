@@ -108,7 +108,8 @@ fun BoxCastNavigationBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             bottomNavDestinations.forEach { destination ->
-                val isSelected = currentRoute == destination.route
+                // Robust matching: Exact match OR Parametrized match (starts with route + "?")
+                val isSelected = currentRoute == destination.route || currentRoute.startsWith("${destination.route}?")
                 
                 // Trigger pulse animation when this item becomes selected
                 var shouldPulse by remember { mutableStateOf(false) }

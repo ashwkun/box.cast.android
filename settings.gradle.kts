@@ -29,4 +29,6 @@ include(":core:designsystem")
 include(":feature:home")
 include(":feature:player")
 include(":feature:info")
+include(":feature:explore")
+include(":feature:library")
 

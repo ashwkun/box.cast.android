@@ -1,4 +1,4 @@
-package cx.aswin.boxcast.feature.home.components
+package cx.aswin.boxcast.core.designsystem.components
 
 import cx.aswin.boxcast.core.designsystem.theme.ExpressiveShapes
 
