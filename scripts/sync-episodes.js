@@ -113,55 +113,31 @@ async function main() {
     const podcasts = await getPodcasts();
     console.log(`Found ${podcasts.length} podcasts to sync episodes for.`);
 
-    // 2. Ensure episodes table has all needed columns
-    // Note: we primarily use text for simplicity, but duration/published_at could be int
-    await executeSQL(`
-    CREATE TABLE IF NOT EXISTS episodes (
-      id TEXT PRIMARY KEY,
-      podcast_id TEXT,
-      itunes_id TEXT,
-      title TEXT,
-      description TEXT,
-      image_url TEXT,
-      audio_url TEXT,
-      duration TEXT,
-      published_at TEXT,
-      link TEXT,
-      season TEXT,
-      episode TEXT,
-      episodeType TEXT,
-      enclosureType TEXT
-    )
-  `);
+    // 2. Ensure podcasts table has new columns for flattened latest episode data
+    const newColumns = [
+        "latest_ep_id TEXT",
+        "latest_ep_title TEXT",
+        "latest_ep_date INTEGER", // Int for easier sorting
+        "latest_ep_duration INTEGER",
+        "latest_ep_url TEXT",
+        "latest_ep_image TEXT",
+        "latest_ep_type TEXT"
+    ];
 
-    // Add columns if missing (naive check)
-    try { await executeSQL("ALTER TABLE episodes ADD COLUMN link TEXT"); } catch (e) { }
-    try { await executeSQL("ALTER TABLE episodes ADD COLUMN season TEXT"); } catch (e) { }
-    try { await executeSQL("ALTER TABLE episodes ADD COLUMN episode TEXT"); } catch (e) { }
-    try { await executeSQL("ALTER TABLE episodes ADD COLUMN episodeType TEXT"); } catch (e) { }
-    try { await executeSQL("ALTER TABLE episodes ADD COLUMN enclosureType TEXT"); } catch (e) { }
-
-    // Create indexes for optimized queries (latest episode per podcast)
-    console.log("Ensuring indexes exist...");
-    try {
-        await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_id ON episodes(podcast_id)");
-        console.log("  - idx_episodes_podcast_id: OK");
-    } catch (e) { console.error("  - idx_episodes_podcast_id: FAILED", e.message); }
-
-    try {
-        await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_pub ON episodes(podcast_id, published_at)");
-        console.log("  - idx_episodes_podcast_pub: OK");
-    } catch (e) { console.error("  - idx_episodes_podcast_pub: FAILED", e.message); }
-
-    try {
-        await executeSQL("CREATE INDEX IF NOT EXISTS idx_podcasts_itunes_id ON podcasts(itunes_id)");
-        console.log("  - idx_podcasts_itunes_id: OK");
-    } catch (e) { console.error("  - idx_podcasts_itunes_id: FAILED", e.message); }
-
-    let totalEpisodes = 0;
+    console.log("Ensuring schema columns exist...");
+    for (const colDef of newColumns) {
+        try {
+            await executeSQL(`ALTER TABLE podcasts ADD COLUMN ${colDef}`);
+            console.log(`  - Added column: ${colDef.split(" ")[0]}`);
+        } catch (e) {
+            // Ignore if column exists
+        }
+    }
 
     // 3. Process in batches (parallel requests)
+    let totalPodcastsUpdated = 0;
     const CONCURRENCY = 5;
+
     for (let i = 0; i < podcasts.length; i += CONCURRENCY) {
         const batch = podcasts.slice(i, i + CONCURRENCY);
         console.log(`Processing batch ${i + 1}-${Math.min(i + CONCURRENCY, podcasts.length)} / ${podcasts.length}...`);
@@ -170,41 +146,48 @@ async function main() {
             const episodes = await fetchEpisodes(pod.id);
             if (episodes.length === 0) return;
 
-            const statements = episodes.map(ep => ({
-                sql: `INSERT OR REPLACE INTO episodes 
-              (id, podcast_id, itunes_id, title, description, image_url, audio_url, duration, published_at, link, season, episode, episodeType, enclosureType)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                args: [
-                    String(ep.id),
-                    String(ep.feedId),
-                    String(pod.itunesId),
-                    ep.title,
-                    ep.description || "",
-                    ep.image || ep.feedImage || "",
-                    ep.enclosureUrl,
-                    String(ep.duration || "0"),
-                    String(ep.datePublished || "0"),
-                    ep.link || "",
-                    String(ep.season || ""),
-                    String(ep.episode || ""),
-                    ep.episodeType || "",
-                    String(ep.enclosureType || "")
-                ]
-            }));
+            // Find the latest episode (usually first, but ensure by date)
+            // Handle bulk publish edge case by preferring higher ID if dates match?
+            // PI returns descending date.
+            const latestEp = episodes[0]; // Simple heuristic for now as PI sorts by new
 
             try {
-                await executeBatch(statements);
-                totalEpisodes += episodes.length;
+                // Update podcast with latest episode metadata
+                // We use UPDATE because the podcast row already exists (from import-pi-data.js)
+                const sql = `
+                    UPDATE podcasts SET 
+                        latest_ep_id = ?,
+                        latest_ep_title = ?,
+                        latest_ep_date = ?,
+                        latest_ep_duration = ?,
+                        latest_ep_url = ?,
+                        latest_ep_image = ?,
+                        latest_ep_type = ?
+                    WHERE id = ?
+                `;
+
+                await executeSQL(sql, [
+                    String(latestEp.id),
+                    latestEp.title || "",
+                    latestEp.datePublished || 0,
+                    latestEp.duration || 0,
+                    latestEp.enclosureUrl || "",
+                    latestEp.image || latestEp.feedImage || "",
+                    latestEp.enclosureType || "audio/mpeg",
+                    String(pod.id)
+                ]);
+
+                totalPodcastsUpdated++;
             } catch (err) {
-                console.error(`Failed to save episodes for ${pod.id}:`, err.message);
+                console.error(`Failed to update podcast ${pod.id}:`, err.message);
             }
         }));
 
-        // Polite delay to avoid any potential rate limit triggers on Turso
+        // Polite delay
         await new Promise(r => setTimeout(r, 100));
     }
 
-    console.log(`Sync Complete! Saved ${totalEpisodes} episodes.`);
+    console.log(`Sync Complete! Updated metadata for ${totalPodcastsUpdated} podcasts.`);
 }
 
 main().catch(console.error);
