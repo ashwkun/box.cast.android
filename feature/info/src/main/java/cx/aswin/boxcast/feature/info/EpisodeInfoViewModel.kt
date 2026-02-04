@@ -17,8 +17,11 @@ sealed interface EpisodeInfoUiState {
         val episode: Episode,
         val podcastId: String,
         val podcastTitle: String,
+        val podcastGenre: String = "",
         val resumePositionMs: Long = 0L,
-        val durationMs: Long = 0L
+        val durationMs: Long = 0L,
+        val relatedEpisodes: List<Episode> = emptyList(),
+        val relatedEpisodesLoading: Boolean = true
     ) : EpisodeInfoUiState
     data object Error : EpisodeInfoUiState
 }
@@ -91,20 +94,62 @@ class EpisodeInfoViewModel(
                         imageUrl = if (!netImage.isNullOrEmpty()) netImage else episodeImageUrl
                     )
                     
+                    // Preserve existing relatedEpisodes state if already loaded
+                    val existingState = _uiState.value as? EpisodeInfoUiState.Success
                     _uiState.value = EpisodeInfoUiState.Success(
                         episode = currentEpisode,
                         podcastId = podcastId,
                         podcastTitle = podcastTitle,
                         resumePositionMs = resumeMs,
-                        durationMs = durationMs
+                        durationMs = durationMs,
+                        relatedEpisodes = existingState?.relatedEpisodes ?: emptyList(),
+                        relatedEpisodesLoading = existingState?.relatedEpisodesLoading ?: true
                     )
                 }
+                
             } catch (e: Exception) {
                 e.printStackTrace()
                 // Keep showing partial data if success was already emitted?
                 if (_uiState.value is EpisodeInfoUiState.Loading) {
                     _uiState.value = EpisodeInfoUiState.Error
                 }
+            }
+        }
+        
+        // 3. Fetch related episodes AND podcast genre INDEPENDENTLY (non-blocking)
+        viewModelScope.launch {
+            try {
+                android.util.Log.d("EpisodeInfo", "Fetching related episodes for podcastId: $podcastId")
+                val repository = cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, getApplication())
+                
+                // Fetch podcast to get genre
+                val podcast = repository.getPodcastDetails(podcastId)
+                val genre = podcast?.genre ?: ""
+                
+                // Use getEpisodesPaginated which is the correct method used elsewhere
+                val page = repository.getEpisodesPaginated(podcastId, 15, 0, "newest")
+                android.util.Log.d("EpisodeInfo", "Fetched ${page.episodes.size} episodes, genre: $genre")
+                val relatedEps = page.episodes
+                    .filter { it.id != episodeId }
+                    .take(10)
+                
+                // Update state with related episodes and genre (only if we're in Success state)
+                val currentSuccess = _uiState.value as? EpisodeInfoUiState.Success
+                if (currentSuccess != null && currentSuccess.episode.id == episodeId) {
+                    _uiState.value = currentSuccess.copy(
+                        relatedEpisodes = relatedEps,
+                        relatedEpisodesLoading = false,
+                        podcastGenre = genre.ifEmpty { currentSuccess.podcastGenre }
+                    )
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("EpisodeInfo", "Error fetching related episodes", e)
+                // Mark loading as done even on failure
+                val currentSuccess = _uiState.value as? EpisodeInfoUiState.Success
+                if (currentSuccess != null) {
+                    _uiState.value = currentSuccess.copy(relatedEpisodesLoading = false)
+                }
+                e.printStackTrace()
             }
         }
     }

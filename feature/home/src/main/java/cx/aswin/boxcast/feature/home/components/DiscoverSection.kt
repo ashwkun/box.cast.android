@@ -31,7 +31,6 @@ import cx.aswin.boxcast.core.model.Podcast
 @Composable
 fun DiscoverSection(
     selectedCategory: String?,
-    isLoading: Boolean,
     onCategorySelected: (String?) -> Unit,
     onHeaderClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -83,17 +82,5 @@ fun DiscoverSection(
             onCategorySelected = onCategorySelected,
             modifier = Modifier.padding(vertical = 4.dp)
         )
-        
-        // Loading Indicator
-        if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                cx.aswin.boxcast.core.designsystem.components.BoxCastLoader.Expressive(size = 64.dp)
-            }
-        }
     }
 }

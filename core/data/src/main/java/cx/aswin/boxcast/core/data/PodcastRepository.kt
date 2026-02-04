@@ -15,6 +15,19 @@ import java.io.InputStreamReader
 import cx.aswin.boxcast.core.network.model.TrendingFeed
 
 /**
+ * Upgrade HTTP URLs to HTTPS to fix Android cleartext traffic restrictions.
+ * Most CDNs (including BBC's ichef) support HTTPS, so this is safe.
+ */
+private fun String?.toHttps(): String {
+    if (this.isNullOrEmpty()) return ""
+    return if (this.startsWith("http://")) {
+        this.replaceFirst("http://", "https://")
+    } else {
+        this
+    }
+}
+
+/**
  * Repository for podcast data via BoxCast API (Cloudflare Worker → Podcast Index)
  */
 class PodcastRepository(
@@ -24,87 +37,88 @@ class PodcastRepository(
 ) {
     private val api: BoxCastApi = NetworkModule.createBoxCastApi(baseUrl, context)
 
-    suspend fun getTrendingPodcasts(country: String = "us", limit: Int = 50, category: String? = null): List<Podcast> {
+    suspend fun getTrendingPodcasts(country: String = "us", limit: Int = 50, category: String? = null): List<Podcast> = withContext(Dispatchers.IO) {
         // Fallback or non-streaming implementation
-        return try {
-            android.util.Log.d("BoxCastRepo", "Fetching category: $category for country: $country")
-            val response = api.getTrending(publicKey, country, limit, category)
-            android.util.Log.d("BoxCastRepo", "Category response count: ${response.feeds.size}, First: ${response.feeds.firstOrNull()?.title}")
-            mapFeedsToPodcasts(response.feeds)
+        try {
+            val response = api.getTrending(publicKey, country, limit, category).execute()
+            if (response.isSuccessful && response.body() != null) {
+                mapFeedsToPodcasts(response.body()!!.feeds)
+            } else {
+                emptyList()
+            }
         } catch (e: Exception) {
-            android.util.Log.e("BoxCastRepo", "Category fetch failed for $category", e)
             emptyList()
         }
     }
 
     fun getTrendingPodcastsStream(country: String = "us", limit: Int = 50, category: String? = null): kotlinx.coroutines.flow.Flow<List<Podcast>> = kotlinx.coroutines.flow.flow {
         val podcasts = mutableListOf<Podcast>()
-        val startTime = System.currentTimeMillis()
-        android.util.Log.e("BoxCastConfig", "Repo: Requesting stream... cat=$category, key=$publicKey")
         try {
-            val responseBody = api.getTrendingStream(publicKey, country, limit, category)
-            android.util.Log.e("BoxCastConfig", "Repo: Response headers received in ${System.currentTimeMillis() - startTime}ms. Content-Length: ${responseBody.contentLength()}")
+            android.util.Log.d("BoxCastRepo", "Stream: Requesting trending country=$country, limit=$limit, category=$category")
+            val call = api.getTrendingStream(publicKey, country, limit, category)
+            val response = call.execute()
             
+            android.util.Log.d("BoxCastRepo", "Stream: Response code=${response.code()}, isSuccessful=${response.isSuccessful}")
+            
+            if (!response.isSuccessful || response.body() == null) {
+                android.util.Log.e("BoxCastRepo", "Stream: Failed! code=${response.code()}, body isNull=${response.body() == null}")
+                return@flow
+            }
+            
+            val responseBody = response.body()!!
             val stream = responseBody.byteStream()
             val reader = com.google.gson.stream.JsonReader(java.io.InputStreamReader(stream, "UTF-8"))
             
-            // Debug: Check if leniency helps (sometimes proxies return malformed json)
             reader.isLenient = true
             
-            reader.beginObject() // {
-            android.util.Log.e("BoxCastConfig", "Stream: Started parsing object")
+            reader.beginObject() 
             while (reader.hasNext()) {
                 val name = reader.nextName()
                 if (name == "feeds") {
-                    android.util.Log.e("BoxCastConfig", "Stream: Found 'feeds' array")
                     reader.beginArray() // [
                     while (reader.hasNext()) {
-                        // Parse one feed object
                         try {
                             val feed = com.google.gson.Gson().fromJson<cx.aswin.boxcast.core.network.model.TrendingFeed>(
                                 reader, 
                                 cx.aswin.boxcast.core.network.model.TrendingFeed::class.java
                             )
                             
-                            val podcast = Podcast(
-                                id = feed.id.toString(),
-                                title = feed.title,
-                                artist = feed.author ?: "Unknown",
-                                imageUrl = feed.artwork ?: feed.image ?: "",
-                                description = feed.description,
-                                genre = feed.categories.values.firstOrNull() ?: "Podcast",
-                                latestEpisode = feed.latestEpisode?.let { mapToEpisode(it) }
-                            )
-                            podcasts.add(podcast)
-                            // android.util.Log.e("BoxCastConfig", "Parsed item #${podcasts.size}: ${podcast.title}")
-                            
-                            // PROGRESSIVE EMISSION STRATEGY
-                            if (podcasts.size % 4 == 0 || podcasts.size == 1) {
-                                 // android.util.Log.e("BoxCastConfig", "Emitting ${podcasts.size} items")
-                                 emit(podcasts.toList())
+                            if (feed != null) {
+                                val podcast = Podcast(
+                                    id = feed.id.toString(),
+                                    title = feed.title,
+                                    artist = feed.author ?: "Unknown",
+                                    imageUrl = (feed.artwork ?: feed.image).toHttps(),
+                                    description = feed.description,
+                                    genre = feed.categories.values.firstOrNull() ?: "Podcast",
+                                    latestEpisode = feed.latestEpisode?.let { mapToEpisode(it) }
+                                )
+                                podcasts.add(podcast)
+                                
+                                if (podcasts.size % 4 == 0 || podcasts.size == 1) {
+                                     emit(podcasts.toList())
+                                }
                             }
                         } catch (e: Exception) {
-                            android.util.Log.e("BoxCastConfig", "Error parsing individual feed item", e)
+                            android.util.Log.e("BoxCastRepo", "Stream: Feed parse error", e)
                         }
                     }
                     reader.endArray()
-                    android.util.Log.e("BoxCastConfig", "Stream: Finished 'feeds' array")
                 } else {
                     reader.skipValue()
                 }
             }
             reader.endObject()
             
+            android.util.Log.d("BoxCastRepo", "Stream: Parsed ${podcasts.size} podcasts for category=$category")
+            
             // Final emission
             if (podcasts.isNotEmpty()) {
-                android.util.Log.e("BoxCastConfig", "Stream Complete. Total: ${podcasts.size}")
                 emit(podcasts)
-            } else {
-                android.util.Log.e("BoxCastConfig", "Stream Complete. NO items found.")
             }
             
         } catch (e: Exception) {
-            android.util.Log.e("BoxCastConfig", "Stream Error after ${podcasts.size} items", e)
+            android.util.Log.e("BoxCastRepo", "Stream: Exception for category=$category", e)
             if (podcasts.isNotEmpty()) emit(podcasts)
         }
     }.flowOn(Dispatchers.IO)
@@ -115,7 +129,7 @@ class PodcastRepository(
                 id = feed.id.toString(),
                 title = feed.title,
                 artist = feed.author ?: "Unknown",
-                imageUrl = feed.artwork ?: feed.image ?: "",
+                imageUrl = (feed.artwork ?: feed.image).toHttps(),
                 description = feed.description,
                 genre = feed.categories.values.firstOrNull() ?: "Podcast",
                 latestEpisode = feed.latestEpisode?.let { mapToEpisode(it) }
@@ -125,39 +139,48 @@ class PodcastRepository(
 
     suspend fun searchPodcasts(query: String): List<Podcast> = withContext(Dispatchers.IO) {
         try {
-            val response = api.search(publicKey, query)
-            response.feeds.map { feed ->
-                Podcast(
-                    id = feed.id.toString(),
-                    title = feed.title,
-                    artist = feed.author ?: "Unknown",
-                    imageUrl = feed.artwork ?: feed.image ?: "",
-                    description = feed.description,
-                    genre = feed.categories.values.firstOrNull() ?: "Podcast"
-                )
+            val response = api.search(publicKey, query).execute()
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.feeds.map { feed ->
+                    Podcast(
+                        id = feed.id.toString(),
+                        title = feed.title,
+                        artist = feed.author ?: "Unknown",
+                        imageUrl = (feed.artwork ?: feed.image).toHttps(),
+                        description = feed.description,
+                        genre = feed.categories.values.firstOrNull() ?: "Podcast"
+                    )
+                }
+            } else {
+                emptyList()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             emptyList()
         }
     }
 
     suspend fun getEpisodes(feedId: String): List<Episode> = withContext(Dispatchers.IO) {
         try {
-            val response = api.getEpisodes(publicKey, feedId)
-            response.items.mapNotNull { mapToEpisode(it) }
+            val response = api.getEpisodes(publicKey, feedId).execute()
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.items.mapNotNull { mapToEpisode(it) }
+            } else {
+                emptyList()
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
             emptyList()
         }
     }
 
     suspend fun getEpisode(episodeId: String): Episode? = withContext(Dispatchers.IO) {
         try {
-            val response = api.getEpisode(publicKey, episodeId)
-            response.episode?.let { mapToEpisode(it) }
+            val response = api.getEpisode(publicKey, episodeId).execute()
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.episode?.let { mapToEpisode(it) }
+            } else {
+                null
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }
@@ -174,31 +197,37 @@ class PodcastRepository(
         sort: String = "newest"
     ): EpisodePage = withContext(Dispatchers.IO) {
         try {
-            val response = api.getEpisodesPaginated(publicKey, feedId, limit, offset, sort)
-            EpisodePage(
-                episodes = response.items.mapNotNull { mapToEpisode(it) },
-                hasMore = response.hasMore
-            )
+            val response = api.getEpisodesPaginated(publicKey, feedId, limit, offset, sort).execute()
+            if (response.isSuccessful && response.body() != null) {
+                EpisodePage(
+                    episodes = response.body()!!.items.mapNotNull { mapToEpisode(it) },
+                    hasMore = response.body()!!.hasMore
+                )
+            } else {
+                EpisodePage(emptyList(), false)
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
             EpisodePage(emptyList(), false)
         }
     }
 
     suspend fun getPodcastDetails(feedId: String): Podcast? = withContext(Dispatchers.IO) {
         try {
-            val response = api.getPodcast(publicKey, feedId)
-            val feed = response.feed ?: return@withContext null
-            Podcast(
-                id = feed.id.toString(),
-                title = feed.title,
-                artist = feed.author ?: "Unknown",
-                imageUrl = feed.artwork ?: feed.image ?: "",
-                description = feed.description,
-                genre = feed.categories.values.firstOrNull() ?: "Podcast"
-            )
+            val response = api.getPodcast(publicKey, feedId).execute()
+            if (response.isSuccessful && response.body() != null) {
+                val feed = response.body()!!.feed ?: return@withContext null
+                Podcast(
+                    id = feed.id.toString(),
+                    title = feed.title,
+                    artist = feed.author ?: "Unknown",
+                    imageUrl = (feed.artwork ?: feed.image).toHttps(),
+                    description = feed.description,
+                    genre = feed.categories.values.firstOrNull() ?: "Podcast"
+                )
+            } else {
+                null
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }
@@ -207,22 +236,18 @@ class PodcastRepository(
         try {
             if (feedIds.isEmpty()) return@withContext emptyMap()
             
-            // Chunking done on proxy side mostly, but safe to chunk here if needed (e.g. > 20)
-            // For now, pass all, assuming Proxy handles/truncates or client logic limits it.
-            // Actually, we should chunk here to be safe if list is huge? 
-            // The logic: Let's assume VM sends reasonable amount or we chunk 20.
-            // Better to let VM handle logic of *what* to sync, Repo just syncs.
-            
             val request = cx.aswin.boxcast.core.network.model.SyncRequest(feedIds)
-            val response = api.syncSubscriptions(publicKey, request)
+            val response = api.syncSubscriptions(publicKey, request).execute()
             
-            response.items.mapNotNull { item ->
-                val ep = item.latestEpisode?.let { mapToEpisode(it) }
-                if (ep != null) item.id to ep else null
-            }.toMap()
-            
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.items.mapNotNull { item ->
+                    val ep = item.latestEpisode?.let { mapToEpisode(it) }
+                    if (ep != null) item.id to ep else null
+                }.toMap()
+            } else {
+                emptyMap()
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
             emptyMap()
         }
     }
@@ -234,8 +259,8 @@ class PodcastRepository(
             title = item.title,
             description = item.description ?: "",
             audioUrl = audioUrl,
-            imageUrl = item.image?.takeIf { it.isNotBlank() } ?: item.feedImage?.takeIf { it.isNotBlank() } ?: "",
-            podcastImageUrl = item.feedImage?.takeIf { it.isNotBlank() },
+            imageUrl = (item.image?.takeIf { it.isNotBlank() } ?: item.feedImage?.takeIf { it.isNotBlank() }).toHttps(),
+            podcastImageUrl = item.feedImage?.takeIf { it.isNotBlank() }?.let { it.toHttps() },
             duration = item.duration ?: 0,
             publishedDate = item.datePublished ?: 0L
         )

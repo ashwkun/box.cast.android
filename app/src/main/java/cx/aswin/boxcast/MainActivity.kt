@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
@@ -108,14 +110,28 @@ class MainActivity : ComponentActivity() {
                 val database = remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
                 val playbackRepository = remember { cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao()) }
                 
-                // Privacy & Analytics
+                // Privacy & Analytics & Preferences
                 val consentManager = remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
                 val analyticsHelper = remember { cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, consentManager) }
+                val userPrefs = remember { cx.aswin.boxcast.core.data.UserPreferencesRepository(application) }
                 
                 // Check Consent Status
                 // Initial = true to prevent flashing dialog while DataStore loads.
                 // If user hasn't set consent, this will become false shortly and show dialog.
                 val hasUserSetConsent by consentManager.hasUserSetConsent.collectAsState(initial = true)
+
+                val analyticsConsent by consentManager.isUsageAnalyticsConsented.collectAsState(initial = false)
+                val crashlyticsConsent by consentManager.isCrashReportingConsented.collectAsState(initial = false)
+                val currentRegion by userPrefs.regionStream.collectAsState(initial = "us")
+                
+                var appInstanceId by remember { mutableStateOf<String?>(null) }
+                LaunchedEffect(Unit) {
+                    try {
+                        com.google.firebase.analytics.FirebaseAnalytics.getInstance(application).appInstanceId.addOnSuccessListener { 
+                            appInstanceId = it
+                        }
+                    } catch(e: Exception) { /* Ignore if missing */ }
+                }
                 
                 val scope = rememberCoroutineScope() // Scope for playback actions
                 
@@ -266,7 +282,48 @@ class MainActivity : ComponentActivity() {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
+                                    },
+                                    onNavigateToSettings = {
+                                        navController.navigate("settings")
                                     }
+                                )
+                            }
+                            
+                            composable("settings") {
+                                cx.aswin.boxcast.feature.home.ProfileScreen(
+                                    currentRegion = currentRegion,
+                                    onSetRegion = { region -> 
+                                        scope.launch { userPrefs.setRegion(region) }
+                                    },
+                                    onBack = { navController.popBackStack() },
+                                    onResetAnalytics = {
+                                        scope.launch {
+                                            try {
+                                                analyticsHelper.logEvent("reset_analytics_requested", emptyMap())
+                                                com.google.firebase.analytics.FirebaseAnalytics.getInstance(application).resetAnalyticsData()
+                                                consentManager.clearConsent()
+                                                // No need for Toast, dialog will popup? Or Toast is good.
+                                                // Actually, if we reset consent, the DIALOG appears immediately covering everything.
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("Settings", "Failed to reset analytics", e)
+                                            }
+                                        }
+                                    },
+                                    isAnalyticsEnabled = analyticsConsent,
+                                    onToggleAnalytics = { enabled ->
+                                        scope.launch {
+                                            // Preserve crash consent state, update analytics
+                                            consentManager.setConsent(crashlyticsConsent, enabled)
+                                        }
+                                    },
+                                    isCrashReportingEnabled = crashlyticsConsent,
+                                    onToggleCrashReporting = { enabled ->
+                                        scope.launch {
+                                            // Preserve analytics consent state, update crash
+                                            consentManager.setConsent(enabled, analyticsConsent)
+                                        }
+                                    },
+                                    appInstanceId = appInstanceId
                                 )
                             }
                             
@@ -429,6 +486,13 @@ class MainActivity : ComponentActivity() {
                                     viewModel = viewModel,
                                     onBack = { navController.popBackStack() },
                                     onPodcastClick = { pId -> navController.navigate("podcast/$pId") },
+                                    onEpisodeClick = { ep ->
+                                        // Navigate to the clicked episode
+                                        fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                        navController.navigate(
+                                            "episode/${ep.id}/${encode(ep.title)}/${encode(ep.description)}/${encode(ep.imageUrl)}/${encode(ep.audioUrl)}/${ep.duration}/${podcastId}/${encode(podcastTitle)}"
+                                        )
+                                    },
                                     onPlay = {
                                         // Construct objects for playback
                                         val episode = cx.aswin.boxcast.core.model.Episode(
@@ -484,16 +548,33 @@ class MainActivity : ComponentActivity() {
                         BoxCastNavigationBar(
                             currentRoute = currentRoute,
                             onNavigate = { route ->
-                                if (route == "home") {
-                                    // Use popBackStack to reliably return to home
-                                    navController.popBackStack("home", inclusive = false)
-                                } else {
-                                    navController.navigate(route) {
-                                        popUpTo("home") {
-                                            saveState = true
+                                // Navigation logic for bottom tabs
+                                // podcast/ and episode/ routes are "detail" screens that can be reached from multiple tabs
+                                
+                                when {
+                                    // Same route - do nothing
+                                    currentRoute == route -> { }
+                                    
+                                    // Navigating to Home
+                                    route == "home" -> {
+                                        navController.popBackStack("home", inclusive = false)
+                                    }
+                                    
+                                    // Navigating to Explore from Explore root or while on Explore
+                                    route == "explore" && currentRoute == "explore" -> { }
+                                    
+                                    // Navigating to Library from Library root
+                                    route == "library" && currentRoute == "library" -> { }
+                                    
+                                    // Default: Navigate to the new tab
+                                    else -> {
+                                        navController.navigate(route) {
+                                            popUpTo("home") {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = false // Fresh state for tabs
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
                                 }
                             },
@@ -508,6 +589,23 @@ class MainActivity : ComponentActivity() {
                         containerHeight = containerHeight,
                         collapsedStateHorizontalPadding = 12.dp,
                         expandTrigger = expandPlayerTrigger, // Pass the trigger here
+                        onEpisodeInfoClick = { episode ->
+                            // Navigate to episode info
+                            val podcast = playbackRepository.playerState.value.currentPodcast
+                            fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                            navController.navigate(
+                                "episode/${episode.id}/${encode(episode.title)}/" +
+                                "${encode(episode.description.take(500))}/" +
+                                "${encode(episode.imageUrl)}/" +
+                                "${encode(episode.audioUrl)}/" +
+                                "${episode.duration}/${podcast?.id ?: "unknown"}/" +
+                                encode(podcast?.title ?: "Podcast")
+                            )
+                        },
+                        onPodcastInfoClick = { podcast ->
+                            // Navigate to podcast info
+                            navController.navigate("podcast/${podcast.id}")
+                        },
                         modifier = Modifier.align(Alignment.TopStart)
                     )
                     

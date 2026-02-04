@@ -21,9 +21,60 @@ private val googleFontProvider = GoogleFont.Provider(
     providerPackage = "com.google.android.gms",
     certificates = R.array.com_google_android_gms_fonts_certs
 )
-// Roboto Flex via Google Fonts - variable weight support
-private val robotoFlex = GoogleFont("Roboto Flex")
 
+// Main App Font: Google Sans (Local Variable Font)
+// Using local variable font file copied from repo
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+val GoogleSansFamily = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+    FontFamily(
+        Font(
+            R.font.google_sans_variable,
+            variationSettings = FontVariation.Settings(
+                FontVariation.weight(300), 
+                FontVariation.Setting("opsz", 17f)
+            ),
+            weight = FontWeight.Light
+        ),
+        Font(
+            R.font.google_sans_variable,
+            variationSettings = FontVariation.Settings(
+                FontVariation.weight(400),
+                FontVariation.Setting("opsz", 17f)
+            ),
+            weight = FontWeight.Normal
+        ),
+        Font(
+            R.font.google_sans_variable,
+            variationSettings = FontVariation.Settings(
+                FontVariation.weight(500),
+                FontVariation.Setting("opsz", 17f)
+            ),
+            weight = FontWeight.Medium
+        ),
+        Font(
+            R.font.google_sans_variable,
+            variationSettings = FontVariation.Settings(
+                FontVariation.weight(600),
+                FontVariation.Setting("opsz", 17f)
+            ),
+            weight = FontWeight.SemiBold
+        ),
+        Font(
+            R.font.google_sans_variable,
+            variationSettings = FontVariation.Settings(
+                FontVariation.weight(700),
+                FontVariation.Setting("opsz", 17f)
+            ),
+            weight = FontWeight.Bold
+        )
+    )
+} else {
+    // Fallback? Or just load without variation settings if standard mapping works
+    FontFamily(Font(R.font.google_sans_variable))
+}
+
+// Keep Roboto Flex for legacy/fallback or specific variable axes needs (like Condensed headers)
+private val robotoFlex = GoogleFont("Roboto Flex")
 val RobotoFlexFamily = FontFamily(
     Font(googleFont = robotoFlex, fontProvider = googleFontProvider, weight = FontWeight.Light),
     Font(googleFont = robotoFlex, fontProvider = googleFontProvider, weight = FontWeight.Normal),
@@ -53,44 +104,46 @@ val LogoFontFamily = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
     RobotoFlexFamily // Fallback for older Android versions
 }
 
-// Media App "Condensed" Header Font - Wdth 85, Wght 800
+// Media App "Condensed" Header Font
+// Switching to Google Sans as requested for all app text (except Logo).
+// Note: Dropping explicit 'width' axis as standard Google Sans Variable might not support 85f (condensed) axis.
+// We use the same file but with ExtraBold weight for impact.
 @OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
 val SectionHeaderFontFamily = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
     FontFamily(
         Font(
-            R.font.robotoflex_variable,
+            R.font.google_sans_variable,
             variationSettings = FontVariation.Settings(
                 FontVariation.weight(800),  // Extra Bold
-                FontVariation.width(85f),   // Condensed (85% width)
-                FontVariation.Setting("GRAD", 150f), // Heavy grade for punch
                 FontVariation.Setting("opsz", 24f)  // Optical size for headers
             )
         )
     )
 } else {
-    RobotoFlexFamily
+    // Fallback
+    FontFamily(Font(R.font.google_sans_variable))
 }
 
 // Material 3 EXPRESSIVE Typography Scale
-// Using bolder weights, tighter tracking, and compact line-heights for impact
+// Switched main typography to GoogleSansFamily
 val BoxCastTypography = Typography(
     // DISPLAY - Bold, tight, impactful
     displayLarge = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 57.sp,
         lineHeight = 60.sp,
         letterSpacing = (-0.5).sp
     ),
     displayMedium = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 45.sp,
         lineHeight = 48.sp,
         letterSpacing = (-0.3).sp
     ),
     displaySmall = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 36.sp,
         lineHeight = 40.sp,
@@ -99,21 +152,21 @@ val BoxCastTypography = Typography(
 
     // HEADLINE - Strong, confident
     headlineLarge = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp,
         lineHeight = 36.sp,
         letterSpacing = (-0.3).sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
         lineHeight = 32.sp,
         letterSpacing = (-0.2).sp
     ),
     headlineSmall = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 28.sp,
@@ -122,21 +175,21 @@ val BoxCastTypography = Typography(
 
     // TITLE - Slightly bolder, professional
     titleLarge = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 22.sp,
         lineHeight = 26.sp,
         letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
         lineHeight = 22.sp,
         letterSpacing = 0.1.sp
     ),
     titleSmall = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 18.sp,
@@ -145,21 +198,21 @@ val BoxCastTypography = Typography(
 
     // BODY - Clean, readable
     bodyLarge = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.3.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.2.sp
     ),
     bodySmall = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -168,21 +221,21 @@ val BoxCastTypography = Typography(
 
     // LABEL - Medium weight, clear
     labelLarge = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 14.sp,
         lineHeight = 18.sp,
         letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.4.sp
     ),
     labelSmall = TextStyle(
-        fontFamily = RobotoFlexFamily,
+        fontFamily = GoogleSansFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 14.sp,

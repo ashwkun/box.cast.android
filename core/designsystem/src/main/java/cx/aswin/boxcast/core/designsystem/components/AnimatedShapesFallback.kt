@@ -59,7 +59,7 @@ fun AnimatedShapesFallback() {
             }
             
             if (!overlaps) {
-                placedShapes.add(Triple(x, y, availableShapes.removeFirst()))
+                placedShapes.add(Triple(x, y, availableShapes.removeAt(0)))
             }
         }
         placedShapes

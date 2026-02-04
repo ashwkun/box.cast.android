@@ -1,8 +1,7 @@
 # Kotlin Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
--keep class kotlinx.coroutines.** { *; }
--keep class kotlin.coroutines.** { *; }
+
 
 # Attributes - Critical for Retrofit/Serialization/Coroutines
 -keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations

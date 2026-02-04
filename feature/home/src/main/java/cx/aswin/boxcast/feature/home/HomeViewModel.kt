@@ -64,11 +64,19 @@ class HomeViewModel(
 
     private val _selectedCategory = MutableStateFlow<String?>(null)
     
+    private val userPrefs = cx.aswin.boxcast.core.data.UserPreferencesRepository(application)
+    
+    // Expose region to UI
+    val currentRegion = userPrefs.regionStream
+    
     // Cached base data (For You)
     private var cachedForYouTrending: List<Podcast> = emptyList()
     private var cachedHeroItems: List<SmartHeroItem> = emptyList()
     private var cachedRisingPodcasts: List<Podcast> = emptyList()
     private var cachedLatestEpisodes: List<Podcast> = emptyList()
+    
+    // Store current region for use in other scopes
+    private var activeRegion = "us"
 
     init {
         loadData()
@@ -76,318 +84,287 @@ class HomeViewModel(
 
     private fun loadData() {
         viewModelScope.launch {
-            // --- BASE DATA FLOW (Only runs once, caches "For You" data) ---
-            combine(
-                repository.getTrendingPodcastsStream("in", 50, null) // Always "For You"
-                    .onStart { 
-                        android.util.Log.d("BoxCastTiming", "VM: Base stream starting")
-                        emit(emptyList()) 
-                    },
-                playbackRepository.resumeSessions
-                    .onStart { emit(emptyList()) },
-                subscriptionRepository.subscribedPodcasts
-                    .onStart { emit(emptyList()) }
-            ) { trendingList, resumeList, subs ->
-                 Triple(trendingList, resumeList, subs)
-            }.collect { (trendingList, resumeList, subs) ->
-                // ... (Existing Logic, but now dynamic) ...
+            // --- BASE DATA FLOW (Restarts when Region changes) ---
+            userPrefs.regionStream.collectLatest { region ->
+                activeRegion = region
                 
-                // Note: Resume/Hero logic shouldn't disappear when filtering genres...
-                // User expectation: "News" tab shows News in the Grid.
-                // Does it hide the "Resume" carousel?
-                // Usually "For You" has Resume. "News" is just a feed.
-                // But for simplicity, let's keep the Header/Resume always visible for now, or hide if it looks weird.
-                // Let's keep it. Users might want to resume while browsing News.
-                
-                // ... Copying logic ...
+                combine(
+                    repository.getTrendingPodcastsStream(region, 50, null) // Dynamic Region
+                        .onStart { 
+                            android.util.Log.d("BoxCastTiming", "VM: Base stream starting for region=$region")
+                            emit(emptyList()) 
+                        },
+                    playbackRepository.resumeSessions
+                        .onStart { emit(emptyList()) },
+                    subscriptionRepository.subscribedPodcasts
+                        .onStart { emit(emptyList()) }
+                ) { trendingList, resumeList, subs ->
+                     Triple(trendingList, resumeList, subs)
+                }.collect { (trendingList, resumeList, subs) ->
+                    // ... (Logic copied below) ...
                     
-                    if (trendingList.isEmpty()) {
-                         // Still loading or error, but we might have local data?
-                         // Ideally we show local data even if trending is empty.
-                         // For now, if streaming starts, it might emit empty first? No, emit 2 first.
-                    }
-
-                    // Proceed to build UI even with partial trending list
-                    val heroList = mutableListOf<SmartHeroItem>()
-                    val usedPodcastIds = mutableSetOf<String>()
-
-                    // A. Real Resume (Priority 1) - The VERY last played
-                    val lastPlayed = resumeList.firstOrNull()
-                    if (lastPlayed != null) {
-                        try {
-                            // ZERO-NETWORK RESUME: Use cached metadata directly
-                            val resumePodcast = Podcast(
-                                id = lastPlayed.podcastId,
-                                title = lastPlayed.podcastTitle, // Cached
-                                artist = "", // Not critical for Hero Card header
-                                imageUrl = lastPlayed.podcastImageUrl ?: "", // Primary Podcast Image
-                                fallbackImageUrl = lastPlayed.podcastImageUrl, // Fallback
-                                description = "",
-                                genre = "Podcast",
-                                latestEpisode = Episode(
-                                    id = lastPlayed.episodeId,
-                                    title = lastPlayed.episodeTitle, // Cached
-                                    description = "",
-                                    imageUrl = lastPlayed.imageUrl ?: "", // Episode Image
-                                    audioUrl = lastPlayed.audioUrl ?: "", // Cached URL (Zero-Network)
-                                    duration = (lastPlayed.durationMs / 1000).toInt(),
-                                    publishedDate = 0L
-                                )
-                            )
-
-                            val timeLeft = ((lastPlayed.durationMs - lastPlayed.positionMs) / 60000).coerceAtLeast(1)
-                            heroList.add(
-                                SmartHeroItem(
-                                    type = HeroType.RESUME,
-                                    podcast = resumePodcast,
-                                    label = "RESUME • ${timeLeft}m left",
-                                    description = lastPlayed.episodeTitle // Use cached title
-                                )
-                            )
-                            usedPodcastIds.add(resumePodcast.id)
-                        } catch (e: Exception) { e.printStackTrace() }
-                    }
+                    // Note: Resume/Hero logic shouldn't disappear when filtering genres...
+                    // ...
                     
-                    // B. Secondary Resume (Logic for 2 vs 3+)
-                    if (resumeList.size == 2) {
-                        // Special Case: If exactly 2, show the second one as a full Hero Card too
-                        val secondSession = resumeList[1]
-                        try {
-                            val secondPodcast = Podcast(
-                                id = secondSession.podcastId,
-                                title = secondSession.podcastTitle,
-                                artist = "",
-                                imageUrl = secondSession.podcastImageUrl ?: "", // Podcast Image
-                                fallbackImageUrl = secondSession.podcastImageUrl,
-                                description = "",
-                                genre = "Podcast",
-                                latestEpisode = Episode(
-                                    id = secondSession.episodeId,
-                                    title = secondSession.episodeTitle,
+                        if (trendingList.isEmpty()) {
+                             // Still loading
+                        }
+
+                        // Proceed to build UI even with partial trending list
+                        val heroList = mutableListOf<SmartHeroItem>()
+                        val usedPodcastIds = mutableSetOf<String>()
+
+                        // A. Real Resume (Priority 1)
+                        val lastPlayed = resumeList.firstOrNull()
+                        if (lastPlayed != null) {
+                            try {
+                                val resumePodcast = Podcast(
+                                    id = lastPlayed.podcastId,
+                                    title = lastPlayed.podcastTitle,
+                                    artist = "",
+                                    imageUrl = lastPlayed.podcastImageUrl ?: "",
+                                    fallbackImageUrl = lastPlayed.podcastImageUrl,
                                     description = "",
-                                    imageUrl = secondSession.imageUrl ?: "", // Episode Image
-                                    audioUrl = secondSession.audioUrl ?: "",
-                                    duration = (secondSession.durationMs / 1000).toInt(),
-                                    publishedDate = 0L
+                                    genre = "Podcast",
+                                    latestEpisode = Episode(
+                                        id = lastPlayed.episodeId,
+                                        title = lastPlayed.episodeTitle,
+                                        description = "",
+                                        imageUrl = lastPlayed.imageUrl ?: "",
+                                        audioUrl = lastPlayed.audioUrl ?: "",
+                                        duration = (lastPlayed.durationMs / 1000).toInt(),
+                                        publishedDate = 0L
+                                    )
                                 )
-                            )
-                            val timeLeft = ((secondSession.durationMs - secondSession.positionMs) / 60000).coerceAtLeast(1)
-                            heroList.add(
-                                SmartHeroItem(
-                                    type = HeroType.RESUME,
-                                    podcast = secondPodcast,
-                                    label = "RESUME • ${timeLeft}m left",
-                                    description = secondSession.episodeTitle
+
+                                val timeLeft = ((lastPlayed.durationMs - lastPlayed.positionMs) / 60000).coerceAtLeast(1)
+                                heroList.add(
+                                    SmartHeroItem(
+                                        type = HeroType.RESUME,
+                                        podcast = resumePodcast,
+                                        label = "RESUME • ${timeLeft}m left",
+                                        description = lastPlayed.episodeTitle
+                                    )
                                 )
-                            )
-                            usedPodcastIds.add(secondPodcast.id)
-                        } catch (e: Exception) {}
-                        
-                    } else if (resumeList.size > 2) {
-                        // Standard Case: Group the rest into a Bento Grid
-                        val gridCandidates = resumeList.drop(1).take(6)
-                        val gridPodcasts = mutableListOf<Podcast>()
-                        
-                        for (session in gridCandidates) {
-                            // Calculate progress ratio (safe div)
-                            val ratio = if (session.durationMs > 0) {
-                                (session.positionMs.toFloat() / session.durationMs.toFloat()).coerceIn(0f, 1f)
-                            } else 0f
-                            
-                            val pod = Podcast(
-                                id = session.podcastId,
-                                title = session.podcastTitle,
-                                artist = "", 
-                                imageUrl = session.podcastImageUrl ?: "", // Podcast Image (Grid usually shows Podcast Art anyway)
-                                fallbackImageUrl = session.podcastImageUrl,
-                                description = "",
-                                genre = "Podcast",
-                                resumeProgress = ratio,
-                                latestEpisode = Episode(
-                                    id = session.episodeId,
-                                    title = session.episodeTitle,
-                                    description = "",
-                                    imageUrl = session.imageUrl ?: "", // Episode Image
-                                    audioUrl = session.audioUrl ?: "",
-                                    duration = (session.durationMs / 1000).toInt(),
-                                    publishedDate = 0L
-                                )
-                            )
-                            gridPodcasts.add(pod)
-                            usedPodcastIds.add(pod.id)
+                                usedPodcastIds.add(resumePodcast.id)
+                            } catch (e: Exception) { e.printStackTrace() }
                         }
                         
-                        if (gridPodcasts.isNotEmpty()) {
-                            heroList.add(
-                                SmartHeroItem(
-                                    type = HeroType.RESUME_GRID,
-                                    podcast = gridPodcasts.first(), 
-                                    label = "JUMP BACK IN",
-                                    description = null,
-                                    gridItems = gridPodcasts
+                        // B. Secondary Resume
+                        if (resumeList.size == 2) {
+                            val secondSession = resumeList[1]
+                            try {
+                                val secondPodcast = Podcast(
+                                    id = secondSession.podcastId,
+                                    title = secondSession.podcastTitle,
+                                    artist = "",
+                                    imageUrl = secondSession.podcastImageUrl ?: "",
+                                    fallbackImageUrl = secondSession.podcastImageUrl,
+                                    description = "",
+                                    genre = "Podcast",
+                                    latestEpisode = Episode(
+                                        id = secondSession.episodeId,
+                                        title = secondSession.episodeTitle,
+                                        description = "",
+                                        imageUrl = secondSession.imageUrl ?: "",
+                                        audioUrl = secondSession.audioUrl ?: "",
+                                        duration = (secondSession.durationMs / 1000).toInt(),
+                                        publishedDate = 0L
+                                    )
                                 )
-                            )
-                        }
-                    }
-
-                    // C. Latest "Catch Up" List (New Episodes from Subs)
-                    val catchUpList = mutableListOf<Podcast>()
-                    if (subs.isNotEmpty()) {
-                        try {
-                             // 1. Identify candidates (subscribed but not already shown in Resume)
-                            val candidates = subs.filter { !usedPodcastIds.contains(it.id) }
+                                val timeLeft = ((secondSession.durationMs - secondSession.positionMs) / 60000).coerceAtLeast(1)
+                                heroList.add(
+                                    SmartHeroItem(
+                                        type = HeroType.RESUME,
+                                        podcast = secondPodcast,
+                                        label = "RESUME • ${timeLeft}m left",
+                                        description = secondSession.episodeTitle
+                                    )
+                                )
+                                usedPodcastIds.add(secondPodcast.id)
+                            } catch (e: Exception) {}
                             
-                            if (candidates.isNotEmpty()) {
-                                // 2. Sync top 20 candidates
-                                val idsToSync = candidates.take(20).map { it.id }
-                                val syncResults = repository.syncSubscriptions(idsToSync)
+                        } else if (resumeList.size > 2) {
+                            val gridCandidates = resumeList.drop(1).take(6)
+                            val gridPodcasts = mutableListOf<Podcast>()
+                            
+                            for (session in gridCandidates) {
+                                val ratio = if (session.durationMs > 0) {
+                                    (session.positionMs.toFloat() / session.durationMs.toFloat()).coerceIn(0f, 1f)
+                                } else 0f
                                 
-                                // 3. Build List of "New" Episodes
-                                for (pod in candidates) {
-                                    val freshEpisode = syncResults[pod.id]
-                                    if (freshEpisode != null) {
-                                        // Check if actually new (not in history)
-                                        val lastPlayedSession = resumeList.find { it.podcastId == pod.id }
-                                        val isActuallyNew = lastPlayedSession == null || lastPlayedSession.episodeId != freshEpisode.id
-                                        
-                                        if (isActuallyNew) {
-                                            catchUpList.add(pod.copy(latestEpisode = freshEpisode))
+                                val pod = Podcast(
+                                    id = session.podcastId,
+                                    title = session.podcastTitle,
+                                    artist = "", 
+                                    imageUrl = session.podcastImageUrl ?: "",
+                                    fallbackImageUrl = session.podcastImageUrl,
+                                    description = "",
+                                    genre = "Podcast",
+                                    resumeProgress = ratio,
+                                    latestEpisode = Episode(
+                                        id = session.episodeId,
+                                        title = session.episodeTitle,
+                                        description = "",
+                                        imageUrl = session.imageUrl ?: "",
+                                        audioUrl = session.audioUrl ?: "",
+                                        duration = (session.durationMs / 1000).toInt(),
+                                        publishedDate = 0L
+                                    )
+                                )
+                                gridPodcasts.add(pod)
+                                usedPodcastIds.add(pod.id)
+                            }
+                            
+                            if (gridPodcasts.isNotEmpty()) {
+                                heroList.add(
+                                    SmartHeroItem(
+                                        type = HeroType.RESUME_GRID,
+                                        podcast = gridPodcasts.first(), 
+                                        label = "JUMP BACK IN",
+                                        description = null,
+                                        gridItems = gridPodcasts
+                                    )
+                                )
+                            }
+                        }
+
+                        // C. Latest "Catch Up" List
+                        val catchUpList = mutableListOf<Podcast>()
+                        if (subs.isNotEmpty()) {
+                            try {
+                                val candidates = subs.filter { !usedPodcastIds.contains(it.id) }
+                                
+                                if (candidates.isNotEmpty()) {
+                                    val idsToSync = candidates.take(20).map { it.id }
+                                    val syncResults = repository.syncSubscriptions(idsToSync)
+                                    
+                                    for (pod in candidates) {
+                                        val freshEpisode = syncResults[pod.id]
+                                        if (freshEpisode != null) {
+                                            val lastPlayedSession = resumeList.find { it.podcastId == pod.id }
+                                            val isActuallyNew = lastPlayedSession == null || lastPlayedSession.episodeId != freshEpisode.id
+                                            
+                                            if (isActuallyNew) {
+                                                catchUpList.add(pod.copy(latestEpisode = freshEpisode))
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        } catch (e: Exception) { e.printStackTrace() }
-                    }
-                    
-                    // Logic for "Fresh Drops" (New Episodes)
-                    if (catchUpList.isNotEmpty()) {
-                         if (catchUpList.size > 2) {
-                             // 1. Hero Card: Top Fresh Drop
-                             val topDrop = catchUpList.first()
-                             heroList.add(
-                                SmartHeroItem(
-                                    type = HeroType.JUMP_BACK_IN, // Reusing label/style for "NEW EPISODE"
-                                    podcast = topDrop,
-                                    label = "FRESH DROP",
-                                    description = topDrop.latestEpisode?.title
-                                )
-                             )
-                             usedPodcastIds.add(topDrop.id)
-                             
-                             // 2. Grid for the rest
-                             val gridDrops = catchUpList.drop(1).take(6)
-                             if (gridDrops.isNotEmpty()) {
+                            } catch (e: Exception) { e.printStackTrace() }
+                        }
+                        
+                        if (catchUpList.isNotEmpty()) {
+                             if (catchUpList.size > 2) {
+                                 val topDrop = catchUpList.first()
+                                 heroList.add(
+                                    SmartHeroItem(
+                                        type = HeroType.JUMP_BACK_IN,
+                                        podcast = topDrop,
+                                        label = "FRESH DROP",
+                                        description = topDrop.latestEpisode?.title
+                                    )
+                                 )
+                                 usedPodcastIds.add(topDrop.id)
+                                 
+                                 val gridDrops = catchUpList.drop(1).take(6)
+                                 if (gridDrops.isNotEmpty()) {
+                                     heroList.add(
+                                         SmartHeroItem(
+                                             type = HeroType.NEW_EPISODES_GRID,
+                                             podcast = gridDrops.first(), 
+                                             label = "NEW EPISODES",
+                                             description = null,
+                                             gridItems = gridDrops
+                                         )
+                                     )
+                                     usedPodcastIds.addAll(gridDrops.map { it.id })
+                                 }
+                             } else {
+                                 val heroCandidate = catchUpList.first()
                                  heroList.add(
                                      SmartHeroItem(
-                                         type = HeroType.NEW_EPISODES_GRID,
-                                         podcast = gridDrops.first(), // Pivot podcast (unused)
-                                         label = "NEW EPISODES",
-                                         description = null,
-                                         gridItems = gridDrops
+                                         type = HeroType.JUMP_BACK_IN,
+                                         podcast = heroCandidate,
+                                         label = "NEW EPISODE",
+                                         description = heroCandidate.latestEpisode?.title
                                      )
                                  )
-                                 usedPodcastIds.addAll(gridDrops.map { it.id })
+                                 usedPodcastIds.add(heroCandidate.id)
                              }
-                             
-                             // User requested "New Episodes" section below Your Shows "as well".
-                             // So we do NOT remove them from catchUpList here.
-                             // catchUpList.removeAll { usedPodcastIds.contains(it.id) }
-                             
-                         } else {
-                             // Simple Case: Just 1 or 2 cards?
-                             val heroCandidate = catchUpList.first()
-                             heroList.add(
-                                 SmartHeroItem(
-                                     type = HeroType.JUMP_BACK_IN,
-                                     podcast = heroCandidate,
-                                     label = "NEW EPISODE",
-                                     description = heroCandidate.latestEpisode?.title
-                                 )
-                             )
-                             usedPodcastIds.add(heroCandidate.id)
-                             // Keep in list for Rail "as well"
-                             // catchUpList.removeAt(0)
-                         }
-                    }
-
-                    // C. Spotlight (Fill to 8)
-                    var i = 0
-                    while (heroList.size < 8 && i < trendingList.size) {
-                        val pod = trendingList[i]
-                        if (!usedPodcastIds.contains(pod.id)) {
-                            val label = when {
-                                i == 0 -> "#1 IN INDIA"
-                                pod.genre.isNotEmpty() && !pod.genre.equals("Podcast", ignoreCase = true) -> "TRENDING IN ${pod.genre.uppercase()}"
-                                else -> "TRENDING"
-                            }
-                            val spotlightDesc = pod.latestEpisode?.title ?: pod.genre
-                            
-                            // VISUAL CONSISTENCY: If showing Episode Title, show Episode Art
-                            val latestEp = pod.latestEpisode
-                            val epUrl = latestEp?.imageUrl
-                            
-                            val displayPodcast = if (!epUrl.isNullOrEmpty()) {
-                                pod.copy(
-                                    imageUrl = epUrl,
-                                    fallbackImageUrl = pod.imageUrl // Fallback to Podcast Art
-                                )
-                            } else {
-                                pod.copy(fallbackImageUrl = pod.imageUrl)
-                            }
-                            
-                            heroList.add(
-                                SmartHeroItem(
-                                    type = HeroType.SPOTLIGHT,
-                                    podcast = displayPodcast,
-                                    label = label,
-                                    description = spotlightDesc
-                                )
-                            )
-                            usedPodcastIds.add(pod.id)
                         }
-                        i++
-                    }
 
-                    val remaining = trendingList.filter { !usedPodcastIds.contains(it.id) }
-                    val rising = remaining.take(10)
-                    val discover = remaining.drop(10)
+                        // C. Spotlight (Fill to 8)
+                        var i = 0
+                        while (heroList.size < 8 && i < trendingList.size) {
+                            val pod = trendingList[i]
+                            if (!usedPodcastIds.contains(pod.id)) {
+                                val label = when {
+                                    i == 0 -> if (region == "in") "#1 IN INDIA" else "#1 IN US"
+                                    pod.genre.isNotEmpty() && !pod.genre.equals("Podcast", ignoreCase = true) -> "TRENDING IN ${pod.genre.uppercase()}"
+                                    else -> "TRENDING"
+                                }
+                                val spotlightDesc = pod.latestEpisode?.title ?: pod.genre
+                                
+                                val latestEp = pod.latestEpisode
+                                val epUrl = latestEp?.imageUrl
+                                
+                                val displayPodcast = if (!epUrl.isNullOrEmpty()) {
+                                    pod.copy(
+                                        imageUrl = epUrl,
+                                        fallbackImageUrl = pod.imageUrl 
+                                    )
+                                } else {
+                                    pod.copy(fallbackImageUrl = pod.imageUrl)
+                                }
+                                
+                                heroList.add(
+                                    SmartHeroItem(
+                                        type = HeroType.SPOTLIGHT,
+                                        podcast = displayPodcast,
+                                        label = label,
+                                        description = spotlightDesc
+                                    )
+                                )
+                                usedPodcastIds.add(pod.id)
+                            }
+                            i++
+                        }
 
-                    android.util.Log.e("BoxCastDebug", "--- UI UPDATE ---")
-                    android.util.Log.e("BoxCastDebug", "TOTAL Received: ${trendingList.size}")
-                    android.util.Log.e("BoxCastDebug", "Hero/Spotlight Used: ${usedPodcastIds.size}")
-                    android.util.Log.e("BoxCastDebug", "Remaining: ${remaining.size}")
-                    android.util.Log.e("BoxCastDebug", "Rising: ${rising.size}")
-                    android.util.Log.e("BoxCastDebug", "Discover (Explore): ${discover.size}")
-                    android.util.Log.e("BoxCastDebug", "-----------------")
+                        val remaining = trendingList.filter { !usedPodcastIds.contains(it.id) }
+                        val rising = remaining.take(10)
+                        val discover = remaining.drop(10)
 
-                    // Cache the "For You" data
-                    if (trendingList.isNotEmpty()) {
-                        cachedForYouTrending = trendingList
-                        cachedHeroItems = heroList
-                        cachedRisingPodcasts = rising
-                        cachedLatestEpisodes = catchUpList
-                    }
+                        if (trendingList.isNotEmpty()) {
+                            cachedForYouTrending = trendingList
+                            cachedHeroItems = heroList
+                            cachedRisingPodcasts = rising
+                            cachedLatestEpisodes = catchUpList
+                        }
 
-                    // Update UI with base data
-                    _uiState.value = HomeUiState(
-                        heroItems = heroList,
-                        latestEpisodes = catchUpList,
-                        subscribedPodcasts = subs,
-                        selectedCategory = _selectedCategory.value,
-                        risingPodcasts = rising,
-                        discoverPodcasts = discover,
-                        isLoading = false,
-                        isFilterLoading = false,
-                        isError = false
-                    )
+                        _uiState.value = HomeUiState(
+                            heroItems = heroList,
+                            latestEpisodes = catchUpList,
+                            subscribedPodcasts = subs,
+                            selectedCategory = _selectedCategory.value,
+                            risingPodcasts = rising,
+                            discoverPodcasts = discover,
+                            isLoading = false,
+                            isFilterLoading = trendingList.isEmpty(),
+                            isError = false
+                        )
                 }
+            }
         }
         
-        // --- CATEGORY OBSERVER (Separate from base data) ---
+        // --- CATEGORY OBSERVER (Considers Region) ---
         viewModelScope.launch {
-            _selectedCategory.collectLatest { category ->
+            combine(_selectedCategory, userPrefs.regionStream) { category, region -> 
+                category to region 
+            }.collectLatest { (category, region) ->
                 if (category == null) {
-                    // "For You" - use cached data instantly
+                    // "For You" - use cached data instantly (if matches region?)
+                    // Simplified: caching matches current region because region change triggers base reload
                     if (cachedHeroItems.isNotEmpty()) {
                         val discover = cachedForYouTrending.filter { pod ->
                             !cachedHeroItems.any { it.podcast.id == pod.id } &&
@@ -403,30 +380,26 @@ class HomeViewModel(
                         }
                     }
                 } else {
-                    // Category selected - show loader (inline) and fetch
+                    // Category selected
                     _uiState.update { it.copy(
                         isFilterLoading = true, 
                         selectedCategory = category,
-                        discoverPodcasts = emptyList() // Clear old data
+                        discoverPodcasts = emptyList()
                     ) }
                     
                     try {
-                        // Collect all emissions and use the final (complete) list
-                        // This avoids showing intermediate/partial data to the user
+                        android.util.Log.d("HomeViewModel", "Category: Fetching '$category' for region '$region'...")
                         var finalList: List<Podcast> = emptyList()
-                        repository.getTrendingPodcastsStream("in", 50, category)
+                        repository.getTrendingPodcastsStream(region, 50, category.lowercase())
                             .collect { items ->
                                 finalList = items
-                                // Update UI progressively but flag as still loading
-                                // until stream completes
                                 _uiState.update { 
                                     it.copy(
                                         discoverPodcasts = items,
-                                        isFilterLoading = items.size < 10 // Show loader until we have reasonable data
+                                        isFilterLoading = items.size < 10
                                     )
                                 }
                             }
-                        // Final update after stream completes
                         _uiState.update { 
                             it.copy(
                                 discoverPodcasts = finalList,
@@ -439,6 +412,12 @@ class HomeViewModel(
                     }
                 }
             }
+        }
+    }
+    
+    fun setRegion(region: String) {
+        viewModelScope.launch {
+            userPrefs.setRegion(region)
         }
     }
     

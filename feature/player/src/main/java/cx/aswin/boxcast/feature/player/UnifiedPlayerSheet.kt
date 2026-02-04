@@ -82,6 +82,8 @@ fun UnifiedPlayerSheet(
     containerHeight: Dp,
     collapsedStateHorizontalPadding: Dp = 12.dp,
     expandTrigger: Long = 0L, // New param: timestamp to force expansion
+    onEpisodeInfoClick: (cx.aswin.boxcast.core.model.Episode) -> Unit = {},
+    onPodcastInfoClick: (cx.aswin.boxcast.core.model.Podcast) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by playbackRepository.playerState.collectAsState()
@@ -507,7 +509,9 @@ fun UnifiedPlayerSheet(
                                         launch { animatePlayerSheet(targetExpanded = false) }
                                         currentSheetContentState = PlayerSheetState.COLLAPSED
                                     }
-                                }
+                                },
+                                onEpisodeInfoClick = onEpisodeInfoClick,
+                                onPodcastInfoClick = onPodcastInfoClick
                             )
                         }
                     }
