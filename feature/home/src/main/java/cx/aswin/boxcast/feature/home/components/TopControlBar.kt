@@ -53,6 +53,7 @@ private const val TAG = "StylizedLogo"
 fun TopControlBar(
     scrollFraction: Float = 0f,
     modifier: Modifier = Modifier,
+    onAvatarClick: () -> Unit = {},
     onAvatarLongClick: () -> Unit = {}
 ) {
     // Expanded state: roomier padding, surface color
@@ -113,7 +114,7 @@ fun TopControlBar(
             modifier = Modifier
                 .size(40.dp)
                 .combinedClickable(
-                    onClick = {},
+                    onClick = onAvatarClick,
                     onLongClick = onAvatarLongClick
                 )
         ) {

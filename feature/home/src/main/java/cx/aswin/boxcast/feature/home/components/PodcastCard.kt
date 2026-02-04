@@ -2,12 +2,10 @@ package cx.aswin.boxcast.feature.home.components
 
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
 import androidx.compose.ui.draw.clip
-
-
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -15,8 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.AsyncImagePainter
 import cx.aswin.boxcast.core.model.Podcast
 import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 
@@ -33,10 +34,10 @@ fun PodcastCard(
     podcast: Podcast,
     isTall: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showGenreChip: Boolean = false
 ) {
     OutlinedCard( 
-        // onClick = onClick, // Removed Material Click to use expressiveClickable
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -44,23 +45,49 @@ fun PodcastCard(
             .expressiveClickable(onClick = onClick)
     ) {
         Column {
-            // Simple fallback: Podcast Image → AnimatedShapesFallback
-            SubcomposeAsyncImage(
-                model = podcast.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
+            // Image Container with Genre Chip
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(if (isTall) 280.dp else 220.dp)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
             ) {
-                val state = painter.state
-                if (state is coil.compose.AsyncImagePainter.State.Loading || 
-                    state is coil.compose.AsyncImagePainter.State.Error || 
-                    podcast.imageUrl.isEmpty()) {
-                    AnimatedShapesFallback()
-                } else {
-                    SubcomposeAsyncImageContent()
+                SubcomposeAsyncImage(
+                    model = podcast.imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
+                ) {
+                    val state = painter.state
+                    if (state is AsyncImagePainter.State.Loading || 
+                        state is AsyncImagePainter.State.Error || 
+                        podcast.imageUrl.isEmpty()) {
+                        AnimatedShapesFallback()
+                    } else {
+                        SubcomposeAsyncImageContent()
+                    }
+                }
+                
+                // Genre Chip (Top Left) - only shown when showGenreChip is true
+                if (showGenreChip && podcast.genre.isNotEmpty()) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .align(Alignment.TopStart)
+                    ) {
+                        Text(
+                            text = podcast.genre.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
             

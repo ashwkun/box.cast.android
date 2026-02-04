@@ -69,6 +69,7 @@ fun HomeRoute(
     onPlayClick: ((Podcast) -> Unit)? = null, // Navigate directly to Player (Resume)
     onNavigateToLibrary: (() -> Unit)? = null,
     onNavigateToExplore: ((String?) -> Unit)? = null,
+    onNavigateToSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val application = LocalContext.current.applicationContext as android.app.Application
@@ -97,6 +98,7 @@ fun HomeRoute(
         onToggleSubscription = viewModel::toggleSubscription,
         onSelectCategory = viewModel::selectCategory,
         onDeleteHistoryItem = viewModel::deleteHistoryItem,
+        onNavigateToSettings = onNavigateToSettings,
         modifier = modifier
     )
 }
@@ -115,7 +117,9 @@ fun HomeScreen(
     onNavigateToExplore: ((String?) -> Unit)?,
     onToggleSubscription: (String) -> Unit,
     onSelectCategory: (String?) -> Unit,
+
     onDeleteHistoryItem: (String) -> Unit,
+    onNavigateToSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // Track scroll state for collapsing top bar
@@ -150,6 +154,7 @@ fun HomeScreen(
     Column(modifier = modifier.fillMaxSize()) {
         TopControlBar(
             scrollFraction = scrollFraction,
+            onAvatarClick = { onNavigateToSettings?.invoke() },
             onAvatarLongClick = { showDebugDialog = true }
         )
         
@@ -272,7 +277,6 @@ private fun PodcastFeed(
         item(span = StaggeredGridItemSpan.FullLine) {
             cx.aswin.boxcast.feature.home.components.DiscoverSection(
                 selectedCategory = selectedCategory,
-                isLoading = isFilterLoading,
                 onCategorySelected = onSelectCategory,
                 onHeaderClick = { onNavigateToExplore?.invoke(selectedCategory ?: "All") }
             )
@@ -281,11 +285,13 @@ private fun PodcastFeed(
         // 5. Masonry Grid Content (Discover Podcasts) - LIMITED TO 6
         if (!isFilterLoading && gridItems.isNotEmpty()) {
             val limitedItems = gridItems.take(6)
+            val showGenreChip = selectedCategory == null // Only show chips for "For You" tab
             items(limitedItems, key = { it.id }) { podcast ->
                 val isTall = podcast.id.hashCode() % 3 == 0
                 PodcastCard(
                     podcast = podcast,
                     isTall = isTall,
+                    showGenreChip = showGenreChip,
                     onClick = { onPodcastClick(podcast) }
                 )
             }
@@ -311,36 +317,9 @@ private fun PodcastFeed(
                     }
                 }
             }
-        } else if (isFilterLoading || gridItems.isEmpty()) { 
-             // Logic: If loading, Show Skeleton. 
-             // If NOT loading but empty, show "No Results" (Only if we are sure we are not loading)
-             
-             if (isFilterLoading) {
-                 GridSkeletonItems()
-             } else {
-                // Empty State (No Results) - Only when strictly NOT loading and empty
-                item(span = StaggeredGridItemSpan.FullLine) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 48.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "No podcasts found",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = "Try selecting a different category",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                }
-             }
+        } else { 
+             // If loading OR empty, show Skeleton (Matches Hero/Rising behavior)
+             GridSkeletonItems()
         }
     }
 }

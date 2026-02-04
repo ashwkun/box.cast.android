@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Use System Accent 1 (Primary) for Splash Logo on API 31+ (Dark Mode) -->
+    <!-- 200 is standard for Dark Mode Primary -->
+    <color name="splash_logo_color">@android:color/system_accent1_200</color>
+</resources>

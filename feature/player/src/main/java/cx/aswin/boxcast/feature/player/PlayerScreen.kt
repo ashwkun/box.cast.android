@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
@@ -31,6 +32,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material.icons.rounded.Forward30
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Cast
 
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,11 +52,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +71,16 @@ import cx.aswin.boxcast.core.model.Episode
 import cx.aswin.boxcast.core.model.Podcast
 import kotlinx.coroutines.launch
 import kotlin.random.Random
+import cx.aswin.boxcast.feature.player.components.SimplePlayerControls
+import cx.aswin.boxcast.feature.player.components.AdvancedPlayerControls
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.ColorScheme
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.size.Size
+
 
 @Composable
 fun PlayerRoute(
@@ -102,6 +117,8 @@ fun PlayerRoute(
         onSeek = viewModel::seekTo,
         onSkipForward = viewModel::skipForward,
         onSkipBackward = viewModel::skipBackward,
+        onSetSpeed = viewModel::setPlaybackSpeed,
+        onSetSleepTimer = viewModel::setSleepTimer,
         modifier = modifier
     )
 }
@@ -116,8 +133,13 @@ fun PlayerScreen(
     onSeek: (Long) -> Unit,
     onSkipForward: () -> Unit,
     onSkipBackward: () -> Unit,
+    onSetSpeed: (Float) -> Unit,
+    onSetSleepTimer: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -125,6 +147,14 @@ fun PlayerScreen(
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "Minimize")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { /* TODO: Cast */ }) {
+                        Icon(Icons.Rounded.Cast, contentDescription = "Cast")
+                    }
+                    IconButton(onClick = { /* TODO: Share */ }) {
+                        Icon(Icons.Rounded.Share, contentDescription = "Share")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -148,19 +178,26 @@ fun PlayerScreen(
                     }
                 }
                 is PlayerUiState.Success -> {
-                    PlayerContent(
-                        podcast = uiState.podcast,
-                        episodes = uiState.episodes,
-                        currentEpisode = uiState.currentEpisode,
-                        isPlaying = uiState.isPlaying,
-                        positionMs = uiState.positionMs,
-                        durationMs = uiState.durationMs,
-                        onPlayPause = onPlayPause,
-                        onEpisodeClick = onEpisodeClick,
-                        onSeek = onSeek,
-                        onSkipForward = onSkipForward,
-                        onSkipBackward = onSkipBackward
-                    )
+                        PlayerContent(
+                            podcast = uiState.podcast,
+                            episodes = uiState.episodes,
+                            currentEpisode = uiState.currentEpisode,
+                            isPlaying = uiState.isPlaying,
+                            isLoading = uiState.isLoading,
+                            positionMs = uiState.positionMs,
+                            durationMs = uiState.durationMs,
+                            playbackSpeed = uiState.playbackSpeed,
+                            sleepTimerEnd = uiState.sleepTimerEnd,
+                            onPlayPause = onPlayPause, // Pass down
+                            onEpisodeClick = onEpisodeClick,
+                            onSeek = onSeek,
+                            onSkipForward = onSkipForward,
+                            onSkipBackward = onSkipBackward,
+                            onSetSpeed = onSetSpeed,
+                            onSetSleepTimer = onSetSleepTimer,
+                            listState = listState,
+                            coroutineScope = coroutineScope
+                        )
                 }
                 is PlayerUiState.Error -> {
                     Text("Error loading player", modifier = Modifier.align(Alignment.Center))
@@ -176,179 +213,138 @@ fun PlayerContent(
     episodes: List<Episode>,
     currentEpisode: Episode?,
     isPlaying: Boolean,
+    isLoading: Boolean,
     positionMs: Long,
     durationMs: Long,
+    playbackSpeed: Float,
+    sleepTimerEnd: Long?,
     onPlayPause: () -> Unit,
     onEpisodeClick: (Episode) -> Unit,
     onSeek: (Long) -> Unit,
     onSkipForward: () -> Unit,
-    onSkipBackward: () -> Unit
+    onSkipBackward: () -> Unit,
+    onSetSpeed: (Float) -> Unit,
+    onSetSleepTimer: (Int) -> Unit,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    coroutineScope: kotlinx.coroutines.CoroutineScope
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 24.dp)
-    ) {
-        // Artwork with extraLarge shape
-        AsyncImage(
-            model = currentEpisode?.imageUrl ?: podcast.imageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.extraLarge)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Metadata
-        Text(
-            text = currentEpisode?.title ?: podcast.title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = podcast.artist,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // Seekbar
-        if (durationMs > 0) {
-            Column {
-                androidx.compose.material3.Slider(
-                    value = positionMs.toFloat(),
-                    onValueChange = { onSeek(it.toLong()) },
-                    valueRange = 0f..durationMs.toFloat(),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = formatTime(positionMs),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Text(
-                        text = formatTime(durationMs),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // M3 Expressive: Bouncy Visualizer
-        AudioVisualizer(isPlaying = isPlaying)
-
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Controls with Expressive Motion
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-             // Skip Back
-             IconButton(onClick = onSkipBackward) {
-                 Icon(Icons.Rounded.Replay10, contentDescription = "Rewind 10s")
-             }
-             
-             Spacer(modifier = Modifier.width(16.dp))
-             
-             // M3 Expressive: Large Play Button with bouncy click
-             FilledIconButton(
-                 onClick = onPlayPause,
-                 modifier = Modifier
-                     .size(72.dp)
-                     .expressiveClickable(onClick = onPlayPause),
-                 colors = IconButtonDefaults.filledIconButtonColors(
-                     containerColor = MaterialTheme.colorScheme.primary
-                 )
-             ) {
-                 Icon(
-                     imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                     contentDescription = "Play/Pause",
-                     modifier = Modifier.size(32.dp),
-                     tint = MaterialTheme.colorScheme.onPrimary
-                 )
-             }
-             
-             Spacer(modifier = Modifier.width(16.dp))
-             
-             // Skip Forward
-             IconButton(onClick = onSkipForward) {
-                 Icon(Icons.Rounded.Forward30, contentDescription = "Forward 30s")
-             }
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Up Next with segmented styling
-        Text(
-            text = "Up Next",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.Start)
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // M3 Expressive: Segmented Episode List
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-             items(episodes) { episode ->
-                 // Segmented List Item
-                 ElevatedCard(
-                     modifier = Modifier
-                         .fillMaxWidth()
-                         .expressiveClickable { onEpisodeClick(episode) },
-                     shape = MaterialTheme.shapes.medium
-                 ) {
-                     Row(
-                         modifier = Modifier.padding(12.dp),
-                         verticalAlignment = Alignment.CenterVertically
-                     ) {
-                         AsyncImage(
-                             model = episode.imageUrl,
-                             contentDescription = null,
-                             modifier = Modifier
-                                 .size(48.dp)
-                                 .clip(MaterialTheme.shapes.small),
-                             contentScale = ContentScale.Crop
-                         )
-                         Spacer(modifier = Modifier.width(12.dp))
-                         Text(
-                             text = episode.title,
-                             style = MaterialTheme.typography.bodyMedium,
-                             maxLines = 2,
-                             overflow = TextOverflow.Ellipsis
-                         )
-                     }
-                 }
+    // 1. Color Extraction Logic
+    val context = LocalContext.current
+    val isDarkTheme = isSystemInDarkTheme()
+    var extractedColorScheme by remember { mutableStateOf<ColorScheme?>(null) }
+    val colorScheme = extractedColorScheme ?: MaterialTheme.colorScheme
+    
+    val imageUrl = currentEpisode?.imageUrl ?: podcast.imageUrl
+    
+    val painter = rememberAsyncImagePainter(
+        model = ImageRequest.Builder(context)
+            .data(imageUrl)
+            .size(Size(100, 100)) // Low res for palette is fine
+            .allowHardware(false)
+            .build()
+    )
+    
+    LaunchedEffect(imageUrl, painter.state) {
+        val state = painter.state
+        if (state is coil.compose.AsyncImagePainter.State.Success) {
+             val bitmap = (state.result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+             if (bitmap != null) {
+                 val seed = extractSeedColor(bitmap)
+                 extractedColorScheme = generateColorScheme(seed, isDarkTheme)
              }
         }
     }
-}
 
+    // Shared Main Content
+    val episode = currentEpisode
+    
+    SharedPlayerContent(
+        podcast = podcast,
+        episode = episode,
+        isPlaying = isPlaying,
+        isLoading = isLoading,
+        positionMs = positionMs,
+        durationMs = durationMs,
+        bufferedPositionMs = 0L, // No buffer info in this screen yet
+        playbackSpeed = playbackSpeed,
+        sleepTimerEnd = sleepTimerEnd,
+        colorScheme = colorScheme,
+        onPlayPause = onPlayPause,
+        onSeek = onSeek,
+        onPrevious = onSkipBackward,
+        onNext = onSkipForward,
+        onSetSpeed = onSetSpeed,
+        onSetSleepTimer = onSetSleepTimer,
+        onLikeClick = { /* TODO */ },
+        onDownloadClick = { /* TODO */ },
+        onQueueClick = { 
+             coroutineScope.launch {
+                 listState.animateScrollToItem(0)
+             }
+        },
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp),
+        extraContent = {
+             Spacer(modifier = Modifier.height(16.dp))
+             AudioVisualizer(isPlaying = isPlaying)
+             Spacer(modifier = Modifier.height(16.dp))
+        },
+        footerContent = {
+             Spacer(modifier = Modifier.height(32.dp))
+             
+             // Up Next
+             Text(
+                 text = "Up Next",
+                 style = MaterialTheme.typography.titleLarge,
+                 fontWeight = FontWeight.Bold,
+                 modifier = Modifier.align(Alignment.Start)
+             )
+             
+             Spacer(modifier = Modifier.height(8.dp))
+             
+             // M3 Expressive: Segmented Episode List
+             androidx.compose.foundation.lazy.LazyColumn(
+                 state = listState,
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .weight(1f),
+                 contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
+                 verticalArrangement = Arrangement.spacedBy(8.dp)
+             ) {
+                  items(episodes) { ep ->
+                      ElevatedCard(
+                          modifier = Modifier
+                              .fillMaxWidth()
+                              .expressiveClickable { onEpisodeClick(ep) },
+                          shape = MaterialTheme.shapes.medium
+                      ) {
+                          Row(
+                              modifier = Modifier.padding(12.dp),
+                              verticalAlignment = Alignment.CenterVertically
+                          ) {
+                              AsyncImage(
+                                  model = ep.imageUrl,
+                                  contentDescription = null,
+                                  modifier = Modifier
+                                      .size(48.dp)
+                                      .clip(MaterialTheme.shapes.small),
+                                  contentScale = ContentScale.Crop
+                              )
+                              Spacer(modifier = Modifier.width(12.dp))
+                              Text(
+                                  text = ep.title,
+                                  style = MaterialTheme.typography.bodyMedium,
+                                  maxLines = 2,
+                                  overflow = TextOverflow.Ellipsis
+                              )
+                          }
+                      }
+                  }
+             }
+        }
+    )
+}
 
 
 /**

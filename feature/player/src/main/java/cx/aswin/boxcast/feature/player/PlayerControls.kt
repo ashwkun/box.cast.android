@@ -115,7 +115,7 @@ fun PlayerControls(
         var showLoader by remember { mutableStateOf(false) }
         LaunchedEffect(isLoading) {
             if (isLoading) {
-                kotlinx.coroutines.delay(1000)
+                kotlinx.coroutines.delay(500)
                 showLoader = true
             } else {
                 showLoader = false

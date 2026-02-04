@@ -64,4 +64,12 @@ class ConsentManager(private val context: Context) {
             preferences[PreferencesKeys.CONSENT_DECIDED] = true
         }
     }
+
+    suspend fun clearConsent() {
+        dataStore.edit { preferences ->
+            preferences.remove(PreferencesKeys.CONSENT_DECIDED)
+            preferences.remove(PreferencesKeys.CRASH_REPORTING_CONSENT)
+            preferences.remove(PreferencesKeys.USAGE_ANALYTICS_CONSENT)
+        }
+    }
 }

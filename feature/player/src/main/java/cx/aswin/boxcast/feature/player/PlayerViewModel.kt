@@ -21,8 +21,11 @@ sealed interface PlayerUiState {
         val episodes: List<Episode>,
         val currentEpisode: Episode? = null,
         val isPlaying: Boolean = false,
+        val isLoading: Boolean = false,
         val positionMs: Long = 0L,
-        val durationMs: Long = 0L
+        val durationMs: Long = 0L,
+        val playbackSpeed: Float = 1.0f,
+        val sleepTimerEnd: Long? = null
     ) : PlayerUiState
     data object Error : PlayerUiState
 }
@@ -67,8 +70,11 @@ class PlayerViewModel(
                      _uiState.value = currentUi.copy(
                          currentEpisode = syncedEpisode,
                          isPlaying = playerState.isPlaying,
+                         isLoading = playerState.isLoading, // Add this mapping
                          positionMs = playerState.position,
-                         durationMs = playerState.duration
+                         durationMs = playerState.duration,
+                         playbackSpeed = playerState.playbackSpeed,
+                         sleepTimerEnd = playerState.sleepTimerEnd
                      )
                  }
             }
@@ -91,7 +97,9 @@ class PlayerViewModel(
                     currentEpisode = globalState.currentEpisode,
                     isPlaying = globalState.isPlaying,
                     positionMs = globalState.position,
-                    durationMs = globalState.duration
+                    durationMs = globalState.duration,
+                    playbackSpeed = globalState.playbackSpeed,
+                    sleepTimerEnd = globalState.sleepTimerEnd
                 )
                 
                 // Fetch full episode list in background to populate playlist if needed
@@ -154,7 +162,17 @@ class PlayerViewModel(
         if (currentState is PlayerUiState.Success) {
             viewModelScope.launch {
                 analyticsHelper.logPlayEpisode(currentState.podcast.title, episode.title)
-                playbackRepository.playEpisode(episode, currentState.podcast)
+                
+                // Queue Logic: Forward Chronological (Oldest -> Newest) starting from selected
+                // We want to play the selected episode, then subsequent episodes in chronological order.
+                val queue = currentState.episodes
+                    .filter { it.publishedDate >= episode.publishedDate }
+                    .sortedBy { it.publishedDate } // Ascending Order (Oldest First)
+                
+                // Ensure the selected episode is the start index
+                val startIndex = queue.indexOfFirst { it.id == episode.id }.coerceAtLeast(0)
+                
+                playbackRepository.playQueue(queue, currentState.podcast, startIndex)
             }
         }
     }
@@ -180,6 +198,14 @@ class PlayerViewModel(
     
     fun skipBackward() {
         playbackRepository.skipBackward()
+    }
+
+    fun setPlaybackSpeed(speed: Float) {
+        playbackRepository.setPlaybackSpeed(speed)
+    }
+
+    fun setSleepTimer(minutes: Int) {
+        playbackRepository.setSleepTimer(minutes)
     }
 
     override fun onCleared() {

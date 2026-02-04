@@ -9,7 +9,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        minSdk = 26
+        minSdk = 31
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -27,5 +27,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("androidx.annotation:annotation:1.7.1")
+    implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.android)
 }

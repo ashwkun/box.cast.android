@@ -20,58 +20,58 @@ import retrofit2.http.Query
 interface BoxCastApi {
     
     @GET("trending")
-    suspend fun getTrending(
+    fun getTrending(
         @Header("X-App-Key") publicKey: String,
         @Query("country") country: String? = "us",
         @Query("limit") limit: Int? = 50,
         @Query("cat") category: String? = null // New: Genre Filter
-    ): TrendingResponse
+    ): retrofit2.Call<TrendingResponse>
 
     @GET("trending")
     @retrofit2.http.Streaming
-    suspend fun getTrendingStream(
+    fun getTrendingStream(
         @Header("X-App-Key") publicKey: String,
         @Query("country") country: String? = "us",
         @Query("limit") limit: Int? = 50,
         @Query("cat") category: String? = null // New: Genre Filter
-    ): okhttp3.ResponseBody
+    ): retrofit2.Call<okhttp3.ResponseBody>
 
     @GET("search")
-    suspend fun search(
+    fun search(
         @Header("X-App-Key") publicKey: String,
         @Query("q") query: String
-    ): SearchResponse
+    ): retrofit2.Call<SearchResponse>
 
     @GET("episodes")
-    suspend fun getEpisodes(
+    fun getEpisodes(
         @Header("X-App-Key") publicKey: String,
         @Query("id") feedId: String
-    ): EpisodesResponse
+    ): retrofit2.Call<EpisodesResponse>
     
     @GET("episodes")
-    suspend fun getEpisodesPaginated(
+    fun getEpisodesPaginated(
         @Header("X-App-Key") publicKey: String,
         @Query("id") feedId: String,
         @Query("limit") limit: Int = 20,
         @Query("offset") offset: Int = 0,
         @Query("sort") sort: String = "newest"
-    ): EpisodesPaginatedResponse
+    ): retrofit2.Call<EpisodesPaginatedResponse>
 
     @GET("episode")
-    suspend fun getEpisode(
+    fun getEpisode(
         @Header("X-App-Key") publicKey: String,
         @Query("id") id: String
-    ): SingleEpisodeResponse
+    ): retrofit2.Call<SingleEpisodeResponse>
     
     @GET("podcast")
-    suspend fun getPodcast(
+    fun getPodcast(
         @Header("X-App-Key") publicKey: String,
         @Query("id") feedId: String
-    ): PodcastResponse
+    ): retrofit2.Call<PodcastResponse>
     
     @POST("sync")
-    suspend fun syncSubscriptions(
+    fun syncSubscriptions(
         @Header("X-App-Key") publicKey: String,
         @Body request: SyncRequest
-    ): SyncResponse
+    ): retrofit2.Call<SyncResponse>
 }

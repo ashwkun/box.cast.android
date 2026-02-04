@@ -28,7 +28,8 @@ sealed interface ExploreUiState {
         val subscribedIds: Set<String> = emptySet(), // For badging
         val currentCategory: String = "All",
         val searchQuery: String = "",
-        val isSearching: Boolean = false
+        val isSearching: Boolean = false,
+        val isLoading: Boolean = false // For showing skeleton in grid area only
     ) : ExploreUiState
     data class Error(val message: String) : ExploreUiState
 }
@@ -72,19 +73,19 @@ class ExploreViewModel(
                 val query = args[4] as String
                 val pIsLoading = args[5] as Boolean
 
-                // Determine if we are truly in a success state or still loading content
-                if (pIsLoading && trending.isEmpty() && searchRes.isEmpty()) {
-                    ExploreUiState.Loading
-                } else {
-                    ExploreUiState.Success(
-                        trending = trending,
-                        searchResults = searchRes,
-                        subscribedIds = subIds,
-                        currentCategory = category,
-                        searchQuery = query,
-                        isSearching = query.isNotEmpty()
-                    )
-                }
+                val isSearching = query.isNotEmpty()
+
+                // Always emit Success state, but with isLoading flag
+                // This allows the screen to show the real header during initial load
+                ExploreUiState.Success(
+                    trending = trending,
+                    searchResults = searchRes,
+                    subscribedIds = subIds,
+                    currentCategory = category,
+                    searchQuery = query,
+                    isSearching = isSearching,
+                    isLoading = pIsLoading && trending.isEmpty() && searchRes.isEmpty()
+                )
             }.collect { state ->
                 _uiState.value = state
             }
@@ -121,6 +122,7 @@ class ExploreViewModel(
         _currentCategory.value = category
         // Clear Search when switching category to browse
         _searchQuery.value = "" 
+        _trendingPodcasts.value = emptyList() // Clear to force Skeleton
         loadTrending(category)
     }
 
@@ -128,8 +130,8 @@ class ExploreViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Map "All" to null for API
-                val apiCategory = if (category == "All") null else category
+                // Map "All" to null for API, and lowercase others for consistency
+                val apiCategory = if (category == "All") null else category.lowercase()
                 
                 // This hits the Turso DB (via Proxy)
                 val podcasts = podcastRepository.getTrendingPodcasts(
@@ -140,6 +142,7 @@ class ExploreViewModel(
                 _trendingPodcasts.value = podcasts
             } catch (e: Exception) {
                 // Handle error
+                _trendingPodcasts.value = emptyList()
             } finally {
                 _isLoading.value = false
             }
@@ -149,6 +152,8 @@ class ExploreViewModel(
     private fun performSearch(query: String) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
+            _isLoading.value = true
+            _searchResults.value = emptyList() // Clear previous results to force Skeleton
             try {
                 // Log Search Event
                 analyticsHelper.logSearch(query)
@@ -159,6 +164,8 @@ class ExploreViewModel(
             } catch (e: Exception) {
                 // Handle error silently for search
                 _searchResults.value = emptyList()
+            } finally {
+                _isLoading.value = false
             }
         }
     }

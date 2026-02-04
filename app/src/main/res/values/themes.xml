@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Simple launch theme -->
-    <style name="Theme.BoxCast" parent="android:Theme.Material.Light.NoActionBar">
+    <!-- Base application theme -->
+    <style name="Theme.BoxCast" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+
+    <!-- Splash Screen Theme -->
+    <style name="Theme.BoxCast.Splash" parent="Theme.SplashScreen">
+        <!-- Define primary color for the adaptive logo -->
+        <item name="colorPrimary">@color/splash_logo_color</item> 
+        <item name="windowSplashScreenBackground">?attr/colorSurface</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.BoxCast</item>
     </style>
 </resources>

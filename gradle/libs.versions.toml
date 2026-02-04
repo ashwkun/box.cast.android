@@ -1,21 +1,22 @@
 [versions]
 agp = "8.7.0"
 kotlin = "1.9.24"
-coreKtx = "1.12.0"
+coreKtx = "1.15.0"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
-lifecycleRuntimeKtx = "2.7.0"
+lifecycleRuntimeKtx = "2.8.7"
 activityCompose = "1.10.0"
-composeBom = "2024.06.00"
+composeBom = "2024.12.01"
 material3 = "1.5.0-alpha11"
 material3-adaptive = "1.0.0-alpha06"
-navigationCompose = "2.8.0-beta02"
+navigationCompose = "2.8.5"
 coil = "2.6.0"
 retrofit = "2.9.0"
 serialization = "1.6.3"
 media3 = "1.2.1"
 palette = "1.0.0"
+material = "1.12.0"
 
 
 # Firebase
@@ -67,6 +68,7 @@ smooth-corner-rect = { group = "com.github.racra", name = "smooth-corner-rect-an
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 
 # Media
 androidx-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }
