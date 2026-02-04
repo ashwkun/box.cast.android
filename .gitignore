@@ -32,3 +32,4 @@ captures/
 .externalNativeBuild
 .cxx
 API_GUIDE.md
+proxy/
