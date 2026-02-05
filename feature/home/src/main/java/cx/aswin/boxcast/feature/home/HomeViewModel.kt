@@ -118,19 +118,22 @@ class HomeViewModel(
                         val lastPlayed = resumeList.firstOrNull()
                         if (lastPlayed != null) {
                             try {
+                                val epImage = lastPlayed.imageUrl
+                                val podImage = lastPlayed.podcastImageUrl
+                                
                                 val resumePodcast = Podcast(
                                     id = lastPlayed.podcastId,
                                     title = lastPlayed.podcastTitle,
                                     artist = "",
-                                    imageUrl = lastPlayed.podcastImageUrl ?: "",
-                                    fallbackImageUrl = lastPlayed.podcastImageUrl,
+                                    imageUrl = if (!epImage.isNullOrEmpty()) epImage else podImage ?: "",
+                                    fallbackImageUrl = podImage,
                                     description = "",
                                     genre = "Podcast",
                                     latestEpisode = Episode(
                                         id = lastPlayed.episodeId,
                                         title = lastPlayed.episodeTitle,
                                         description = "",
-                                        imageUrl = lastPlayed.imageUrl ?: "",
+                                        imageUrl = epImage ?: "",
                                         audioUrl = lastPlayed.audioUrl ?: "",
                                         duration = (lastPlayed.durationMs / 1000).toInt(),
                                         publishedDate = 0L
@@ -154,19 +157,22 @@ class HomeViewModel(
                         if (resumeList.size == 2) {
                             val secondSession = resumeList[1]
                             try {
+                                val epImage = secondSession.imageUrl
+                                val podImage = secondSession.podcastImageUrl
+                                
                                 val secondPodcast = Podcast(
                                     id = secondSession.podcastId,
                                     title = secondSession.podcastTitle,
                                     artist = "",
-                                    imageUrl = secondSession.podcastImageUrl ?: "",
-                                    fallbackImageUrl = secondSession.podcastImageUrl,
+                                    imageUrl = if (!epImage.isNullOrEmpty()) epImage else podImage ?: "",
+                                    fallbackImageUrl = podImage,
                                     description = "",
                                     genre = "Podcast",
                                     latestEpisode = Episode(
                                         id = secondSession.episodeId,
                                         title = secondSession.episodeTitle,
                                         description = "",
-                                        imageUrl = secondSession.imageUrl ?: "",
+                                        imageUrl = epImage ?: "",
                                         audioUrl = secondSession.audioUrl ?: "",
                                         duration = (secondSession.durationMs / 1000).toInt(),
                                         publishedDate = 0L
@@ -193,25 +199,28 @@ class HomeViewModel(
                                     (session.positionMs.toFloat() / session.durationMs.toFloat()).coerceIn(0f, 1f)
                                 } else 0f
                                 
-                                val pod = Podcast(
-                                    id = session.podcastId,
-                                    title = session.podcastTitle,
-                                    artist = "", 
-                                    imageUrl = session.podcastImageUrl ?: "",
-                                    fallbackImageUrl = session.podcastImageUrl,
-                                    description = "",
-                                    genre = "Podcast",
-                                    resumeProgress = ratio,
-                                    latestEpisode = Episode(
-                                        id = session.episodeId,
-                                        title = session.episodeTitle,
+                                    val epImage = session.imageUrl
+                                    val podImage = session.podcastImageUrl
+                                    
+                                    val pod = Podcast(
+                                        id = session.podcastId,
+                                        title = session.podcastTitle,
+                                        artist = "", 
+                                        imageUrl = if (!epImage.isNullOrEmpty()) epImage else podImage ?: "",
+                                        fallbackImageUrl = podImage,
                                         description = "",
-                                        imageUrl = session.imageUrl ?: "",
-                                        audioUrl = session.audioUrl ?: "",
-                                        duration = (session.durationMs / 1000).toInt(),
-                                        publishedDate = 0L
+                                        genre = "Podcast",
+                                        resumeProgress = ratio,
+                                        latestEpisode = Episode(
+                                            id = session.episodeId,
+                                            title = session.episodeTitle,
+                                            description = "",
+                                            imageUrl = epImage ?: "",
+                                            audioUrl = session.audioUrl ?: "",
+                                            duration = (session.durationMs / 1000).toInt(),
+                                            publishedDate = 0L
+                                        )
                                     )
-                                )
                                 gridPodcasts.add(pod)
                                 usedPodcastIds.add(pod.id)
                             }
