@@ -47,7 +47,8 @@ data class PlayerState(
     val playbackSpeed: Float = 1.0f,
     val sleepTimerEnd: Long? = null,
     val sleepAtEndOfEpisode: Boolean = false, // Dynamic mode: sleep when episode ends
-    val queue: List<Episode> = emptyList()
+    val queue: List<Episode> = emptyList(),
+    val isLiked: Boolean = false
 )
 
 class PlaybackRepository(
@@ -156,7 +157,8 @@ class PlaybackRepository(
                         bufferedPosition = bufferedPosition,
                         duration = if (duration > 0) duration else lastSession.durationMs,
                         playbackSpeed = controller.playbackParameters.speed,
-                        queue = _playerState.value.queue // Preserve queue
+                        queue = _playerState.value.queue, // Preserve queue
+                        isLiked = lastSession.isLiked
                     )
                     if (isPlaying) startProgressTicker()
                 }
@@ -218,7 +220,8 @@ class PlaybackRepository(
             podcastImageUrl = podcast.imageUrl,
             episodeAudioUrl = episode.audioUrl,
             podcastName = podcast.title,
-            isCompleted = false
+            isCompleted = false,
+            isLiked = state.isLiked
         )
     }
     
@@ -266,6 +269,15 @@ class PlaybackRepository(
                  }
             }
             
+            // Check liked status for start episode
+            var initialLikeState = false
+            if (startEpisodeId != null) {
+                val saved = listeningHistoryDao.getHistoryItem(startEpisodeId)
+                if (saved != null) {
+                    initialLikeState = saved.isLiked
+                }
+            }
+            
             controller.setMediaItems(mediaItems, startIndex, startPosMs)
             controller.prepare()
             controller.play()
@@ -279,7 +291,8 @@ class PlaybackRepository(
                     isPlaying = true,
                     position = startPosMs,
                     duration = currentEp.duration.toLong() * 1000,
-                    queue = episodes // Update queue
+                    queue = episodes, // Update queue
+                    isLiked = initialLikeState
                 )
             }
         }
@@ -326,7 +339,8 @@ class PlaybackRepository(
             currentPodcast = podcast,
             isPlaying = false,
             position = lastSession.progressMs,
-            duration = lastSession.durationMs
+            duration = lastSession.durationMs,
+            isLiked = lastSession.isLiked
         )
         return true
     }
@@ -500,6 +514,20 @@ class PlaybackRepository(
     fun getAllHistory(): Flow<List<cx.aswin.boxcast.core.data.database.ListeningHistoryEntity>> {
         return listeningHistoryDao.getAllHistory()
     }
+    
+    val likedEpisodes: Flow<List<cx.aswin.boxcast.core.data.database.ListeningHistoryEntity>> = listeningHistoryDao.getLikedEpisodes()
+
+    suspend fun toggleLike() {
+        val state = _playerState.value
+        val episodeId = state.currentEpisode?.id ?: return
+        val newStatus = !state.isLiked
+        
+        _playerState.value = state.copy(isLiked = newStatus)
+        // Persist immediately (UPDATE only)
+        listeningHistoryDao.setLikeStatus(episodeId, newStatus)
+        // Also do a full save to be safe/consistent if upsert happens later
+        saveCurrentState() 
+    }
 
     suspend fun savePlaybackState(
         podcastId: String, 
@@ -512,7 +540,8 @@ class PlaybackRepository(
         podcastImageUrl: String?,
         episodeAudioUrl: String,
         podcastName: String,
-        isCompleted: Boolean
+        isCompleted: Boolean,
+        isLiked: Boolean
     ) {
         val entity = cx.aswin.boxcast.core.data.database.ListeningHistoryEntity(
             episodeId = episodeId,
@@ -525,6 +554,7 @@ class PlaybackRepository(
             progressMs = positionMs,
             durationMs = durationMs,
             isCompleted = isCompleted,
+            isLiked = isLiked,
             lastPlayedAt = System.currentTimeMillis(),
             isDirty = true
         )

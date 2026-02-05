@@ -20,6 +20,7 @@ data class ListeningHistoryEntity(
     val progressMs: Long,
     val durationMs: Long,
     val isCompleted: Boolean,
+    val isLiked: Boolean = false, // New: User "Like" status
     val lastPlayedAt: Long,
     
     // Sync Status

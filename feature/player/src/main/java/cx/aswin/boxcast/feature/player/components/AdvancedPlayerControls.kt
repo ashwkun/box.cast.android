@@ -43,7 +43,7 @@ fun AdvancedPlayerControls(
     ) {
         // 1. LIKE (Squircle)
         Surface(
-            color = if (isLiked) colorScheme.primaryContainer else colorScheme.primary.copy(alpha = 0.15f), // Force Primary for unselected
+            color = colorScheme.primary.copy(alpha = 0.15f), // Fixed container color
             shape = squircleShape,
             modifier = Modifier
                 .size(48.dp)
@@ -53,7 +53,7 @@ fun AdvancedPlayerControls(
                 Icon(
                     imageVector = if (isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = "Like",
-                    tint = if (isLiked) colorScheme.onPrimaryContainer else colorScheme.primary, // Adaptive tint
+                    tint = colorScheme.primary, // Always Primary
                     modifier = Modifier.size(24.dp)
                 )
             }
