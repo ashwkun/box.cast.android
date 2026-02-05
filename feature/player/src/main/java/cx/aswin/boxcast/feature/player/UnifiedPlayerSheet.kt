@@ -151,9 +151,7 @@ fun UnifiedPlayerSheet(
     val visualOvershootScaleY = remember { Animatable(1f) }
     
     // Screen dimensions
-    val screenHeightPx = remember(configuration, density) { 
-        with(density) { configuration.screenHeightDp.dp.toPx() } 
-    }
+
     val miniPlayerHeightPx = remember(density) { with(density) { MiniPlayerHeight.toPx() } }
     val sheetExpandedTargetY = 0f
     
@@ -171,8 +169,7 @@ fun UnifiedPlayerSheet(
         derivedStateOf {
             lerp(MiniPlayerHeight, containerHeight, playerContentExpansionFraction.value)
         }
-    }
-    
+    }    
     // Mini player corner radius (matching PixelPlayer - rounded square/squircle)
     val overallSheetTopCornerRadius by remember {
         derivedStateOf {
@@ -290,7 +287,7 @@ fun UnifiedPlayerSheet(
         modifier = modifier
             .fillMaxWidth()
             .offset { IntOffset(0, currentSheetTranslationY.value.roundToInt()) }
-            .height(playerContentAreaHeightDp), // Use actual content height, not full container
+            .height(playerContentAreaHeightDp), // Fix: Height animates so it doesn't cover navbar
         shadowElevation = 0.dp,
         color = Color.Transparent
     ) {
@@ -482,6 +479,7 @@ fun UnifiedPlayerSheet(
                         // FULL PLAYER
                         Box(
                             modifier = Modifier
+                                .height(containerHeight) // Fix: Prevent layout thrashing by keeping fixed height
                                 .graphicsLayer {
                                     alpha = fullPlayerContentAlpha
                                     translationY = fullPlayerTranslationY

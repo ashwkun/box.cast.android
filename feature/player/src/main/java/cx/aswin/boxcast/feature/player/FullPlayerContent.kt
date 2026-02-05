@@ -159,6 +159,7 @@ fun FullPlayerContent(
                     bufferedPositionMs = state.bufferedPosition,
                     playbackSpeed = state.playbackSpeed,
                     sleepTimerEnd = state.sleepTimerEnd,
+                    isLiked = state.isLiked,
                     colorScheme = colorScheme,
                     onPlayPause = {
                         if (state.isPlaying) playbackRepository.pause() else playbackRepository.resume()
@@ -168,7 +169,7 @@ fun FullPlayerContent(
                     onNext = { playbackRepository.skipForward() },
                     onSetSpeed = { playbackRepository.setPlaybackSpeed(it) },
                     onSetSleepTimer = { playbackRepository.setSleepTimer(it) },
-                    onLikeClick = { /* TODO */ },
+                    onLikeClick = { scope.launch { playbackRepository.toggleLike() } },
                     onDownloadClick = { /* TODO */ },
                      onQueueClick = { 
                         isQueueVisible = !isQueueVisible

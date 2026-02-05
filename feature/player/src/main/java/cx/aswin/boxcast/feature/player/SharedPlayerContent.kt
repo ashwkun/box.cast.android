@@ -35,6 +35,7 @@ fun SharedPlayerContent(
     bufferedPositionMs: Long,
     playbackSpeed: Float,
     sleepTimerEnd: Long?,
+    isLiked: Boolean,
     colorScheme: ColorScheme,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
@@ -174,7 +175,7 @@ fun SharedPlayerContent(
             
             // Row 2: Actions (Like, Download, Queue)
             AdvancedPlayerControls(
-                 isLiked = false, // TODO: Bind to param
+                 isLiked = isLiked, 
                  isDownloaded = false, // TODO: Bind to param
                  isDownloading = false,
                  colorScheme = colorScheme,

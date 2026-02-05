@@ -375,7 +375,7 @@ class MainActivity : ComponentActivity() {
                                     factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                                         @Suppress("UNCHECKED_CAST")
                                         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                                            return cx.aswin.boxcast.feature.library.LibraryViewModel(subscriptionRepository) as T
+                                            return cx.aswin.boxcast.feature.library.LibraryViewModel(subscriptionRepository, playbackRepository) as T
                                         }
                                     }
                                 )
@@ -384,6 +384,17 @@ class MainActivity : ComponentActivity() {
                                     viewModel = viewModel,
                                     onPodcastClick = { podcastId ->
                                         navController.navigate("podcast/$podcastId")
+                                    },
+                                    onEpisodeClick = { episode, podcast ->
+                                        fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                        navController.navigate(
+                                            "episode/${episode.id}/${encode(episode.title)}/" +
+                                            "${encode(episode.description.take(500))}/" +
+                                            "${encode(episode.imageUrl)}/" +
+                                            "${encode(episode.audioUrl)}/" +
+                                            "${episode.duration}/${podcast.id}/" +
+                                            encode(podcast.title)
+                                        )
                                     },
                                     onExploreClick = {
                                         navController.navigate("explore") {

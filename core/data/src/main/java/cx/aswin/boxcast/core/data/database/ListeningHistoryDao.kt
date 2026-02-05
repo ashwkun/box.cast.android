@@ -34,4 +34,11 @@ interface ListeningHistoryDao {
     // Get the most recent incomplete session (for app restart restore)
     @Query("SELECT * FROM listening_history WHERE isCompleted = 0 ORDER BY lastPlayedAt DESC LIMIT 1")
     suspend fun getLastPlayedSession(): ListeningHistoryEntity?
+
+    // Like Feature
+    @Query("SELECT * FROM listening_history WHERE isLiked = 1 ORDER BY lastPlayedAt DESC")
+    fun getLikedEpisodes(): Flow<List<ListeningHistoryEntity>>
+
+    @Query("UPDATE listening_history SET isLiked = :isLiked WHERE episodeId = :episodeId")
+    suspend fun setLikeStatus(episodeId: String, isLiked: Boolean)
 }

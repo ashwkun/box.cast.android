@@ -25,7 +25,8 @@ sealed interface PlayerUiState {
         val positionMs: Long = 0L,
         val durationMs: Long = 0L,
         val playbackSpeed: Float = 1.0f,
-        val sleepTimerEnd: Long? = null
+        val sleepTimerEnd: Long? = null,
+        val isLiked: Boolean = false
     ) : PlayerUiState
     data object Error : PlayerUiState
 }
@@ -74,7 +75,8 @@ class PlayerViewModel(
                          positionMs = playerState.position,
                          durationMs = playerState.duration,
                          playbackSpeed = playerState.playbackSpeed,
-                         sleepTimerEnd = playerState.sleepTimerEnd
+                         sleepTimerEnd = playerState.sleepTimerEnd,
+                         isLiked = playerState.isLiked
                      )
                  }
             }
@@ -99,7 +101,8 @@ class PlayerViewModel(
                     positionMs = globalState.position,
                     durationMs = globalState.duration,
                     playbackSpeed = globalState.playbackSpeed,
-                    sleepTimerEnd = globalState.sleepTimerEnd
+                    sleepTimerEnd = globalState.sleepTimerEnd,
+                    isLiked = globalState.isLiked
                 )
                 
                 // Fetch full episode list in background to populate playlist if needed
@@ -206,6 +209,14 @@ class PlayerViewModel(
 
     fun setSleepTimer(minutes: Int) {
         playbackRepository.setSleepTimer(minutes)
+    }
+
+
+
+    fun toggleLike() {
+        viewModelScope.launch {
+            playbackRepository.toggleLike()
+        }
     }
 
     override fun onCleared() {

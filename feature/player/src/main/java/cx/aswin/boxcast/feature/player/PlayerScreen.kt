@@ -119,6 +119,7 @@ fun PlayerRoute(
         onSkipBackward = viewModel::skipBackward,
         onSetSpeed = viewModel::setPlaybackSpeed,
         onSetSleepTimer = viewModel::setSleepTimer,
+        onToggleLike = viewModel::toggleLike,
         modifier = modifier
     )
 }
@@ -135,6 +136,7 @@ fun PlayerScreen(
     onSkipBackward: () -> Unit,
     onSetSpeed: (Float) -> Unit,
     onSetSleepTimer: (Int) -> Unit,
+    onToggleLike: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -188,6 +190,8 @@ fun PlayerScreen(
                             durationMs = uiState.durationMs,
                             playbackSpeed = uiState.playbackSpeed,
                             sleepTimerEnd = uiState.sleepTimerEnd,
+
+                            isLiked = uiState.isLiked,
                             onPlayPause = onPlayPause, // Pass down
                             onEpisodeClick = onEpisodeClick,
                             onSeek = onSeek,
@@ -195,6 +199,7 @@ fun PlayerScreen(
                             onSkipBackward = onSkipBackward,
                             onSetSpeed = onSetSpeed,
                             onSetSleepTimer = onSetSleepTimer,
+                            onToggleLike = onToggleLike,
                             listState = listState,
                             coroutineScope = coroutineScope
                         )
@@ -218,13 +223,16 @@ fun PlayerContent(
     durationMs: Long,
     playbackSpeed: Float,
     sleepTimerEnd: Long?,
+    isLiked: Boolean,
     onPlayPause: () -> Unit,
     onEpisodeClick: (Episode) -> Unit,
     onSeek: (Long) -> Unit,
     onSkipForward: () -> Unit,
     onSkipBackward: () -> Unit,
     onSetSpeed: (Float) -> Unit,
+
     onSetSleepTimer: (Int) -> Unit,
+    onToggleLike: () -> Unit,
     listState: androidx.compose.foundation.lazy.LazyListState,
     coroutineScope: kotlinx.coroutines.CoroutineScope
 ) {
@@ -274,8 +282,11 @@ fun PlayerContent(
         onPrevious = onSkipBackward,
         onNext = onSkipForward,
         onSetSpeed = onSetSpeed,
+
         onSetSleepTimer = onSetSleepTimer,
-        onLikeClick = { /* TODO */ },
+        // Updated: Pass the passed isLiked state
+        isLiked = isLiked, 
+        onLikeClick = onToggleLike,
         onDownloadClick = { /* TODO */ },
         onQueueClick = { 
              coroutineScope.launch {
@@ -285,11 +296,7 @@ fun PlayerContent(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp),
-        extraContent = {
-             Spacer(modifier = Modifier.height(16.dp))
-             AudioVisualizer(isPlaying = isPlaying)
-             Spacer(modifier = Modifier.height(16.dp))
-        },
+
         footerContent = {
              Spacer(modifier = Modifier.height(32.dp))
              
@@ -347,61 +354,4 @@ fun PlayerContent(
 }
 
 
-/**
- * M3 Expressive: Bouncy Audio Visualizer using Spring physics.
- */
-@Composable
-fun AudioVisualizer(isPlaying: Boolean) {
-    val barCount = 20
-    val animatables = remember { List(barCount) { Animatable(0.3f) } }
-    
-    LaunchedEffect(isPlaying) {
-        if (isPlaying) {
-            animatables.forEach { animatable ->
-                launch {
-                     while(true) {
-                         // M3 Expressive: Spring physics for bouncy bars
-                         animatable.animateTo(
-                             targetValue = Random.nextFloat().coerceIn(0.2f, 1f),
-                             animationSpec = spring(
-                                 dampingRatio = Spring.DampingRatioMediumBouncy,
-                                 stiffness = Spring.StiffnessLow
-                             )
-                         )
-                     }
-                }
-            }
-        } else {
-             animatables.forEach { 
-                 launch {
-                    // Settle down with bounce
-                    it.animateTo(
-                        0.1f, 
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioLowBouncy,
-                            stiffness = Spring.StiffnessMedium
-                        )
-                    )
-                 }
-             }
-        }
-    }
-    
-    Row(
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(60.dp)
-    ) {
-        animatables.forEach { animatable ->
-             Box(
-                 modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 2.dp)
-                    .height((60 * animatable.value).dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-             )
-        }
-    }
-}
+
