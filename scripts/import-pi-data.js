@@ -124,9 +124,9 @@ async function importTable(filename, tableName, limitPerGroupCol = null, limitCo
     // Ensure schema matches
     await ensureColumns(tableName, headers);
 
-    // Clear existing
-    console.log(`Clearing ${tableName}...`);
-    await executeSQL(`DELETE FROM ${tableName}`, []);
+    // Clear existing - DISABLED to preserve last_ep_sync history
+    // console.log(`Clearing ${tableName}...`);
+    // await executeSQL(`DELETE FROM ${tableName}`, []);
 
     const dataLines = lines.slice(1);
     console.log(`Importing ${dataLines.length} rows into ${tableName}...`);
@@ -151,7 +151,7 @@ async function importTable(filename, tableName, limitPerGroupCol = null, limitCo
 
             const placeholders = values.map(() => '?').join(',');
             statements.push({
-                sql: `INSERT OR REPLACE INTO ${tableName} (${headers.join(',')}) VALUES (${placeholders})`,
+                sql: `INSERT OR IGNORE INTO ${tableName} (${headers.join(',')}) VALUES (${placeholders})`,
                 args: values
             });
         }
