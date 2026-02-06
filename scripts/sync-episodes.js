@@ -138,7 +138,7 @@ async function main() {
     const CUTOFF = Date.now() - ONE_DAY_MS;
 
     const sql = `
-        SELECT DISTINCT p.id, p.itunes_id 
+        SELECT DISTINCT p.id, p.itunes_id, p.last_ep_sync
         FROM charts c
         JOIN podcasts p ON c.itunes_id = p.itunes_id
         WHERE p.last_ep_sync IS NULL OR p.last_ep_sync < ${CUTOFF}
@@ -150,18 +150,35 @@ async function main() {
     const res = await executeSQL(sql);
     const podcasts = res?.results?.[0]?.response?.result?.rows?.map(r => ({
         id: r[0].value,
-        itunesId: r[1].value
+        itunesId: r[1].value,
+        lastSync: r[2].value
     })) || [];
+
+    const newCount = podcasts.filter(p => !p.lastSync).length;
+    const staleCount = podcasts.length - newCount;
+    console.log(`\n=== Sync Plan ===`);
+    console.log(`Total Candidates: ${podcasts.length}`);
+    console.log(`- New Podcasts (Never Synced): ${newCount}`);
+    console.log(`- Stale Podcasts (>24h old):   ${staleCount}`);
+    console.log(`=================\n`);
 
     console.log(`Found ${podcasts.length} podcasts needing sync (New or Stale > 24h).`);
 
     // 4. Process in batches
     let totalPodcastsUpdated = 0;
+    let errors = 0;
     const CONCURRENCY = 5;
+
+    console.log("Starting batch processing...");
+    const startTime = Date.now();
 
     for (let i = 0; i < podcasts.length; i += CONCURRENCY) {
         const batch = podcasts.slice(i, i + CONCURRENCY);
-        if (i % 100 === 0) console.log(`Processing ${i}/${podcasts.length}...`);
+        if (i % 50 === 0 && i > 0) {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            const rate = (i / elapsed).toFixed(1);
+            console.log(`[${new Date().toISOString()}] Progress: ${i}/${podcasts.length} (${Math.round((i / podcasts.length) * 100)}%) | Rate: ${rate} pods/s | Errors: ${errors}`);
+        }
 
         await Promise.all(batch.map(async (pod) => {
             const episodes = await fetchEpisodes(pod.id);
@@ -202,7 +219,8 @@ async function main() {
 
                 totalPodcastsUpdated++;
             } catch (err) {
-                console.error(`Failed to update podcast ${pod.id}:`, err.message);
+                errors++;
+                console.error(`Error updating podcast ${pod.id}: ${err.message}`);
             }
         }));
 
@@ -210,7 +228,11 @@ async function main() {
         await new Promise(r => setTimeout(r, 100));
     }
 
-    console.log(`Sync Complete! Updated metadata for ${totalPodcastsUpdated} podcasts.`);
+    console.log(`\n=== Sync Complete ===`);
+    console.log(`Success: ${totalPodcastsUpdated}`);
+    console.log(`Failed:  ${errors}`);
+    console.log(`Duration: ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
+    console.log(`=====================\n`);
 }
 
 main().catch(console.error);
