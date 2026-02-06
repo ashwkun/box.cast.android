@@ -143,7 +143,7 @@ async function main() {
         JOIN podcasts p ON c.itunes_id = p.itunes_id
         WHERE p.last_ep_sync IS NULL OR p.last_ep_sync < ${CUTOFF}
         ORDER BY p.last_ep_sync ASC
-        LIMIT 3000
+        LIMIT 2000
     `;
 
     console.log("Fetching sync candidates...");
