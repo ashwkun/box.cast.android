@@ -132,16 +132,21 @@ async function main() {
     }
 
     // 3. Get podcasts needing sync (Priority: Never Synced > Oldest Synced)
-    // Batch Cap: 3000 per run (fits in 20-30m)
-    // 24h Refresh: Only pick if sync is older than 24h
+    // 3. Get podcasts needing sync (Priority: New > News(4h) > Others(24h))
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-    const CUTOFF = Date.now() - ONE_DAY_MS;
+    const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+
+    const CUTOFF_STANDARD = Date.now() - ONE_DAY_MS;
+    const CUTOFF_NEWS = Date.now() - FOUR_HOURS_MS;
 
     const sql = `
         SELECT DISTINCT p.id, p.itunes_id, p.last_ep_sync
         FROM charts c
         JOIN podcasts p ON c.itunes_id = p.itunes_id
-        WHERE p.last_ep_sync IS NULL OR p.last_ep_sync < ${CUTOFF}
+        WHERE 
+            p.last_ep_sync IS NULL 
+            OR (c.category = 'News' AND p.last_ep_sync < ${CUTOFF_NEWS})
+            OR (p.last_ep_sync < ${CUTOFF_STANDARD})
         ORDER BY p.last_ep_sync ASC
         LIMIT 2000
     `;
