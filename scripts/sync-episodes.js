@@ -81,7 +81,7 @@ async function getPodcasts() {
     SELECT DISTINCT p.id, p.itunes_id 
     FROM charts c
     JOIN podcasts p ON c.itunes_id = p.itunes_id
-    WHERE c.category = 'all' 
+    -- Removed category filter to ensure we sync episodes for ALL charts (genre-specific too)
     ORDER BY c.rank ASC
   `;
 
@@ -109,38 +109,59 @@ async function fetchEpisodes(feedId) {
 async function main() {
     console.log("Starting Episode Sync via API...");
 
-    // 1. Get podcasts from Turso
-    const podcasts = await getPodcasts();
-    console.log(`Found ${podcasts.length} podcasts to sync episodes for.`);
+    // 1. Removed old fetch logic
 
-    // 2. Ensure podcasts table has new columns for flattened latest episode data
+
+    // 2. Ensure podcasts table has new columns
     const newColumns = [
         "latest_ep_id TEXT",
         "latest_ep_title TEXT",
-        "latest_ep_date INTEGER", // Int for easier sorting
+        "latest_ep_date INTEGER",
         "latest_ep_duration INTEGER",
         "latest_ep_url TEXT",
         "latest_ep_image TEXT",
-        "latest_ep_type TEXT"
+        "latest_ep_type TEXT",
+        "last_ep_sync INTEGER" // Timestamp of last sync
     ];
 
     console.log("Ensuring schema columns exist...");
     for (const colDef of newColumns) {
         try {
             await executeSQL(`ALTER TABLE podcasts ADD COLUMN ${colDef}`);
-            console.log(`  - Added column: ${colDef.split(" ")[0]}`);
-        } catch (e) {
-            // Ignore if column exists
-        }
+        } catch (e) { /* Ignore */ }
     }
 
-    // 3. Process in batches (parallel requests)
+    // 3. Get podcasts needing sync (Priority: Never Synced > Oldest Synced)
+    // Batch Cap: 3000 per run (fits in 20-30m)
+    // 24h Refresh: Only pick if sync is older than 24h
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const CUTOFF = Date.now() - ONE_DAY_MS;
+
+    const sql = `
+        SELECT DISTINCT p.id, p.itunes_id 
+        FROM charts c
+        JOIN podcasts p ON c.itunes_id = p.itunes_id
+        WHERE p.last_ep_sync IS NULL OR p.last_ep_sync < ${CUTOFF}
+        ORDER BY p.last_ep_sync ASC
+        LIMIT 3000
+    `;
+
+    console.log("Fetching sync candidates...");
+    const res = await executeSQL(sql);
+    const podcasts = res?.results?.[0]?.response?.result?.rows?.map(r => ({
+        id: r[0].value,
+        itunesId: r[1].value
+    })) || [];
+
+    console.log(`Found ${podcasts.length} podcasts needing sync (New or Stale > 24h).`);
+
+    // 4. Process in batches
     let totalPodcastsUpdated = 0;
     const CONCURRENCY = 5;
 
     for (let i = 0; i < podcasts.length; i += CONCURRENCY) {
         const batch = podcasts.slice(i, i + CONCURRENCY);
-        console.log(`Processing batch ${i + 1}-${Math.min(i + CONCURRENCY, podcasts.length)} / ${podcasts.length}...`);
+        if (i % 100 === 0) console.log(`Processing ${i}/${podcasts.length}...`);
 
         await Promise.all(batch.map(async (pod) => {
             const episodes = await fetchEpisodes(pod.id);
@@ -162,7 +183,8 @@ async function main() {
                         latest_ep_duration = ?,
                         latest_ep_url = ?,
                         latest_ep_image = ?,
-                        latest_ep_type = ?
+                        latest_ep_type = ?,
+                        last_ep_sync = ?
                     WHERE id = ?
                 `;
 
@@ -174,6 +196,7 @@ async function main() {
                     latestEp.enclosureUrl || "",
                     latestEp.image || latestEp.feedImage || "",
                     latestEp.enclosureType || "audio/mpeg",
+                    Date.now(),
                     String(pod.id)
                 ]);
 

@@ -2,8 +2,8 @@ name: Sync Podcast Index Data
 
 on:
   schedule:
-    # Weekly on Sunday at 3 AM UTC
-    - cron: '0 */8 * * *'
+    # Run every 6 hours at minute 30 (avoids collision with boxcast-api cron)
+    - cron: '30 */6 * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
