@@ -81,4 +81,11 @@ interface BoxCastApi {
         @Header("X-App-Key") publicKey: String,
         @Body request: SyncRequest
     ): retrofit2.Call<SyncResponse>
+
+    @GET("curated/vibe")
+    fun getCuratedVibe(
+        @Header("X-App-Key") publicKey: String,
+        @Query("id") vibeId: String
+    ): retrofit2.Call<TrendingResponse> // Reusing TrendingResponse structure (feeds list)
+
 }

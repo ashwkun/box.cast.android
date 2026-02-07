@@ -371,7 +371,8 @@ class HomeViewModel(
                         val sectionJobs = blockConfig.genres.map { genre ->
                              viewModelScope.async {
                                  try {
-                                     val list = repository.getTrendingPodcasts(activeRegion, 20, genre.id)
+                                     // Use new Vibe API
+                                     val list = repository.getCuratedPodcasts(genre.id) // genre.id is now a vibeId like "morning_news"
                                      val filtered = list
                                          .filter { it.latestEpisode != null }
                                          .shuffled(kotlin.random.Random(daySeed.toInt() + genre.title.hashCode()))
@@ -528,9 +529,9 @@ class HomeViewModel(
                 subtitle = if(isWeekend) "Catch up on the week." else "Start your day with these updates.",
                 icon = Icons.Rounded.WbSunny,
                 genres = listOf(
-                    GenreConfig("News", "Top News"),
-                    GenreConfig("Business", "Business & Finance"), 
-                    GenreConfig("Technology", "Technology")
+                    GenreConfig("morning_news", "Top News"),
+                    GenreConfig("morning_motivation", "Daily Motivation"), 
+                    GenreConfig("business_insider", "Business & Tech")
                 )
             )
             in 12..16 -> TimeBlockConfig(
@@ -538,9 +539,9 @@ class HomeViewModel(
                 subtitle = "Smart conversations to keep you going.",
                 icon = Icons.Rounded.WbSunny,
                 genres = listOf(
-                    GenreConfig("Society & Culture", "Society & Culture"),
-                    GenreConfig("Science", "Science"),
-                    GenreConfig("Education", "Education")
+                    GenreConfig("science_explainer", "Science & Discovery"),
+                    GenreConfig("tech_deep_dive", "Tech Deep Dives"),
+                    GenreConfig("creative_focus", "Creative Focus")
                 )
             )
             in 17..22 -> TimeBlockConfig(
@@ -548,9 +549,9 @@ class HomeViewModel(
                 subtitle = if(isFriday) "Kick off the weekend." else "Relax, laugh, and catch up.",
                 icon = Icons.Rounded.WbTwilight,
                 genres = listOf(
-                    GenreConfig("Comedy", "Comedy"),
-                    GenreConfig("TV & Film", "TV & Film"),
-                    GenreConfig("Sports", "Sports")
+                    GenreConfig("comedy_gold", "Comedy Gold"),
+                    GenreConfig("tv_film_buff", "TV & Film"),
+                    GenreConfig("sports_fan", "Sports Highlights")
                 )
             )
             else -> TimeBlockConfig(
@@ -558,9 +559,9 @@ class HomeViewModel(
                 subtitle = "Stories for the dark hours.",
                 icon = Icons.Rounded.NightsStay,
                 genres = listOf(
-                    GenreConfig("True Crime", "True Crime"),
-                    GenreConfig("History", "History"),
-                    GenreConfig("Health", "Health & Wellness")
+                    GenreConfig("true_crime_sleep", "True Crime & Chill"),
+                    GenreConfig("history_buff", "History"),
+                    GenreConfig("mystery_thriller", "Mystery & Thrillers")
                 )
             )
         }

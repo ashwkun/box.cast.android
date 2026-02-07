@@ -51,6 +51,21 @@ class PodcastRepository(
         }
     }
 
+    suspend fun getCuratedPodcasts(vibeId: String): List<Podcast> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getCuratedVibe(publicKey, vibeId).execute()
+            if (response.isSuccessful && response.body() != null) {
+                mapFeedsToPodcasts(response.body()!!.feeds)
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            // Log error
+            android.util.Log.e("BoxCastRepo", "Curated Vibe Error: $vibeId", e)
+            emptyList()
+        }
+    }
+
     fun getTrendingPodcastsStream(country: String = "us", limit: Int = 50, category: String? = null): kotlinx.coroutines.flow.Flow<List<Podcast>> = kotlinx.coroutines.flow.flow {
         val podcasts = mutableListOf<Podcast>()
         try {
