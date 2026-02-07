@@ -113,8 +113,24 @@ async function main() {
     // 3. Process
     let success = 0;
     let errors = 0;
+    const startTime = Date.now();
+
+    console.log("\n=== Vectorization Plan ===");
+    console.log(`Model:      ${MODEL_NAME}`);
+    console.log(`Candidates: ${rows.length}`);
+    console.log(`==========================\n`);
+
+    console.log("Processing podcasts...");
 
     for (let i = 0; i < rows.length; i++) {
+        // Periodic Progress Update
+        if (i % 20 === 0 && i > 0) {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            const rate = (i / elapsed).toFixed(1);
+            const percent = Math.round((i / rows.length) * 100);
+            console.log(`[${new Date().toISOString()}] Progress: ${i}/${rows.length} (${percent}%) | Rate: ${rate} pods/s | Errors: ${errors}`);
+        }
+
         const row = rows[i];
         const id = row[0].value;
         const title = row[1].value || "";
@@ -123,30 +139,28 @@ async function main() {
         const epDesc = row[4].value || "";
 
         // Construct Text
-        // Strategy: "Podcast Title: Podcast Desc. Latest Episode: Ep Title - Ep Desc"
-        // Truncate to avoid excessive token length (model limit 512)
         const text = `Podcast: ${title}. ${desc}. Latest Episode: ${epTitle}. ${epDesc}`
             .replace(/[\n\r]+/g, ' ')
-            .substring(0, 1000); // Rough char limit (~250-300 tokens)
+            .substring(0, 1000);
 
         try {
             const output = await extractor(text, { pooling: 'mean', normalize: true });
-            const embedding = output.data; // Float32Array
+            const embedding = output.data;
 
             await executeVectorUpdate(id, embedding);
             success++;
-
-            if (success % 10 === 0) process.stdout.write('.');
-
         } catch (e) {
-            console.error(`\nError vectorizing ${id}:`, e.message);
+            console.error(`\n[ERROR] Failed to vectorize ${id} (${title}):`, e.message);
             errors++;
         }
     }
 
-    console.log(`\n\nVectorization Complete.`);
-    console.log(`Success: ${success}`);
-    console.log(`Errors: ${errors}`);
+    const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n=== Vectorization Complete ===`);
+    console.log(`Success:  ${success}`);
+    console.log(`Errors:   ${errors}`);
+    console.log(`Duration: ${totalElapsed}s`);
+    console.log(`==============================\n`);
 }
 
 main().catch(console.error);
