@@ -540,7 +540,7 @@ class HomeViewModel(
                 icon = Icons.Rounded.WbSunny,
                 genres = listOf(
                     GenreConfig("science_explainer", "Science & Discovery"),
-                    GenreConfig("tech_deep_dive", "Tech Deep Dives"),
+                    GenreConfig("tech_culture", "Tech & Gadgets"),
                     GenreConfig("creative_focus", "Creative Focus")
                 )
             )

@@ -6,9 +6,10 @@ const VIBES = {
     "morning_news": "Essential daily news briefings, fast-paced updates, global headlines, and market recaps to start the day.",
     "morning_motivation": "Inspirational speeches, productivity hacks, stoicism, and morning routines to get energized.",
 
-    // Work / Focus
-    "tech_deep_dive": "In-depth technical analysis, software engineering discussions, AI breakthroughs, and developer interviews.",
-    "business_insider": "Startup stories, venture capital insights, founder journeys, and economic analysis.",
+    // Work / Focus (Balanced)
+    "tech_culture": "Consumer tech news, gadget reviews, smartphone discussions, app recommendations, and internet culture. Like The Vergecast, Waveform, or tech YouTubers chatting.",
+    "tech_deep_dive": "Software engineering, coding tutorials, developer interviews, AI research, and technical deep dives for engineers.",
+    "business_insider": "Startup stories, founder journeys, company profiles, marketing strategies, and accessible business discussions.",
     "creative_focus": "Design thinking, art history, creative process, and storytelling for makers.",
 
     // Evening / Relax
