@@ -98,6 +98,9 @@ jobs:
           PODCAST_INDEX_API_SECRET: ${{ secrets.PODCAST_INDEX_API_SECRET }}
         run: node scripts/sync-episodes.js
 
+      - name: Install Vectorization Dependencies
+        run: npm install
+
       - name: Generate Vector Embeddings
         env:
           TURSO_URL: ${{ secrets.TURSO_URL }}
