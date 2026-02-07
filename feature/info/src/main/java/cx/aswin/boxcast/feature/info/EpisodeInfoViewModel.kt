@@ -8,6 +8,9 @@ import cx.aswin.boxcast.core.model.Episode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @Immutable
@@ -21,7 +24,8 @@ sealed interface EpisodeInfoUiState {
         val resumePositionMs: Long = 0L,
         val durationMs: Long = 0L,
         val relatedEpisodes: List<Episode> = emptyList(),
-        val relatedEpisodesLoading: Boolean = true
+        val relatedEpisodesLoading: Boolean = true,
+        val isPlaying: Boolean = false // Sync with global player
     ) : EpisodeInfoUiState
     data object Error : EpisodeInfoUiState
 }
@@ -29,14 +33,62 @@ sealed interface EpisodeInfoUiState {
 class EpisodeInfoViewModel(
     application: Application,
     private val apiBaseUrl: String,
-    private val publicKey: String
+    private val publicKey: String,
+    private val playbackRepository: cx.aswin.boxcast.core.data.PlaybackRepository,
+    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository
 ) : AndroidViewModel(application) {
 
     private val database = cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application)
-    private val playbackRepository = cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao())
 
     private val _uiState = MutableStateFlow<EpisodeInfoUiState>(EpisodeInfoUiState.Loading)
     val uiState: StateFlow<EpisodeInfoUiState> = _uiState.asStateFlow()
+
+    // Observe liked episodes
+    val likedEpisodeIds = playbackRepository.likedEpisodes
+        .map { historyList -> historyList.map { it.episodeId }.toSet() }
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptySet()
+        )
+
+    init {
+        // Observe global player state to sync button (Play/Pause)
+        viewModelScope.launch {
+            playbackRepository.playerState.collect { playerState ->
+                val currentState = _uiState.value
+                if (currentState is EpisodeInfoUiState.Success) {
+                    val isSameEpisode = playerState.currentEpisode?.id == currentState.episode.id
+                    val isPlaying = isSameEpisode && playerState.isPlaying
+                    
+                    // If playing this episode, we can also sync the progress in real-time
+                    val resumePos = if (isSameEpisode) playerState.position else currentState.resumePositionMs
+                    
+                    if (currentState.isPlaying != isPlaying || (isSameEpisode && currentState.resumePositionMs != resumePos)) {
+                        _uiState.value = currentState.copy(
+                            isPlaying = isPlaying,
+                            resumePositionMs = resumePos
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun onToggleLike(episode: Episode) {
+        val currentState = uiState.value
+        if (currentState is EpisodeInfoUiState.Success) {
+            viewModelScope.launch {
+                playbackRepository.toggleLike(
+                    episode = episode,
+                    podcastId = currentState.podcastId,
+                    podcastTitle = currentState.podcastTitle,
+                    podcastImageUrl = currentState.episode.podcastImageUrl
+                )
+            }
+        }
+    }
+
 
     fun loadEpisode(
         episodeId: String,
@@ -150,6 +202,62 @@ class EpisodeInfoViewModel(
                     _uiState.value = currentSuccess.copy(relatedEpisodesLoading = false)
                 }
                 e.printStackTrace()
+            }
+        }
+    }
+
+    fun toggleDownload(episode: Episode) {
+        val currentState = _uiState.value
+        if (currentState is EpisodeInfoUiState.Success) {
+            viewModelScope.launch {
+                // Check if already downloaded
+                val isDownloaded = downloadRepository.isDownloaded(episode.id).first()
+                if (isDownloaded) {
+                    downloadRepository.removeDownload(episode.id)
+                } else {
+                    val podcast = cx.aswin.boxcast.core.model.Podcast(
+                        id = currentState.podcastId,
+                        title = currentState.podcastTitle,
+                        artist = "",
+                        imageUrl = currentState.episode.podcastImageUrl ?: "",
+                        description = "",
+                        genre = currentState.podcastGenre
+                    )
+                    downloadRepository.addDownload(episode, podcast)
+                }
+            }
+        }
+    }
+    
+    fun isDownloaded(episodeId: String): kotlinx.coroutines.flow.Flow<Boolean> {
+        return downloadRepository.isDownloaded(episodeId)
+    }
+
+    fun isDownloading(episodeId: String): kotlinx.coroutines.flow.Flow<Boolean> {
+        return downloadRepository.isDownloading(episodeId)
+    }
+
+    fun onMainActionClick() {
+        val currentState = _uiState.value
+        if (currentState is EpisodeInfoUiState.Success) {
+            val globalState = playbackRepository.playerState.value
+            
+            if (globalState.currentEpisode?.id == currentState.episode.id) {
+                // Same episode: Toggle Play/Pause
+                playbackRepository.togglePlayPause()
+            } else {
+                // Different episode: Start Playback
+                viewModelScope.launch {
+                    val pod = cx.aswin.boxcast.core.model.Podcast(
+                        id = currentState.podcastId,
+                        title = currentState.podcastTitle,
+                        artist = "",
+                        imageUrl = currentState.episode.podcastImageUrl ?: "",
+                        description = "",
+                        genre = currentState.podcastGenre
+                    )
+                    playbackRepository.playEpisode(currentState.episode, pod)
+                }
             }
         }
     }

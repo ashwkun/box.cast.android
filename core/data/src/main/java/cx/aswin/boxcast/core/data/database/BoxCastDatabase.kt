@@ -4,13 +4,14 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ListeningHistoryEntity::class, PodcastEntity::class],
-    version = 4,
+    entities = [ListeningHistoryEntity::class, PodcastEntity::class, DownloadedEpisodeEntity::class],
+    version = 6,
     exportSchema = false
 )
 abstract class BoxCastDatabase : RoomDatabase() {
     abstract fun listeningHistoryDao(): ListeningHistoryDao
     abstract fun podcastDao(): PodcastDao
+    abstract fun downloadedEpisodeDao(): DownloadedEpisodeDao
 
     companion object {
         @Volatile

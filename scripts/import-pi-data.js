@@ -142,6 +142,34 @@ async function importTable(filename, tableName, limitPerGroupCol = null, limitCo
         for (const line of batch) {
             const values = parseCSVLine(line);
 
+            // SPECIAL LOGIC: Reorder categories for podcasts table
+            if (tableName === 'podcasts' && headers.includes('categories')) {
+                const catIndex = headers.indexOf('categories');
+                const rawCats = values[catIndex];
+                if (rawCats) {
+                    const GENRE_PRIORITY = [
+                        "Technology", "News", "Business", "Science", "Sports", "True Crime",
+                        "History", "Comedy", "Arts", "Fiction", "Music", "Religion & Spirituality",
+                        "Kids & Family", "Government", "Health", "TV & Film", "Education"
+                    ];
+
+                    const sortedCats = rawCats.split(',')
+                        .map(c => c.trim())
+                        .filter(c => c)
+                        .sort((a, b) => {
+                            const idxA = GENRE_PRIORITY.indexOf(a);
+                            const idxB = GENRE_PRIORITY.indexOf(b);
+                            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                            if (idxA !== -1) return -1;
+                            if (idxB !== -1) return 1;
+                            return a.localeCompare(b);
+                        })
+                        .join(', ');
+
+                    values[catIndex] = sortedCats;
+                }
+            }
+
             // Limit logic (e.g. 200 episodes per podcast)
             if (limitPerGroupCol && limitCount > 0) {
                 const groupVal = values[headers.indexOf(limitPerGroupCol)];

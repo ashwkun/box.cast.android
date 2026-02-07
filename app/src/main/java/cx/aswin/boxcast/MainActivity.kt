@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
                 val application = (applicationContext as android.app.Application)
                 val database = remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
                 val playbackRepository = remember { cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao()) }
+                val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
                 
                 // Privacy & Analytics & Preferences
                 val consentManager = remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
@@ -145,7 +146,7 @@ class MainActivity : ComponentActivity() {
                     analyticsHelper.logScreenView(currentRoute)
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
                         containerColor = MaterialTheme.colorScheme.surface // Match content background
                     ) { innerPadding ->
@@ -167,6 +168,7 @@ class MainActivity : ComponentActivity() {
                                 // Detail screens are "deeper" -> higher index
                                 if (route.startsWith("podcast/")) return 10
                                 if (route.startsWith("episode/")) return 11
+                                if (route.startsWith("library/")) return 12 // Library sub-screens
                                 
                                 // Direct matches or parametrized base routes
                                 if (route.startsWith("explore")) return 1
@@ -349,9 +351,9 @@ class MainActivity : ComponentActivity() {
                                         @Suppress("UNCHECKED_CAST")
                                         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                                             return cx.aswin.boxcast.feature.explore.ExploreViewModel(
-                                                application, 
-                                                podcastRepository, 
-                                                subscriptionRepository,
+                                                application,
+                                                podcastRepository,
+                                                subscriptionRepository, // Updated to take repo
                                                 analyticsHelper,
                                                 initialCategory = category 
                                             ) as T
@@ -370,21 +372,56 @@ class MainActivity : ComponentActivity() {
                             composable("library") { 
                                 val podcastDao = remember { database.podcastDao() }
                                 val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(podcastDao, analyticsHelper) }
+                                val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
                                 
                                 val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<cx.aswin.boxcast.feature.library.LibraryViewModel>(
                                     factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                                         @Suppress("UNCHECKED_CAST")
                                         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                                            return cx.aswin.boxcast.feature.library.LibraryViewModel(subscriptionRepository, playbackRepository) as T
+                                            return cx.aswin.boxcast.feature.library.LibraryViewModel(
+                                                subscriptionRepository, 
+                                                playbackRepository,
+                                                downloadRepository
+                                            ) as T
                                         }
                                     }
                                 )
                                 
                                 cx.aswin.boxcast.feature.library.LibraryScreen(
                                     viewModel = viewModel,
-                                    onPodcastClick = { podcastId ->
-                                        navController.navigate("podcast/$podcastId")
+                                    onNavigateToLiked = {
+                                        navController.navigate("library/liked")
                                     },
+                                    onNavigateToSubscriptions = {
+                                        navController.navigate("library/subscriptions")
+                                    },
+                                    onNavigateToDownloads = {
+                                        navController.navigate("library/downloads")
+                                    }
+                                )
+                            }
+                            
+                            composable("library/liked") {
+                                val podcastDao = remember { database.podcastDao() }
+                                val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(podcastDao, analyticsHelper) }
+                                val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
+                                
+                                val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<cx.aswin.boxcast.feature.library.LibraryViewModel>(
+                                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                        @Suppress("UNCHECKED_CAST")
+                                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                            return cx.aswin.boxcast.feature.library.LibraryViewModel(
+                                                subscriptionRepository, 
+                                                playbackRepository,
+                                                downloadRepository
+                                            ) as T
+                                        }
+                                    }
+                                )
+                                
+                                cx.aswin.boxcast.feature.library.LikedEpisodesScreen(
+                                    viewModel = viewModel,
+                                    onBack = { navController.popBackStack() },
                                     onEpisodeClick = { episode, podcast ->
                                         fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
                                         navController.navigate(
@@ -395,13 +432,73 @@ class MainActivity : ComponentActivity() {
                                             "${episode.duration}/${podcast.id}/" +
                                             encode(podcast.title)
                                         )
+                                    }
+                                )
+                            }
+
+                            composable("library/subscriptions") {
+                                val podcastDao = remember { database.podcastDao() }
+                                val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(podcastDao, analyticsHelper) }
+                                val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
+                                
+                                val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<cx.aswin.boxcast.feature.library.LibraryViewModel>(
+                                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                        @Suppress("UNCHECKED_CAST")
+                                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                            return cx.aswin.boxcast.feature.library.LibraryViewModel(
+                                                subscriptionRepository,
+                                                playbackRepository,
+                                                downloadRepository
+                                            ) as T
+                                        }
+                                    }
+                                )
+                                
+                                cx.aswin.boxcast.feature.library.SubscriptionsScreen(
+                                    viewModel = viewModel,
+                                    onBack = { navController.popBackStack() },
+                                    onPodcastClick = { podcastId ->
+                                        navController.navigate("podcast/$podcastId")
                                     },
                                     onExploreClick = {
                                         navController.navigate("explore") {
-                                            popUpTo("home") { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
+                                            popUpTo("home")
                                         }
+                                    }
+                                )
+                            }
+
+                            composable("library/downloads") {
+                                val podcastDao = remember { database.podcastDao() }
+                                val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(podcastDao, analyticsHelper) }
+                                val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
+                                
+                                val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<cx.aswin.boxcast.feature.library.LibraryViewModel>(
+                                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                        @Suppress("UNCHECKED_CAST")
+                                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                            return cx.aswin.boxcast.feature.library.LibraryViewModel(
+                                                subscriptionRepository,
+                                                playbackRepository,
+                                                downloadRepository
+                                            ) as T
+                                        }
+                                    }
+                                )
+                                
+                                cx.aswin.boxcast.feature.library.DownloadedEpisodesScreen(
+                                    viewModel = viewModel,
+                                    onBack = { navController.popBackStack() },
+                                    onEpisodeClick = { episode, podcast ->
+                                        fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                        navController.navigate(
+                                            "episode/${episode.id}/${encode(episode.title)}/" +
+                                            "${encode(episode.description.take(500))}/" +
+                                            "${encode(episode.imageUrl)}/" +
+                                            "${encode(episode.audioUrl)}/" +
+                                            "${episode.duration}/${podcast.id}/" +
+                                            encode(podcast.title)
+                                        )
                                     }
                                 )
                             }
@@ -415,7 +512,14 @@ class MainActivity : ComponentActivity() {
                                     factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                                         @Suppress("UNCHECKED_CAST")
                                         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                                            return cx.aswin.boxcast.feature.info.PodcastInfoViewModel(application, apiBaseUrl, publicKey, analyticsHelper) as T
+                                            return cx.aswin.boxcast.feature.info.PodcastInfoViewModel(
+                                                application, 
+                                                apiBaseUrl, 
+                                                publicKey, 
+                                                analyticsHelper,
+                                                playbackRepository, // Pass Shared Instance
+                                                downloadRepository
+                                            ) as T
                                         }
                                     }
                                 )
@@ -474,7 +578,13 @@ class MainActivity : ComponentActivity() {
                                     factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                                         @Suppress("UNCHECKED_CAST")
                                         override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                                            return cx.aswin.boxcast.feature.info.EpisodeInfoViewModel(application, apiBaseUrl, publicKey) as T
+                                            return cx.aswin.boxcast.feature.info.EpisodeInfoViewModel(
+                                                application, 
+                                                apiBaseUrl, 
+                                                publicKey,
+                                                playbackRepository, // Pass Shared Instance
+                                                downloadRepository
+                                            ) as T
                                         }
                                     }
                                 )
@@ -536,7 +646,7 @@ class MainActivity : ComponentActivity() {
                     // Calculate sheet positions
                     val configuration = LocalConfiguration.current
                     val density = LocalDensity.current
-                    val screenHeightDp = configuration.screenHeightDp.dp
+                    val screenHeightDp = maxHeight // Use BoxWithConstraints maxHeight
                     
                     // Get system nav bar height for full-screen expanded player
                     val systemNavBarHeight = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -596,6 +706,7 @@ class MainActivity : ComponentActivity() {
                     // Unified Player Sheet - PixelPlayer architecture (Last so it draws ON TOP)
                     cx.aswin.boxcast.feature.player.UnifiedPlayerSheet(
                         playbackRepository = playbackRepository,
+                        downloadRepository = downloadRepository,
                         sheetCollapsedTargetY = collapsedTargetY,
                         containerHeight = containerHeight,
                         collapsedStateHorizontalPadding = 12.dp,
@@ -611,11 +722,15 @@ class MainActivity : ComponentActivity() {
                                 "${encode(episode.audioUrl)}/" +
                                 "${episode.duration}/${podcast?.id ?: "unknown"}/" +
                                 encode(podcast?.title ?: "Podcast")
-                            )
+                            ) {
+                                launchSingleTop = true
+                            }
                         },
                         onPodcastInfoClick = { podcast ->
                             // Navigate to podcast info
-                            navController.navigate("podcast/${podcast.id}")
+                            navController.navigate("podcast/${podcast.id}") {
+                                launchSingleTop = true
+                            }
                         },
                         modifier = Modifier.align(Alignment.TopStart)
                     )

@@ -18,8 +18,23 @@ class BoxCastPlaybackService : MediaLibraryService() {
             .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
             .setUsage(androidx.media3.common.C.USAGE_MEDIA)
             .build()
+
+        // Configure CacheDataSource for Offline Playback
+        val cache = cx.aswin.boxcast.core.data.DownloadRepository.getCache(this)
+        val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+            .setUserAgent(androidx.media3.common.util.Util.getUserAgent(this, "BoxCast"))
+            .setAllowCrossProtocolRedirects(true)
+            
+        val cacheDataSourceFactory = androidx.media3.datasource.cache.CacheDataSource.Factory()
+            .setCache(cache)
+            .setUpstreamDataSourceFactory(httpDataSourceFactory)
+            .setFlags(androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+            
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this)
+            .setDataSourceFactory(cacheDataSourceFactory)
             
         val player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(mediaSourceFactory)
             .setAudioAttributes(audioAttributes, true) // Handle Audio Focus
             .setWakeMode(androidx.media3.common.C.WAKE_MODE_NETWORK) // Prevent CPU sleep during streaming
             .setHandleAudioBecomingNoisy(true) // Pause on headphone disconnect

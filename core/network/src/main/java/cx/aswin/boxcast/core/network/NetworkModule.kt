@@ -15,7 +15,11 @@ object NetworkModule {
     private val loggingInterceptor = HttpLoggingInterceptor { message ->
         Log.d("BoxCastAPI", message)
     }.apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = if (cx.aswin.boxcast.core.network.BuildConfig.DEBUG) {
+            HttpLoggingInterceptor.Level.BODY
+        } else {
+            HttpLoggingInterceptor.Level.NONE
+        }
     }
     
     private val okHttpClient = OkHttpClient.Builder()

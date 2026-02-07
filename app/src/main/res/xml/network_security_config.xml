@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 
+         Allow cleartext traffic globally to support podcasts hosted on HTTP.
+         Identify specific domains to pin or restrict in the future here.
+    -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

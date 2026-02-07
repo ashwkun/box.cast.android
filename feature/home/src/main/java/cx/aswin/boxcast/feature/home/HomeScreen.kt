@@ -51,7 +51,8 @@ import androidx.compose.foundation.layout.size
 
 import cx.aswin.boxcast.feature.home.components.HeroCarousel
 import cx.aswin.boxcast.feature.home.components.PodcastCard
-import cx.aswin.boxcast.feature.home.components.RisingCard
+import cx.aswin.boxcast.feature.home.components.TimeBlockSection
+import cx.aswin.boxcast.feature.home.CuratedTimeBlock
 import cx.aswin.boxcast.feature.home.components.TopControlBar
 import cx.aswin.boxcast.feature.home.components.YourShowsSection
 
@@ -168,7 +169,7 @@ fun HomeScreen(
                     heroItems = uiState.heroItems,
                     latestItems = uiState.latestEpisodes,
                     subscribedItems = uiState.subscribedPodcasts,
-                    risingItems = uiState.risingPodcasts,
+                    timeBlock = uiState.timeBlock,
                     gridItems = uiState.discoverPodcasts,
                     selectedCategory = uiState.selectedCategory,
                     isFilterLoading = uiState.isFilterLoading,
@@ -193,7 +194,7 @@ private fun PodcastFeed(
     heroItems: List<SmartHeroItem>,
     latestItems: List<Podcast>,
     subscribedItems: List<Podcast>,
-    risingItems: List<Podcast>,
+    timeBlock: CuratedTimeBlock?,
     gridItems: List<Podcast>,
     selectedCategory: String?,
     isFilterLoading: Boolean,
@@ -255,21 +256,13 @@ private fun PodcastFeed(
             }
         }
 
-        // 3. "On The Rise" (Header Always Visible)
-        item(span = StaggeredGridItemSpan.FullLine) {
-            Column {
-                cx.aswin.boxcast.feature.home.components.OnTheRiseHeader(
-                    onHeaderClick = { onNavigateToExplore?.invoke(null) } // On The Rise -> Explore Global
+        // 3. Time-Based Curated Block
+        if (timeBlock != null) {
+            item(span = StaggeredGridItemSpan.FullLine) {
+                TimeBlockSection(
+                    data = timeBlock,
+                    onEpisodeClick = { episode, podcast -> onEpisodeClick?.invoke(episode, podcast) }
                 )
-                
-                if (risingItems.isNotEmpty()) {
-                    cx.aswin.boxcast.feature.home.components.OnTheRiseRail(
-                        podcasts = risingItems,
-                        onPodcastClick = onPodcastClick
-                    )
-                } else {
-                     cx.aswin.boxcast.feature.home.components.RisingSkeleton()
-                }
             }
         }
 

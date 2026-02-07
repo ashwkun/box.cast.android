@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -43,6 +44,11 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -106,6 +112,9 @@ import cx.aswin.boxcast.core.model.Episode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import coil.compose.SubcomposeAsyncImage
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.Scaffold
+import androidx.compose.ui.focus.focusRequester
 
 private fun stripHtml(html: String?): String {
     if (html.isNullOrEmpty()) return ""
@@ -143,8 +152,17 @@ fun PodcastInfoScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     
+    // Search State
+    var isSearchActive by remember { mutableStateOf(false) }
+
     // Use theme primary color (no dynamic extraction)
     val accentColor = MaterialTheme.colorScheme.primary
+    
+    // Handle Back Press for Search
+    BackHandler(enabled = isSearchActive) {
+        isSearchActive = false
+        viewModel.searchEpisodes("") // Optional: Clear search on close? Or keep it? Let's clear for now.
+    }
 
     LaunchedEffect(podcastId) {
         viewModel.loadPodcast(podcastId)
@@ -203,8 +221,15 @@ fun PodcastInfoScreen(
         label = "titlePadding"
     )
 
-    // Scaffold removed - using Box overlay structure below for correct Edge-to-Edge behavior
+    // State for options sheet
+
     
+    // Liked episodes state
+    val likedEpisodeIds by viewModel.likedEpisodesState.collectAsState()
+
+    // Playback state
+    val episodePlaybackState by viewModel.episodePlaybackState.collectAsState()
+
     // REWRITE: Structure using Box to allow Overlay
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
@@ -335,9 +360,7 @@ fun PodcastInfoScreen(
                         }
                     }
                     
-                    // Old Description Removed (Integrated into Hero Row)
-                    
-                    // EPISODE TOOLBAR (M3 Expressive)
+                    // EPISODE TOOLBAR
                     item(key = "toolbar") {
                         EpisodeToolbar(
                             searchQuery = state.searchQuery,
@@ -348,29 +371,38 @@ fun PodcastInfoScreen(
                             isSubscribed = state.isSubscribed,
                             onSubscribeClick = { viewModel.toggleSubscription() },
                             accentColor = accentColor,
-                            onSearchFocused = {
-                                // Scroll to show toolbar at top of visible area
-                                coroutineScope.launch {
-                                    // Scroll to hero (item 0) with large offset so toolbar appears at top
-                                    listState.animateScrollToItem(index = 0, scrollOffset = 500)
-                                }
-                            }
+                            onSearchFocused = { isSearchActive = true }
                         )
                     }
                     
-                    // Episodes (Use search results if searching, else main list)
+                    // Episodes
                     val displayEpisodes = state.searchResults ?: state.episodes
                     
                     itemsIndexed(displayEpisodes, key = { _, ep -> ep.id }) { index, episode ->
-                         EpisodeListItem(
+                        val playState = episodePlaybackState[episode.id]
+                        val isDownloaded by viewModel.isDownloaded(episode.id).collectAsState(initial = false)
+                        val isDownloading by viewModel.isDownloading(episode.id).collectAsState(initial = false)
+                        
+                        EpisodeListItem(
                             episode = episode,
+                            isLiked = likedEpisodeIds.contains(episode.id),
                             accentColor = accentColor,
+                            // Playback State
+                            isPlaying = playState?.isPlaying == true,
+                            isResume = playState?.isResume == true,
+                            progress = playState?.progress ?: 0f,
+                            timeLeft = playState?.timeLeft,
+                            // Download State
+                            isDownloaded = isDownloaded,
+                            isDownloading = isDownloading,
                             onClick = { onEpisodeClick(episode) },
-                            onPlayClick = { onPlayEpisode(episode) },
+                            onPlayClick = { viewModel.onPlayClick(episode) },
+                            onToggleLike = { viewModel.onToggleLike(episode) },
+                            onQueueClick = { viewModel.addToQueue(episode) },
+                            onDownloadClick = { viewModel.toggleDownload(episode) },
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
                         
-                        // Infinite scroll trigger (when not searching)
                         if (state.searchResults == null && index == displayEpisodes.lastIndex && state.hasMoreEpisodes && !state.isLoadingMore) {
                             LaunchedEffect(displayEpisodes.size) {
                                 viewModel.loadMoreEpisodes()
@@ -378,7 +410,6 @@ fun PodcastInfoScreen(
                         }
                     }
                     
-                    // Loading indicator for pagination
                     if (state.isLoadingMore) {
                         item {
                             Box(
@@ -392,7 +423,6 @@ fun PodcastInfoScreen(
                         }
                     }
                     
-                    // Empty search results message
                     if (state.searchResults?.isEmpty() == true) {
                         item {
                             Box(
@@ -411,7 +441,7 @@ fun PodcastInfoScreen(
                     }
                 }
                 
-                // FIXED HEADER (like Episode Info)
+                // FIXED HEADER
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -419,7 +449,6 @@ fun PodcastInfoScreen(
                         .background(headerColor)
                         .statusBarsPadding()
                 ) {
-                    // Back Button
                     IconButton(
                         onClick = onBack,
                         modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)
@@ -432,7 +461,7 @@ fun PodcastInfoScreen(
                     }
                 }
                 
-                // FLOATING TITLE - physically moves from body to header
+                // FLOATING TITLE
                 Text(
                     text = state.podcast.title,
                     fontSize = titleFontSize,
@@ -452,111 +481,208 @@ fun PodcastInfoScreen(
             }
         }
     }
+
+    // SEARCH OVERLAY
+    val successState = uiState as? PodcastInfoUiState.Success
+    AnimatedVisibility(
+        visible = isSearchActive && successState != null,
+        enter = fadeIn() + slideInVertically { it / 2 },
+        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
+    ) {
+        if (successState != null) {
+            PodcastInfoSearchOverlay(
+                query = successState.searchQuery,
+                onQueryChange = { viewModel.searchEpisodes(it) },
+                onClose = { 
+                    isSearchActive = false
+                    viewModel.searchEpisodes("") // Clear on exit
+                },
+                results = successState.searchResults,
+                allEpisodes = successState.episodes,
+                onEpisodeClick = onEpisodeClick,
+                onPlayClick = { viewModel.onPlayClick(it) },
+                onToggleLike = { viewModel.onToggleLike(it) },
+                onQueueClick = { viewModel.addToQueue(it) },
+                onDownloadClick = { viewModel.toggleDownload(it) },
+                likedEpisodeIds = likedEpisodeIds,
+                episodePlaybackState = episodePlaybackState,
+                isSearching = successState.isSearching,
+                accentColor = accentColor,
+                isDownloadedFlow = viewModel::isDownloaded,
+                isDownloadingFlow = viewModel::isDownloading
+            )
+        }
+    }
 }
 
 @Composable
 fun EpisodeListItem(
     episode: Episode,
+    isLiked: Boolean,
     accentColor: Color,
+    // Playback State
+    isPlaying: Boolean,
+    isResume: Boolean,
+    progress: Float,
+    timeLeft: String?,
+    // Download State
+    isDownloaded: Boolean,
+    isDownloading: Boolean,
     onClick: () -> Unit,
     onPlayClick: () -> Unit,
+    onToggleLike: () -> Unit,
+    onQueueClick: () -> Unit,
+    onDownloadClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .expressiveClickable(onClick = onClick),
-        shape = MaterialTheme.shapes.large
+        shape = MaterialTheme.shapes.large,
+        colors = androidx.compose.material3.CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        )
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(12.dp)
         ) {
-            Surface(
-                modifier = Modifier.size(72.dp),
-                shape = MaterialTheme.shapes.medium, // Regular rounded
-                color = MaterialTheme.colorScheme.surfaceVariant
+            // 1. Content Row (Image + Text)
+            Row(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                 SubcomposeAsyncImage(
-                    model = episode.imageUrl,
-                    contentDescription = episode.title,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    loading = { AnimatedShapesFallback() },
-                    error = { AnimatedShapesFallback() }
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = episode.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                // Duration and Release Date
-                fun formatDuration(seconds: Int): String {
-                    val hours = seconds / 3600
-                    val minutes = (seconds % 3600) / 60
-                    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
-                }
-                
-                fun formatRelativeDate(timestampSeconds: Long): String {
-                    if (timestampSeconds == 0L) return ""
-                    val now = System.currentTimeMillis() / 1000
-                    val diff = now - timestampSeconds
-                    return when {
-                        diff < 3600 -> "${diff / 60}m ago"
-                        diff < 86400 -> "${diff / 3600}h ago"
-                        diff < 604800 -> "${diff / 86400}d ago"
-                        diff < 2592000 -> "${diff / 604800}w ago"
-                        diff < 31536000 -> "${diff / 2592000}mo ago"
-                        else -> "${diff / 31536000}y ago"
-                    }
-                }
-                
-                val relativeDate = formatRelativeDate(episode.publishedDate)
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Artwork
+                Surface(
+                    modifier = Modifier.size(84.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Text(
-                        text = formatDuration(episode.duration),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                     SubcomposeAsyncImage(
+                        model = episode.imageUrl,
+                        contentDescription = episode.title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        loading = { AnimatedShapesFallback() },
+                        error = { AnimatedShapesFallback() }
                     )
-                    if (relativeDate.isNotEmpty()) {
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                // Text Content
+                Column(modifier = Modifier.weight(1f)) {
+                    // Metadata
+                    fun formatDuration(seconds: Int): String {
+                        val hours = seconds / 3600
+                        val minutes = (seconds % 3600) / 60
+                        return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
+                    }
+                    
+                    fun formatRelativeDate(timestampSeconds: Long): String {
+                        if (timestampSeconds == 0L) return ""
+                        val now = System.currentTimeMillis() / 1000
+                        val diff = now - timestampSeconds
+                        return when {
+                            diff < 3600 -> "${diff / 60}m ago"
+                            diff < 86400 -> "${diff / 3600}h ago"
+                            diff < 604800 -> "${diff / 86400}d ago"
+                            diff < 2592000 -> "${diff / 604800}w ago"
+                            diff < 31536000 -> "${diff / 2592000}mo ago"
+                            else -> "${diff / 31536000}y ago"
+                        }
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = formatRelativeDate(episode.publishedDate),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Text(
                             text = "•",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                         Text(
-                            text = relativeDate,
-                            style = MaterialTheme.typography.bodySmall,
+                            text = formatDuration(episode.duration),
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Title
+                    Text(
+                        text = episode.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 20.sp
+                    )
+                    
+                    // Description Preview
+                    val stripped = stripHtml(episode.description)
+                    if (stripped.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stripped,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 16.sp
                         )
                     }
                 }
             }
             
-            FilledIconButton(
-                onClick = onPlayClick,
-                colors = IconButtonDefaults.filledIconButtonColors(
-                    containerColor = accentColor
-                ),
-                modifier = Modifier.expressiveClickable(onClick = onPlayClick)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // 2. Control Row (Full Width, Maximized Play Button)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(
+                        animationSpec = spring(
+                            stiffness = Spring.StiffnessMediumLow,
+                            dampingRatio = Spring.DampingRatioLowBouncy
+                        )
+                    )
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = "Play",
-                    tint = Color.White
+                // Secondary Controls (Compact Group)
+                cx.aswin.boxcast.core.designsystem.components.AdvancedPlayerControls(
+                    isLiked = isLiked,
+                    isDownloaded = isDownloaded,
+                    isDownloading = isDownloading,
+                    colorScheme = MaterialTheme.colorScheme,
+                    onLikeClick = onToggleLike,
+                    onDownloadClick = onDownloadClick,
+                    onQueueClick = onQueueClick,
+                    style = cx.aswin.boxcast.core.designsystem.components.ControlStyle.TonalSquircle, // Match Detail
+                    overrideColor = accentColor,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp), 
+                    showAddQueueIcon = true,
+                    showShareButton = false,
+                    controlSize = 40.dp,
+                    modifier = Modifier.weight(1f, fill = false) 
+                )
+
+                // Play Button (Weighted to fill remaining space = Wide)
+                cx.aswin.boxcast.core.designsystem.components.ExpressivePlayButton(
+                    onClick = onPlayClick,
+                    isPlaying = isPlaying, 
+                    isResume = isResume,
+                    accentColor = accentColor,
+                    progress = progress,
+                    timeText = timeLeft,
+                    modifier = Modifier.weight(1f) // Maximize width
                 )
             }
         }
@@ -748,6 +874,173 @@ private fun EpisodeToolbar(
                         text = if (isSubscribed) "Subscribed" else "Subscribe",
                         style = MaterialTheme.typography.labelMedium
                     )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PodcastInfoSearchOverlay(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClose: () -> Unit,
+    results: List<Episode>?,
+    allEpisodes: List<Episode>,
+    onEpisodeClick: (Episode) -> Unit,
+    onPlayClick: (Episode) -> Unit,
+    onToggleLike: (Episode) -> Unit,
+    onQueueClick: (Episode) -> Unit,
+    onDownloadClick: (Episode) -> Unit,
+    likedEpisodeIds: Set<String>,
+    episodePlaybackState: Map<String, cx.aswin.boxcast.feature.info.PodcastInfoViewModel.EpisodePlaybackState>,
+    isSearching: Boolean,
+    accentColor: Color,
+    isDownloadedFlow: (String) -> kotlinx.coroutines.flow.Flow<Boolean>,
+    isDownloadingFlow: (String) -> kotlinx.coroutines.flow.Flow<Boolean>
+) {
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    
+    LaunchedEffect(Unit) {
+    focusRequester.requestFocus()
+    }
+
+    Scaffold(
+        topBar = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+            ) {
+                // Unified "M3 Style" Search Bar Component
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .height(56.dp), // Standard M3 Search Height
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = androidx.compose.foundation.shape.CircleShape // Full Pill
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Leading Icon (Back) acts as Navigation
+                        IconButton(onClick = onClose) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        
+                        // Input Field
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                             if (query.isEmpty()) {
+                                Text(
+                                    "Search episodes...",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
+                            
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = query,
+                                onValueChange = onQueryChange,
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(accentColor),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusRequester(focusRequester)
+                            )
+                        }
+                        
+                        // Trailing Icon (Clear)
+                        if (query.isNotEmpty()) {
+                            IconButton(onClick = { onQueryChange("") }) {
+                                Icon(Icons.Rounded.Clear, "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    ) { innerPadding ->
+        val safeResults = results ?: emptyList() 
+        val displayList = if (query.isEmpty()) emptyList() else safeResults
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .imePadding()
+        ) {
+            if (isSearching) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    cx.aswin.boxcast.core.designsystem.components.BoxCastLoader.Expressive(
+                        size = 64.dp
+                    )
+                }
+            } else if (query.isNotEmpty() && displayList.isEmpty()) {
+                 Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "No episodes found",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (displayList.isNotEmpty()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        top = 16.dp,
+                        bottom = 16.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    itemsIndexed(displayList, key = { _, ep -> ep.id }) { _, episode ->
+                        val playState = episodePlaybackState[episode.id]
+                        val isDownloaded by isDownloadedFlow(episode.id).collectAsState(initial = false)
+                        val isDownloading by isDownloadingFlow(episode.id).collectAsState(initial = false)
+                        
+                        EpisodeListItem(
+                            episode = episode,
+                            isLiked = likedEpisodeIds.contains(episode.id),
+                            accentColor = accentColor,
+                            isPlaying = playState?.isPlaying == true,
+                            isResume = playState?.isResume == true,
+                            progress = playState?.progress ?: 0f,
+                            timeLeft = playState?.timeLeft,
+                            isDownloaded = isDownloaded,
+                            isDownloading = isDownloading,
+                            onClick = { 
+                                onEpisodeClick(episode)
+                                onClose() // Close search on nav
+                            },
+                            onPlayClick = { onPlayClick(episode) },
+                            onToggleLike = { onToggleLike(episode) },
+                            onQueueClick = { onQueueClick(episode) },
+                            onDownloadClick = { onDownloadClick(episode) },
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
                 }
             }
         }
