@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 
 @Immutable
@@ -35,7 +36,8 @@ class EpisodeInfoViewModel(
     private val apiBaseUrl: String,
     private val publicKey: String,
     private val playbackRepository: cx.aswin.boxcast.core.data.PlaybackRepository,
-    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository
+    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
+    private val queueManager: cx.aswin.boxcast.core.data.QueueManager
 ) : AndroidViewModel(application) {
 
     private val database = cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application)
@@ -51,6 +53,27 @@ class EpisodeInfoViewModel(
             started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
             initialValue = emptySet()
         )
+
+    val completedEpisodeIds = playbackRepository.completedEpisodeIds
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptySet()
+        )
+
+    fun onToggleCompletion() {
+        val currentState = uiState.value
+        if (currentState is EpisodeInfoUiState.Success) {
+            viewModelScope.launch {
+                playbackRepository.toggleCompletion(
+                    episode = currentState.episode,
+                    podcastId = currentState.podcastId,
+                    podcastTitle = currentState.podcastTitle,
+                    podcastImageUrl = currentState.episode.podcastImageUrl
+                )
+            }
+        }
+    }
 
     init {
         // Observe global player state to sync button (Play/Pause)
@@ -256,9 +279,42 @@ class EpisodeInfoViewModel(
                         description = "",
                         genre = currentState.podcastGenre
                     )
-                    playbackRepository.playEpisode(currentState.episode, pod)
+                    queueManager.playEpisode(currentState.episode, pod)
                 }
             }
         }
     }
+
+
+    fun toggleQueue() {
+        val currentState = _uiState.value
+        if (currentState is EpisodeInfoUiState.Success) {
+            viewModelScope.launch {
+                val isQueued = queuedEpisodeIds.value.contains(currentState.episode.id)
+                if (isQueued) {
+                    playbackRepository.removeFromQueue(currentState.episode.id)
+                } else {
+                    val pod = cx.aswin.boxcast.core.model.Podcast(
+                        id = currentState.podcastId,
+                        title = currentState.podcastTitle,
+                        artist = "",
+                        imageUrl = currentState.episode.podcastImageUrl ?: "",
+                        description = "",
+                        genre = currentState.podcastGenre
+                    )
+                    // User requested "Add to Queue" -> Insert as NEXT item
+                    playbackRepository.addToQueueNext(currentState.episode, pod)
+                }
+            }
+        }
+    }
+        
+    // Track queued episodes
+    val queuedEpisodeIds: StateFlow<Set<String>> = playbackRepository.playerState
+        .map { state -> state.queue.map { it.id }.toSet() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptySet()
+        )
 }

@@ -33,3 +33,4 @@ captures/
 .cxx
 API_GUIDE.md
 proxy/
+node_modules/

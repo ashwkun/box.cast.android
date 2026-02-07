@@ -54,7 +54,8 @@ data class PlayerState(
 
 class PlaybackRepository(
     private val context: Context,
-    private val listeningHistoryDao: cx.aswin.boxcast.core.data.database.ListeningHistoryDao
+    private val listeningHistoryDao: cx.aswin.boxcast.core.data.database.ListeningHistoryDao,
+    private val queueRepository: cx.aswin.boxcast.core.data.QueueRepository
 ) {
 
     private var mediaControllerFuture: ListenableFuture<MediaController>? = null
@@ -72,6 +73,10 @@ class PlaybackRepository(
     private var progressJob: Job? = null
     private var sleepTimerJob: Job? = null
     private var likeStateObserverJob: Job? = null
+    
+    // Queue auto-refill callback - set by QueueManager
+    private val QUEUE_REFILL_THRESHOLD = 3
+    var queueRefillCallback: ((currentEpisode: Episode, podcast: Podcast) -> Unit)? = null
 
     init {
         initializeMediaController()
@@ -128,6 +133,34 @@ class PlaybackRepository(
                     if (playbackState == androidx.media3.common.Player.STATE_ENDED) {
                         _playerState.value = _playerState.value.copy(isPlaying = false, position = 0)
                         stopProgressTicker()
+                        // Mark as completed
+                        repositoryScope.launch {
+                            markCurrentEpisodeAsCompleted()
+                        }
+                    }
+                }
+                
+                override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
+                    // Track changed - update currentEpisode only
+                    // Queue is managed by playQueue/playFromQueueIndex, not here (avoids race conditions)
+                    val currentIndex = mediaController?.currentMediaItemIndex ?: 0
+                    val queue = _playerState.value.queue
+                    val podcast = _playerState.value.currentPodcast
+                    
+                    android.util.Log.d("PlaybackRepo", "onMediaItemTransition: index=$currentIndex, queueSize=${queue.size}, reason=$reason")
+                    
+                    // Only update currentEpisode if index is valid
+                    if (currentIndex >= 0 && currentIndex < queue.size) {
+                        val newEpisode = queue[currentIndex]
+                        android.util.Log.d("PlaybackRepo", "Updating currentEpisode to: ${newEpisode.title}")
+                        _playerState.value = _playerState.value.copy(currentEpisode = newEpisode)
+                        
+                        // Auto-refill: trigger callback when queue is running low
+                        val remainingItems = queue.size - currentIndex
+                        if (remainingItems < QUEUE_REFILL_THRESHOLD && podcast != null) {
+                            android.util.Log.d("PlaybackRepo", "Queue running low ($remainingItems items). Triggering auto-refill.")
+                            queueRefillCallback?.invoke(newEpisode, podcast)
+                        }
                     }
                 }
             })
@@ -271,10 +304,14 @@ class PlaybackRepository(
             val mediaItems = episodes.map { episode ->
                  val metadata = androidx.media3.common.MediaMetadata.Builder()
                     .setTitle(episode.title)
-                    .setArtist(podcast.title)
-                    .setArtworkUri(android.net.Uri.parse(episode.imageUrl?.takeIf { it.isNotBlank() } ?: podcast.imageUrl))
+                    .setArtist(episode.podcastTitle ?: podcast.title)
+                    .setArtworkUri(android.net.Uri.parse(
+                         episode.imageUrl?.takeIf { it.isNotBlank() } 
+                         ?: episode.podcastImageUrl?.takeIf { it.isNotBlank() } 
+                         ?: podcast.imageUrl
+                    ))
                     .setDisplayTitle(episode.title) // Required for notification
-                    .setSubtitle(podcast.title)
+                    .setSubtitle(episode.podcastTitle ?: podcast.title)
                     .build()
            
                  MediaItem.Builder()
@@ -304,11 +341,7 @@ class PlaybackRepository(
                 }
             }
             
-            controller.setMediaItems(mediaItems, startIndex, startPosMs)
-            controller.prepare()
-            controller.play()
-            
-            // Update local state immediately (approximate)
+            // Update local state BEFORE setMediaItems (onMediaItemTransition reads this)
             val currentEp = episodes.getOrNull(startIndex)
             if (currentEp != null) {
                  _playerState.value = _playerState.value.copy(
@@ -317,10 +350,14 @@ class PlaybackRepository(
                     isPlaying = true,
                     position = startPosMs,
                     duration = currentEp.duration.toLong() * 1000,
-                    queue = episodes, // Update queue
+                    queue = episodes, // Update queue BEFORE Media3 triggers callbacks
                     isLiked = initialLikeState
                 )
             }
+            
+            controller.setMediaItems(mediaItems, startIndex, startPosMs)
+            controller.prepare()
+            controller.play()
         }
     }
 
@@ -351,10 +388,105 @@ class PlaybackRepository(
              val currentQueue = _playerState.value.queue
              _playerState.value = _playerState.value.copy(queue = currentQueue + episode)
         }
+     }
+
+    suspend fun addToQueueNext(episode: Episode, podcast: Podcast) {
+        if (mediaController == null) {
+            mediaController = mediaControllerFuture?.await()
+        }
+        
+        mediaController?.let { controller ->
+             val metadata = androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(episode.title)
+                .setArtist(podcast.title)
+                .setArtworkUri(android.net.Uri.parse(episode.imageUrl?.takeIf { it.isNotBlank() } ?: podcast.imageUrl))
+                .setDisplayTitle(episode.title)
+                .setSubtitle(podcast.title)
+                .build()
+       
+             val mediaItem = MediaItem.Builder()
+                .setUri(episode.audioUrl)
+                .setMediaMetadata(metadata)
+                .setMediaId(episode.id)
+                .setCustomCacheKey(episode.id) // Match DownloadRequest custom key
+                .build()
+                
+             // Insert at index 1 (after current playing item)
+             // If queue is empty or has 1 item, this adds to end (index 1)
+             val insertIndex = if (controller.mediaItemCount > 0) controller.currentMediaItemIndex + 1 else 0
+             controller.addMediaItem(insertIndex, mediaItem)
+             
+             // Update local state
+             val currentQueue = _playerState.value.queue
+             
+             val newQueue = if (currentQueue.isNotEmpty()) {
+                 // Insert at index 1
+                 val mutable = currentQueue.toMutableList()
+                 // Find current episode index in local queue to be safe
+                 val currentId = _playerState.value.currentEpisode?.id
+                 val currentIndex = if (currentId != null) mutable.indexOfFirst { it.id == currentId } else 0
+                 
+                 val safeIndex = if (currentIndex != -1) currentIndex + 1 else 1
+                 
+                 if (mutable.size >= safeIndex) {
+                    mutable.add(safeIndex, episode)
+                 } else {
+                    mutable.add(episode)
+                 }
+                 mutable.toList()
+             } else {
+                 listOf(episode)
+             }
+             
+             _playerState.value = _playerState.value.copy(queue = newQueue)
+        }
+    }
+
+
+
+    suspend fun removeFromQueue(episodeId: String) {
+        if (mediaController == null) {
+            mediaController = mediaControllerFuture?.await()
+        }
+        
+        mediaController?.let { controller ->
+            for (i in 0 until controller.mediaItemCount) {
+                val item = controller.getMediaItemAt(i)
+                if (item.mediaId == episodeId) {
+                    controller.removeMediaItem(i)
+                    
+                    // Update local state
+                    val currentQueue = _playerState.value.queue
+                    val newQueue = currentQueue.filter { it.id != episodeId }
+                    _playerState.value = _playerState.value.copy(queue = newQueue)
+                    break
+                }
+            }
+        }
     }
 
     suspend fun playEpisode(episode: Episode, podcast: Podcast) {
         playQueue(listOf(episode), podcast, 0)
+    }
+    
+    /**
+     * Play an episode from the provided queue list, reloading into Media3 from that point.
+     * Pass the queue list directly to avoid stale state issues.
+     */
+    suspend fun playFromQueueIndex(episodeId: String, queueList: List<Episode>, podcast: Podcast) {
+        val index = queueList.indexOfFirst { it.id == episodeId }
+        
+        if (index == -1) {
+            android.util.Log.e("PlaybackRepo", "playFromQueueIndex: episode $episodeId not found in provided queue!")
+            return
+        }
+        
+        // Slice queue from this episode onwards
+        val slicedQueue = queueList.drop(index)
+        android.util.Log.d("PlaybackRepo", "playFromQueueIndex: slicing from index $index, newQueueSize=${slicedQueue.size}")
+        
+        // Reload into Media3 with the sliced queue
+        playQueue(slicedQueue, podcast, 0)
     }
     
     /**
@@ -388,6 +520,9 @@ class PlaybackRepository(
             genre = "Podcast"
         )
         
+        // Restore Queue
+        val savedQueue = queueRepository.getQueueSnapshot()
+        
         // Update state but don't play
         _playerState.value = _playerState.value.copy(
             currentEpisode = episode,
@@ -395,7 +530,8 @@ class PlaybackRepository(
             isPlaying = false,
             position = lastSession.progressMs,
             duration = lastSession.durationMs,
-            isLiked = lastSession.isLiked
+            isLiked = lastSession.isLiked,
+            queue = savedQueue
         )
         return true
     }
@@ -482,6 +618,24 @@ class PlaybackRepository(
     
     fun skipBackward() {
         seekTo((_playerState.value.position - 10000).coerceAtLeast(0))
+    }
+
+    fun skipToEpisode(index: Int) {
+        val controller = mediaController
+        android.util.Log.d("PlaybackRepo", "skipToEpisode: index=$index, controller=${controller != null}, mediaItemCount=${controller?.mediaItemCount ?: -1}, currentIndex=${controller?.currentMediaItemIndex ?: -1}")
+        
+        if (controller == null) {
+            android.util.Log.e("PlaybackRepo", "skipToEpisode: mediaController is NULL!")
+            return
+        }
+        
+        if (index >= controller.mediaItemCount) {
+            android.util.Log.e("PlaybackRepo", "skipToEpisode: index $index >= mediaItemCount ${controller.mediaItemCount}!")
+            return
+        }
+        
+        controller.seekToDefaultPosition(index)
+        controller.play()
     }
 
     fun setPlaybackSpeed(speed: Float) {
@@ -581,6 +735,9 @@ class PlaybackRepository(
     }
     
     val likedEpisodes: Flow<List<cx.aswin.boxcast.core.data.database.ListeningHistoryEntity>> = listeningHistoryDao.getLikedEpisodes()
+    
+    val completedEpisodeIds: Flow<Set<String>> = listeningHistoryDao.getCompletedEpisodeIdsFlow()
+        .map { it.toSet() }
 
     suspend fun toggleLike(episode: Episode, podcastId: String, podcastTitle: String, podcastImageUrl: String?) {
         val existing = listeningHistoryDao.getHistoryItem(episode.id)
@@ -613,7 +770,64 @@ class PlaybackRepository(
             listeningHistoryDao.upsert(entity)
         }
     }
+
+    suspend fun toggleCompletion(episode: Episode, podcastId: String, podcastTitle: String, podcastImageUrl: String?) {
+        val existing = listeningHistoryDao.getHistoryItem(episode.id)
+        val newStatus = !(existing?.isCompleted ?: false)
+        
+        if (existing != null) {
+            listeningHistoryDao.setCompletionStatus(episode.id, newStatus)
+        } else {
+             // Create new entry
+            val entity = cx.aswin.boxcast.core.data.database.ListeningHistoryEntity(
+                episodeId = episode.id,
+                podcastId = podcastId,
+                episodeTitle = episode.title,
+                episodeImageUrl = episode.imageUrl,
+                podcastImageUrl = podcastImageUrl,
+                episodeAudioUrl = episode.audioUrl,
+                podcastName = podcastTitle,
+                progressMs = 0L,
+                durationMs = episode.duration * 1000L,
+                isCompleted = newStatus,
+                isLiked = false,
+                lastPlayedAt = System.currentTimeMillis(),
+                isDirty = true
+            )
+            listeningHistoryDao.upsert(entity)
+        }
+    }
     
+    private suspend fun markCurrentEpisodeAsCompleted() {
+        val state = _playerState.value
+        val episode = state.currentEpisode ?: return
+        val podcast = state.currentPodcast ?: return
+
+        // Update DB
+        listeningHistoryDao.setCompletionStatus(episode.id, true)
+        
+        // Update History Entity to ensure consistency
+        val existing = listeningHistoryDao.getHistoryItem(episode.id)
+        if (existing == null) {
+             val entity = cx.aswin.boxcast.core.data.database.ListeningHistoryEntity(
+                episodeId = episode.id,
+                podcastId = podcast.id,
+                episodeTitle = episode.title,
+                episodeImageUrl = episode.imageUrl,
+                podcastImageUrl = podcast.imageUrl,
+                episodeAudioUrl = episode.audioUrl,
+                podcastName = podcast.title,
+                progressMs = 0L,
+                durationMs = episode.duration * 1000L,
+                isCompleted = true,
+                isLiked = state.isLiked,
+                lastPlayedAt = System.currentTimeMillis(),
+                isDirty = true
+            )
+            listeningHistoryDao.upsert(entity)
+        }
+    }
+
     // Legacy parameterless generic toggle (for player controls)
     suspend fun toggleLike() {
         val state = _playerState.value

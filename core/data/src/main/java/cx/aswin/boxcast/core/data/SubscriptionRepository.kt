@@ -27,7 +27,7 @@ class SubscriptionRepository(
                     artist = entity.author ?: "",
                     imageUrl = entity.imageUrl ?: "",
                     description = entity.description,
-                    genre = "Podcast"
+                    genre = entity.genre ?: "Podcast" // Use stored genre
                 )
             }
         }
@@ -49,6 +49,7 @@ class SubscriptionRepository(
                 imageUrl = podcast.imageUrl,
                 description = podcast.description,
                 isSubscribed = true,
+                genre = podcast.genre, // Persist genre for Smart Queue matching
                 lastRefreshed = System.currentTimeMillis()
             )
             podcastDao.upsert(entity)

@@ -23,6 +23,7 @@ android {
 dependencies {
     implementation(projects.core.model)
     implementation(projects.core.network)
+    implementation(projects.core.designsystem)
     implementation(libs.androidx.core.ktx)
     implementation(libs.retrofit)
     implementation(libs.kotlinx.coroutines.android)
@@ -40,6 +41,7 @@ dependencies {
     // Media
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
+    implementation("androidx.media3:media3-ui:1.2.1")
     
     // Analytics
     implementation(platform(libs.firebase.bom))

@@ -36,7 +36,8 @@ class PlayerViewModel(
     private val apiBaseUrl: String,
     private val publicKey: String,
     private val analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper,
-    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository
+    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
+    private val playbackRepository: cx.aswin.boxcast.core.data.PlaybackRepository
 ) : AndroidViewModel(application) {
 
     private val repository = PodcastRepository(
@@ -45,7 +46,7 @@ class PlayerViewModel(
         context = application
     )
     private val database = cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application)
-    private val playbackRepository = cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao())
+    // Removed internal instantiation of PlaybackRepository
     
     // START: Playback State Mapping
     // We combine the Repository State + Local UI State (playlist info)
@@ -166,6 +167,16 @@ class PlayerViewModel(
         if (currentState is PlayerUiState.Success) {
             viewModelScope.launch {
                 analyticsHelper.logPlayEpisode(currentState.podcast.title, episode.title)
+                
+                // Smart Skip: Check if episode is already in the active queue
+                val currentQueue = playbackRepository.playerState.value.queue
+                val existingIndex = currentQueue.indexOfFirst { it.id == episode.id }
+                
+                if (existingIndex != -1) {
+                    android.util.Log.d("PlayerVM", "Episode found in queue at $existingIndex. Skipping to it.")
+                    playbackRepository.skipToEpisode(existingIndex)
+                    return@launch
+                }
                 
                 // Queue Logic: Forward Chronological (Oldest -> Newest) starting from selected
                 // We want to play the selected episode, then subsequent episodes in chronological order.

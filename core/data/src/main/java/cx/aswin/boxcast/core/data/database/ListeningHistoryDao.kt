@@ -44,4 +44,14 @@ interface ListeningHistoryDao {
 
     @Query("UPDATE listening_history SET isLiked = :isLiked WHERE episodeId = :episodeId")
     suspend fun setLikeStatus(episodeId: String, isLiked: Boolean)
+
+    @Query("UPDATE listening_history SET isCompleted = :isCompleted WHERE episodeId = :episodeId")
+    suspend fun setCompletionStatus(episodeId: String, isCompleted: Boolean)
+
+    // Get all episode IDs that have been fully played (for "unplayed" filtering in queue)
+    @Query("SELECT episodeId FROM listening_history WHERE isCompleted = 1")
+    fun getCompletedEpisodeIdsFlow(): Flow<List<String>>
+
+    @Query("SELECT episodeId FROM listening_history WHERE isCompleted = 1")
+    suspend fun getCompletedEpisodeIds(): List<String>
 }

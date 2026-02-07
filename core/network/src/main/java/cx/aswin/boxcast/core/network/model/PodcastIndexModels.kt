@@ -203,3 +203,17 @@ data class PodcastFeed(
     @SerializedName("categories")
     val categories: Map<String, String> = emptyMap()
 )
+
+// ============== METADATA ==============
+
+@Serializable
+data class PodcastMetaResponse(
+    @SerializedName("id")
+    val id: Long,
+    
+    @SerializedName("type")
+    val type: String? = "episodic", // serial or episodic
+    
+    @SerializedName("title")
+    val title: String? = null
+)

@@ -121,6 +121,8 @@ fun EpisodeInfoScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val likedEpisodeIds by viewModel.likedEpisodeIds.collectAsState()
+    val completedEpisodeIds by viewModel.completedEpisodeIds.collectAsState()
+    val queuedEpisodeIds by viewModel.queuedEpisodeIds.collectAsState()
     val listState = rememberLazyListState()
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -370,9 +372,7 @@ fun EpisodeInfoScreen(
                                 Spacer(modifier = Modifier.height(24.dp))
                                 
                                 val isLiked = likedEpisodeIds.contains(state.episode.id)
-                                
-                                // Shared Action Controls (Unified Logic, Adaptive Look)
-                                val isDownloaded by viewModel.isDownloaded(state.episode.id).collectAsState(initial = false)
+                                val isCompleted = completedEpisodeIds.contains(state.episode.id)
                                 
                                 cx.aswin.boxcast.core.designsystem.components.AdvancedPlayerControls(
                                     isLiked = isLiked,
@@ -381,9 +381,14 @@ fun EpisodeInfoScreen(
                                     colorScheme = MaterialTheme.colorScheme,
                                     onLikeClick = { viewModel.onToggleLike(state.episode) },
                                     onDownloadClick = { viewModel.toggleDownload(state.episode) },
-                                    onQueueClick = { /* TODO */ },
+                                    onQueueClick = { viewModel.toggleQueue() },
                                     style = cx.aswin.boxcast.core.designsystem.components.ControlStyle.TonalSquircle,
                                     overrideColor = accentColor, // Enforce accent color (Use Primary Family)
+                                    showAddQueueIcon = true,
+                                    isQueued = queuedEpisodeIds.contains(state.episode.id),
+                                    showShareButton = false,
+                                    isPlayed = isCompleted,
+                                    onMarkPlayedClick = { viewModel.onToggleCompletion() },
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                                 )
                             }

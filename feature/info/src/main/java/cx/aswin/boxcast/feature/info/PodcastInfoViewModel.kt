@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 
@@ -43,7 +44,8 @@ class PodcastInfoViewModel(
     private val publicKey: String,
     private val analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper,
     private val playbackRepository: cx.aswin.boxcast.core.data.PlaybackRepository,
-    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository
+    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
+    private val queueManager: cx.aswin.boxcast.core.data.QueueManager
 ) : AndroidViewModel(application) {
 
     private val repository = PodcastRepository(
@@ -92,6 +94,33 @@ class PodcastInfoViewModel(
 
     // Expose flow for UI to collect
     val likedEpisodesState = likedEpisodeIds
+
+    // Observe completed episodes
+    private val completedEpisodeIds = playbackRepository.completedEpisodeIds
+        .stateIn(
+            scope = viewModelScope,
+            started = kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptySet()
+        )
+    val completedEpisodesState: StateFlow<Set<String>> = completedEpisodeIds
+
+    fun isEpisodeCompleted(episodeId: String): Boolean {
+        return completedEpisodeIds.value.contains(episodeId)
+    }
+
+    fun onToggleCompletion(episode: Episode) {
+        val currentState = uiState.value
+        if (currentState is PodcastInfoUiState.Success) {
+            viewModelScope.launch {
+                playbackRepository.toggleCompletion(
+                    episode = episode,
+                    podcastId = currentState.podcast.id,
+                    podcastTitle = currentState.podcast.title,
+                    podcastImageUrl = currentState.podcast.imageUrl
+                )
+            }
+        }
+    }
 
     fun toggleDownload(episode: Episode) {
         val currentState = _uiState.value
@@ -276,11 +305,17 @@ class PodcastInfoViewModel(
         }
     }
 
-    fun addToQueue(episode: Episode) {
+    fun toggleQueue(episode: Episode) {
         val currentState = _uiState.value
         if (currentState is PodcastInfoUiState.Success) {
             viewModelScope.launch {
-                playbackRepository.addToQueue(episode, currentState.podcast)
+                val isQueued = queuedEpisodeIds.value.contains(episode.id)
+                if (isQueued) {
+                    playbackRepository.removeFromQueue(episode.id)
+                } else {
+                    // User requested "Add to Queue" -> Insert as NEXT item
+                    playbackRepository.addToQueueNext(episode, currentState.podcast)
+                }
             }
         }
     }
@@ -353,8 +388,19 @@ class PodcastInfoViewModel(
             if (playbackRepository.playerState.value.currentEpisode?.id == episode.id) {
                 playbackRepository.togglePlayPause()
             } else {
-                playbackRepository.playEpisode(episode, currentState.podcast)
+                // Pass the current UI sort order to the QueueManager logic
+                val sortOrder = if (currentState.currentSort == EpisodeSort.OLDEST) "oldest" else "newest"
+                queueManager.playEpisode(episode, currentState.podcast, sortOrder)
             }
         }
     }
+    
+    // Track queued episodes
+    val queuedEpisodeIds: StateFlow<Set<String>> = playbackRepository.playerState
+        .map { state -> state.queue.map { it.id }.toSet() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptySet()
+        )
 }

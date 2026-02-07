@@ -62,6 +62,8 @@ fun FullPlayerContent(
     downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
     colorScheme: ColorScheme,
     onCollapse: () -> Unit,
+    isQueueVisible: Boolean,
+    onQueueToggle: () -> Unit,
     onEpisodeInfoClick: (Episode) -> Unit = {},
     onPodcastInfoClick: (Podcast) -> Unit = {}
 ) {
@@ -80,7 +82,7 @@ fun FullPlayerContent(
     val window = (LocalContext.current as? android.app.Activity)?.window
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    var isQueueVisible by remember { mutableStateOf(false) }
+    // isQueueVisible is now hoisted
     
     LaunchedEffect(isQueueVisible) {
         if (isQueueVisible) {
@@ -191,7 +193,7 @@ fun FullPlayerContent(
                     isDownloaded = isDownloaded,
                     isDownloading = isDownloading,
                      onQueueClick = { 
-                        isQueueVisible = !isQueueVisible
+                        onQueueToggle()
                     },
                     onEpisodeInfoClick = { 
                         onCollapse() // Minimize player first
@@ -217,48 +219,32 @@ fun FullPlayerContent(
                 item {
                     Text(
                          text = "Up Next",
-                         style = MaterialTheme.typography.titleLarge,
+                         style = MaterialTheme.typography.titleMedium,
                          fontWeight = FontWeight.Bold,
+                         color = colorScheme.onSurface,
                          modifier = Modifier
                             .padding(horizontal = 24.dp)
-                            .padding(bottom = 16.dp)
+                            .padding(bottom = 8.dp)
                      )
                 }
                 
                 // Items: The Queue
-                items(state.queue) { ep ->
-                    ElevatedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 4.dp)
-                            .expressiveClickable { 
-                                scope.launch {
-                                    playbackRepository.playEpisode(ep, podcast)
-                                }
-                            },
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AsyncImage(
-                                model = ep.imageUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(MaterialTheme.shapes.small),
-                                contentScale = ContentScale.Crop
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = ep.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                // Items: The Queue
+                // drop(1) to skip the currently playing episode which is always at index 0
+                items(state.queue.drop(1)) { ep ->
+                    cx.aswin.boxcast.feature.player.QueueItemRow(
+                        episode = ep,
+                        podcast = podcast, // Passing current podcast as fallback/context
+                        colorScheme = colorScheme,
+                        onClick = { 
+                            scope.launch {
+                                android.util.Log.d("FullPlayer", "Queue item clicked: ${ep.title}")
+                                // Read fresh queue from playerState to avoid stale lambda capture
+                                val freshQueue = playbackRepository.playerState.value.queue
+                                playbackRepository.playFromQueueIndex(ep.id, freshQueue, podcast)
+                            }
                         }
-                    }
+                    )
                 }
             }
         }

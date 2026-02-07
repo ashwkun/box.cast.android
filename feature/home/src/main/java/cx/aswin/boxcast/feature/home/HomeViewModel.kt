@@ -74,13 +74,16 @@ data class HomeUiState(
 class HomeViewModel(
     application: Application,
     apiBaseUrl: String,
-    publicKey: String
+    publicKey: String,
+    private val playbackRepository: cx.aswin.boxcast.core.data.PlaybackRepository
 ) : AndroidViewModel(application) {
     
     private val repository = PodcastRepository(baseUrl = apiBaseUrl, publicKey = publicKey, context = application)
     private val database = cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application)
-    private val subscriptionRepository = cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao())
-    private val playbackRepository = cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao())
+    private val subscriptionRepository = cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao(), cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, cx.aswin.boxcast.core.data.privacy.ConsentManager(application))) // This might be complex to reconstruct.
+    // Actually, SubscriptionRepository takes dao and analytcs.
+    // Let's leave SubscriptionRepository as is for now, it's less critical for playback state.
+    // But `playbackRepository` MUST be injected.
 
     private val _uiState = MutableStateFlow(HomeUiState(emptyList(), emptyList(), emptyList(), null, null, emptyList(), isLoading = true, isFilterLoading = false))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -362,6 +365,7 @@ class HomeViewModel(
                             }
                             i++
                         }
+
 
                         // --- NEW: Unified Time Block ---
                         val blockConfig = getTimeBlockConfig()

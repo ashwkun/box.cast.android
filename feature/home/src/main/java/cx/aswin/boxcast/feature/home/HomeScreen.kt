@@ -64,6 +64,7 @@ import cx.aswin.boxcast.core.data.database.PodcastEntity
 fun HomeRoute(
     apiBaseUrl: String,
     publicKey: String,
+    playbackRepository: cx.aswin.boxcast.core.data.PlaybackRepository,
     onPodcastClick: (Podcast) -> Unit,
     onHeroArrowClick: (SmartHeroItem) -> Unit,
     onEpisodeClick: ((Episode, Podcast) -> Unit)? = null, // Navigate to EpisodeInfo
@@ -78,7 +79,7 @@ fun HomeRoute(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return HomeViewModel(application, apiBaseUrl, publicKey) as T
+                return HomeViewModel(application, apiBaseUrl, publicKey, playbackRepository) as T
             }
         }
     )

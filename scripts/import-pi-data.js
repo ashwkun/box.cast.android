@@ -143,6 +143,13 @@ async function importTable(filename, tableName, limitPerGroupCol = null, limitCo
             const values = parseCSVLine(line);
 
             // SPECIAL LOGIC: Reorder categories for podcasts table
+            // Also ensure we don't overwrite existing rich metadata (description, vector) if we are just re-importing the base CSV
+            // But import-pi-data.js is usually for bulk initial load.
+            // If we re-run it, we want to update base fields but maybe preserve vector?
+            // "INSERT OR IGNORE" preserves everything if ID exists.
+            // If we change to REPLACE, we lose the vector.
+            // We use INSERT OR IGNORE, so we are safe.
+
             if (tableName === 'podcasts' && headers.includes('categories')) {
                 const catIndex = headers.indexOf('categories');
                 const rawCats = values[catIndex];

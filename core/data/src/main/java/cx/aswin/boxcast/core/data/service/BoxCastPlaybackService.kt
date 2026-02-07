@@ -10,6 +10,7 @@ class BoxCastPlaybackService : MediaLibraryService() {
 
     private var mediaSession: MediaLibrarySession? = null
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         
@@ -38,7 +39,35 @@ class BoxCastPlaybackService : MediaLibraryService() {
             .setAudioAttributes(audioAttributes, true) // Handle Audio Focus
             .setWakeMode(androidx.media3.common.C.WAKE_MODE_NETWORK) // Prevent CPU sleep during streaming
             .setHandleAudioBecomingNoisy(true) // Pause on headphone disconnect
+            .setHandleAudioBecomingNoisy(true) // Pause on headphone disconnect
             .build()
+            
+        player.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+            override fun onPlayerError(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, error: androidx.media3.common.PlaybackException) {
+                android.util.Log.e("BoxCastPlayer", "onPlayerError: ${error.errorCodeName}", error)
+            }
+            
+            override fun onAudioSinkError(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, error: Exception) {
+                android.util.Log.e("BoxCastPlayer", "onAudioSinkError", error)
+            }
+            
+            override fun onAudioUnderrun(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, bufferSize: Int, bufferSizeMs: Long, elapsedSinceLastFeedMs: Long) {
+                android.util.Log.e("BoxCastPlayer", "onAudioUnderrun: buffer=$bufferSize, elapsed=$elapsedSinceLastFeedMs")
+            }
+            
+            override fun onIsPlayingChanged(eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, isPlaying: Boolean) {
+                android.util.Log.d("BoxCastPlayer", "onIsPlayingChanged: $isPlaying")
+            }
+            
+            override fun onPositionDiscontinuity(
+                eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime,
+                oldPosition: Player.PositionInfo, 
+                newPosition: Player.PositionInfo, 
+                reason: Int
+            ) {
+                android.util.Log.d("BoxCastPlayer", "onPositionDiscontinuity: reason=$reason, from ${oldPosition.positionMs} to ${newPosition.positionMs}")
+            }
+        })
 
         val intent = Intent()
         intent.component = android.content.ComponentName("cx.aswin.boxcast", "cx.aswin.boxcast.MainActivity")
@@ -50,6 +79,12 @@ class BoxCastPlaybackService : MediaLibraryService() {
             intent,
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
+
+        val provider = BoxCastNotificationProvider(this)
+        provider.setSmallIcon(cx.aswin.boxcast.core.designsystem.R.drawable.ic_notification)
+
+        // Set provider on the Service (MediaSessionService)
+        setMediaNotificationProvider(provider)
 
         mediaSession = MediaLibrarySession.Builder(this, player, LibrarySessionCallback())
             .setSessionActivity(pendingIntent)
