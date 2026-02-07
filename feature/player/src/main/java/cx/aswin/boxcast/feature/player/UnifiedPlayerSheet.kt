@@ -140,6 +140,7 @@ fun UnifiedPlayerSheet(
     
     // Sheet state (internal)
     var currentSheetContentState by remember { mutableStateOf(PlayerSheetState.COLLAPSED) }
+    var isQueueVisible by remember { mutableStateOf(false) }
     
     // Core expansion fraction (0f = collapsed, 1f = expanded)
     val playerContentExpansionFraction = remember { Animatable(0f) }
@@ -245,6 +246,9 @@ fun UnifiedPlayerSheet(
                         animationSpec = animationSpec
                     )
                 }
+            }
+            if (!targetExpanded) {
+                isQueueVisible = false
             }
         }
     }
@@ -510,6 +514,8 @@ fun UnifiedPlayerSheet(
                                         currentSheetContentState = PlayerSheetState.COLLAPSED
                                     }
                                 },
+                                isQueueVisible = isQueueVisible,
+                                onQueueToggle = { isQueueVisible = !isQueueVisible },
                                 onEpisodeInfoClick = onEpisodeInfoClick,
                                 onPodcastInfoClick = onPodcastInfoClick
                             )

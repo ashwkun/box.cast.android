@@ -16,5 +16,8 @@ data class PodcastEntity(
     // Subscription State
     val isSubscribed: Boolean = false,
     
+    // Genre for Smart Queue matching
+    val genre: String? = null,
+    
     val lastRefreshed: Long = 0
 )

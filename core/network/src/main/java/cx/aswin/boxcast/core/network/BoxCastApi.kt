@@ -88,4 +88,10 @@ interface BoxCastApi {
         @Query("id") vibeId: String
     ): retrofit2.Call<TrendingResponse> // Reusing TrendingResponse structure (feeds list)
 
+    @GET("podcast/meta")
+    fun getPodcastMeta(
+        @Header("X-App-Key") publicKey: String,
+        @Query("id") feedId: String
+    ): retrofit2.Call<cx.aswin.boxcast.core.network.model.PodcastMetaResponse>
+
 }

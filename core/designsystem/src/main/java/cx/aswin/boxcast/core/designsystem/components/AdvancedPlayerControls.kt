@@ -12,7 +12,10 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.PlaylistAddCheck
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.outlined.Share
@@ -46,7 +49,11 @@ fun AdvancedPlayerControls(
     overrideColor: Color? = null, // Optional partial override for Icon Tints
     horizontalArrangement: Arrangement.Horizontal? = null,
     showAddQueueIcon: Boolean = false,
+    isQueued: Boolean = false,
     showShareButton: Boolean = true,
+    isPlayed: Boolean = false,
+    showMarkPlayedButton: Boolean = true,
+    onMarkPlayedClick: (() -> Unit)? = null,
     controlSize: androidx.compose.ui.unit.Dp? = null,
     modifier: Modifier = Modifier
 ) {
@@ -86,18 +93,28 @@ fun AdvancedPlayerControls(
         // 2. QUEUE/ADD TO QUEUE
         // Player (Squircle) -> View Queue (QueueMusic)
         // Info (TonalSquircle/Transparent) -> Add to Queue (PlaylistAdd) or forced via showAddQueueIcon
-        val queueIcon = if (showAddQueueIcon || style == ControlStyle.TonalSquircle || style == ControlStyle.Transparent) androidx.compose.material.icons.Icons.AutoMirrored.Rounded.PlaylistAdd else androidx.compose.material.icons.Icons.AutoMirrored.Rounded.QueueMusic
+
+        val queueIcon = if (isQueued) {
+            androidx.compose.material.icons.Icons.Rounded.PlaylistAddCheck
+        } else if (showAddQueueIcon || style == ControlStyle.TonalSquircle || style == ControlStyle.Transparent) {
+            androidx.compose.material.icons.Icons.AutoMirrored.Rounded.PlaylistAdd
+        } else {
+            androidx.compose.material.icons.Icons.AutoMirrored.Rounded.QueueMusic
+        }
         
         AdaptiveControlButton(
             style = style,
-            isActive = false, 
+            isActive = isQueued, 
             isLoading = false,
             colorScheme = colorScheme,
             activeIcon = queueIcon,
             inactiveIcon = queueIcon,
-            contentDescription = if (showAddQueueIcon || style == ControlStyle.TonalSquircle || style == ControlStyle.Transparent) "Add to Queue" else "Queue",
-            activeTint = baseInactiveTint, // Usually stateless
+            contentDescription = if (isQueued) "Added to Queue" else if (showAddQueueIcon || style == ControlStyle.TonalSquircle || style == ControlStyle.Transparent) "Add to Queue" else "Queue",
+            activeTint = if (style == ControlStyle.TonalSquircle && overrideColor == null) colorScheme.onTertiaryContainer else baseActiveTint, 
             inactiveTint = baseInactiveTint,
+            activeContainerColor = if (style == ControlStyle.TonalSquircle) {
+                if (overrideColor != null) colorScheme.primaryContainer else colorScheme.tertiaryContainer
+            } else Color.Unspecified,
             controlSize = controlSize,
             onClick = onQueueClick
         )
@@ -120,8 +137,25 @@ fun AdvancedPlayerControls(
             onClick = onDownloadClick
         )
         
-        // 4. SHARE (Only for Outlined/Tonal/Transparent style)
-         if (style != ControlStyle.Squircle && showShareButton) {
+        // 4. MARK PLAYED / SHARE
+        if (onMarkPlayedClick != null && showMarkPlayedButton) {
+             AdaptiveControlButton(
+                 style = style,
+                 isActive = isPlayed,
+                 isLoading = false,
+                 colorScheme = colorScheme,
+                 activeIcon = androidx.compose.material.icons.Icons.Rounded.CheckCircle,
+                 inactiveIcon = androidx.compose.material.icons.Icons.Outlined.CheckCircle,
+                 contentDescription = if (isPlayed) "Mark Unplayed" else "Mark Played",
+                 activeTint = if (style == ControlStyle.TonalSquircle && overrideColor == null) colorScheme.onTertiaryContainer else baseActiveTint,
+                 inactiveTint = baseInactiveTint,
+                 activeContainerColor = if (style == ControlStyle.TonalSquircle) {
+                    if (overrideColor != null) colorScheme.primaryContainer else colorScheme.tertiaryContainer
+                 } else Color.Unspecified,
+                 controlSize = controlSize,
+                 onClick = onMarkPlayedClick
+             )
+        } else if (style != ControlStyle.Squircle && showShareButton) {
              AdaptiveControlButton(
                  style = style,
                  isActive = false,

@@ -105,12 +105,32 @@ class MainActivity : ComponentActivity() {
                 // Check if we can go back (for predictive back)
                 val canGoBack = navController.previousBackStackEntry != null
                 
-                // Playback Repository (Singleton-ish for UI)
+                // App-level Repositories
                 val application = (applicationContext as android.app.Application)
                 val database = remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
-                val playbackRepository = remember { cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao()) }
+                
+                // 1. Core Data Sources
+                // Note: creating a shared PodcastRepository instance might be better, but existing code creates multiple.
+                // We'll follow existing pattern for now or reuse if convenient.
+                
+                // 2. Queue Repository (Must come before PlaybackRepo)
+                val queueRepository = remember { cx.aswin.boxcast.core.data.QueueRepository(database, cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, application)) }
+
+                // 3. Playback Repository (Depends on QueueRepo)
+                val playbackRepository = remember { cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao(), queueRepository) }
                 val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
                 
+                // 4. Subscription Repository
+                val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao(), analyticsHelper = null) }
+                
+                // 5. Smart Queue Engine
+                val smartQueueEngine = remember { cx.aswin.boxcast.core.data.DefaultSmartQueueEngine(cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, application), database.listeningHistoryDao(), subscriptionRepository) }
+                
+                // QueueManager (Singleton-ish) - Needs to be provided to ViewModels/Screens
+                val queueManager = remember { 
+                    cx.aswin.boxcast.core.data.QueueManager(queueRepository, smartQueueEngine, playbackRepository)
+                }
+
                 // Privacy & Analytics & Preferences
                 val consentManager = remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
                 val analyticsHelper = remember { cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, consentManager) }
@@ -230,16 +250,17 @@ class MainActivity : ComponentActivity() {
                                 HomeRoute(
                                     apiBaseUrl = apiBaseUrl,
                                     publicKey = publicKey,
+                                    playbackRepository = playbackRepository,
                                     onPodcastClick = { podcast ->
                                         navController.navigate("podcast/${podcast.id}")
                                     },
                                     onPlayClick = { podcast -> 
-                                        // Start Playback
+                                        // Start Playback via QueueManager (Smart Queue)
                                         val episode = podcast.latestEpisode
                                         if (episode != null) {
-                                            scope.launch {
-                                                playbackRepository.playEpisode(episode, podcast)
-                                            }
+                                            // No scope needed? QueueManager launches on its own scope Main? 
+                                            // Wait, playEpisode is not suspend, it launches scope.
+                                            queueManager.playEpisode(episode, podcast)
                                         }
                                         // Do not navigate, just play. Mini player appears.
                                     },
@@ -518,7 +539,8 @@ class MainActivity : ComponentActivity() {
                                                 publicKey, 
                                                 analyticsHelper,
                                                 playbackRepository, // Pass Shared Instance
-                                                downloadRepository
+                                                downloadRepository,
+                                                queueManager
                                             ) as T
                                         }
                                     }
@@ -551,9 +573,8 @@ class MainActivity : ComponentActivity() {
                                             // Start Playback -> Mini Player
                                             val state = viewModel.uiState.value
                                             if (state is cx.aswin.boxcast.feature.info.PodcastInfoUiState.Success) {
-                                                scope.launch {
-                                                    playbackRepository.playEpisode(episode, state.podcast)
-                                                }
+                                                // QueueManager handles scope internally or launches immediately
+                                                queueManager.playEpisode(episode, state.podcast)
                                             }
                                         }
                                     )
@@ -581,9 +602,10 @@ class MainActivity : ComponentActivity() {
                                             return cx.aswin.boxcast.feature.info.EpisodeInfoViewModel(
                                                 application, 
                                                 apiBaseUrl, 
-                                                publicKey,
+                                                publicKey, 
                                                 playbackRepository, // Pass Shared Instance
-                                                downloadRepository
+                                                downloadRepository,
+                                                queueManager
                                             ) as T
                                         }
                                     }
@@ -633,9 +655,7 @@ class MainActivity : ComponentActivity() {
                                             description = "",
                                             genre = ""
                                         )
-                                        scope.launch {
-                                            playbackRepository.playEpisode(episode, podcast)
-                                        }
+                                        queueManager.playEpisode(episode, podcast)
                                     }
                                 )
                             }

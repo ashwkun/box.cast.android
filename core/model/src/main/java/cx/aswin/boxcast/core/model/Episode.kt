@@ -10,6 +10,7 @@ data class Episode(
     val audioUrl: String,
     val imageUrl: String? = null,
     val podcastImageUrl: String? = null,
+    val podcastTitle: String? = null, // Added for Queue context
     val duration: Int = 0, // seconds
     val publishedDate: Long = 0L // Unix timestamp
 )

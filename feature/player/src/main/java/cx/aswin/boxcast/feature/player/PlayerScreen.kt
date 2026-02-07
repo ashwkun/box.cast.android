@@ -88,6 +88,7 @@ fun PlayerRoute(
     podcastId: String,
     apiBaseUrl: String,
     publicKey: String,
+    playbackRepository: cx.aswin.boxcast.core.data.PlaybackRepository,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -101,7 +102,7 @@ fun PlayerRoute(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return PlayerViewModel(application, apiBaseUrl, publicKey, analyticsHelper, downloadRepository) as T
+                return PlayerViewModel(application, apiBaseUrl, publicKey, analyticsHelper, downloadRepository, playbackRepository) as T
             }
         }
     )

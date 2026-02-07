@@ -60,7 +60,6 @@ class PodcastRepository(
                 emptyList()
             }
         } catch (e: Exception) {
-            // Log error
             android.util.Log.e("BoxCastRepo", "Curated Vibe Error: $vibeId", e)
             emptyList()
         }
@@ -210,7 +209,9 @@ class PodcastRepository(
 
     suspend fun getEpisodes(feedId: String): List<Episode> = withContext(Dispatchers.IO) {
         try {
-            val response = api.getEpisodes(publicKey, feedId).execute()
+            // Use paginated endpoint with high limit to get "all" (max 1000 per proxy)
+            // This avoids the parsing issue with EpisodesResponse vs EpisodesPaginatedResponse
+            val response = api.getEpisodesPaginated(publicKey, feedId, limit = 1000).execute()
             if (response.isSuccessful && response.body() != null) {
                 response.body()!!.items.mapNotNull { mapToEpisode(it) }
             } else {
@@ -313,5 +314,17 @@ class PodcastRepository(
             duration = item.duration ?: 0,
             publishedDate = item.datePublished ?: 0L
         )
+    }
+    suspend fun getPodcastType(feedId: String): String = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getPodcastMeta(publicKey, feedId).execute()
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.type ?: "episodic"
+            } else {
+                "episodic"
+            }
+        } catch (e: Exception) {
+            "episodic"
+        }
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -148,6 +149,7 @@ fun PodcastInfoScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val queuedEpisodeIds by viewModel.queuedEpisodeIds.collectAsState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -226,6 +228,7 @@ fun PodcastInfoScreen(
     
     // Liked episodes state
     val likedEpisodeIds by viewModel.likedEpisodesState.collectAsState()
+    val completedEpisodeIds by viewModel.completedEpisodesState.collectAsState()
 
     // Playback state
     val episodePlaybackState by viewModel.episodePlaybackState.collectAsState()
@@ -382,6 +385,7 @@ fun PodcastInfoScreen(
                         val playState = episodePlaybackState[episode.id]
                         val isDownloaded by viewModel.isDownloaded(episode.id).collectAsState(initial = false)
                         val isDownloading by viewModel.isDownloading(episode.id).collectAsState(initial = false)
+                        val isCompleted = completedEpisodeIds.contains(episode.id)
                         
                         EpisodeListItem(
                             episode = episode,
@@ -395,11 +399,15 @@ fun PodcastInfoScreen(
                             // Download State
                             isDownloaded = isDownloaded,
                             isDownloading = isDownloading,
+                            isQueued = queuedEpisodeIds.contains(episode.id),
+                            isCompleted = isCompleted,
                             onClick = { onEpisodeClick(episode) },
                             onPlayClick = { viewModel.onPlayClick(episode) },
                             onToggleLike = { viewModel.onToggleLike(episode) },
-                            onQueueClick = { viewModel.addToQueue(episode) },
+                            onQueueClick = { viewModel.toggleQueue(episode) },
                             onDownloadClick = { viewModel.toggleDownload(episode) },
+                            onMarkPlayedClick = { viewModel.onToggleCompletion(episode) },
+                            showMarkPlayedButton = false, // Hide in list view
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
                         
@@ -502,9 +510,12 @@ fun PodcastInfoScreen(
                 onEpisodeClick = onEpisodeClick,
                 onPlayClick = { viewModel.onPlayClick(it) },
                 onToggleLike = { viewModel.onToggleLike(it) },
-                onQueueClick = { viewModel.addToQueue(it) },
+                onQueueClick = { viewModel.toggleQueue(it) },
                 onDownloadClick = { viewModel.toggleDownload(it) },
+                onToggleCompletion = { viewModel.onToggleCompletion(it) },
                 likedEpisodeIds = likedEpisodeIds,
+                completedEpisodeIds = completedEpisodeIds,
+                queuedEpisodeIds = queuedEpisodeIds,
                 episodePlaybackState = episodePlaybackState,
                 isSearching = successState.isSearching,
                 accentColor = accentColor,
@@ -528,11 +539,15 @@ fun EpisodeListItem(
     // Download State
     isDownloaded: Boolean,
     isDownloading: Boolean,
+    isQueued: Boolean,
+    isCompleted: Boolean,
     onClick: () -> Unit,
     onPlayClick: () -> Unit,
     onToggleLike: () -> Unit,
     onQueueClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    onMarkPlayedClick: () -> Unit,
+    showMarkPlayedButton: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
@@ -551,20 +566,41 @@ fun EpisodeListItem(
             Row(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Artwork
-                Surface(
-                    modifier = Modifier.size(84.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                     SubcomposeAsyncImage(
-                        model = episode.imageUrl,
-                        contentDescription = episode.title,
+                // Artwork with completion checkmark
+                Box(modifier = Modifier.size(84.dp)) {
+                    Surface(
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                        loading = { AnimatedShapesFallback() },
-                        error = { AnimatedShapesFallback() }
-                    )
+                        shape = MaterialTheme.shapes.medium,
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        SubcomposeAsyncImage(
+                            model = episode.imageUrl,
+                            contentDescription = episode.title,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                            loading = { AnimatedShapesFallback() },
+                            error = { AnimatedShapesFallback() }
+                        )
+                    }
+
+                    if (isCompleted) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(20.dp)
+                                .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                                .border(1.dp, MaterialTheme.colorScheme.onSecondaryContainer, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Check,
+                                contentDescription = "Completed",
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                 }
                 
                 Spacer(modifier = Modifier.width(16.dp))
@@ -669,7 +705,11 @@ fun EpisodeListItem(
                     overrideColor = accentColor,
                     horizontalArrangement = Arrangement.spacedBy(12.dp), 
                     showAddQueueIcon = true,
+                    isQueued = isQueued,
                     showShareButton = false,
+                    isPlayed = isCompleted,
+                    showMarkPlayedButton = showMarkPlayedButton,
+                    onMarkPlayedClick = onMarkPlayedClick,
                     controlSize = 40.dp,
                     modifier = Modifier.weight(1f, fill = false) 
                 )
@@ -893,7 +933,10 @@ fun PodcastInfoSearchOverlay(
     onToggleLike: (Episode) -> Unit,
     onQueueClick: (Episode) -> Unit,
     onDownloadClick: (Episode) -> Unit,
+    onToggleCompletion: (Episode) -> Unit,
     likedEpisodeIds: Set<String>,
+    completedEpisodeIds: Set<String>,
+    queuedEpisodeIds: Set<String>,
     episodePlaybackState: Map<String, cx.aswin.boxcast.feature.info.PodcastInfoViewModel.EpisodePlaybackState>,
     isSearching: Boolean,
     accentColor: Color,
@@ -1019,6 +1062,7 @@ fun PodcastInfoSearchOverlay(
                         val playState = episodePlaybackState[episode.id]
                         val isDownloaded by isDownloadedFlow(episode.id).collectAsState(initial = false)
                         val isDownloading by isDownloadingFlow(episode.id).collectAsState(initial = false)
+                        val isCompleted = completedEpisodeIds.contains(episode.id)
                         
                         EpisodeListItem(
                             episode = episode,
@@ -1028,8 +1072,11 @@ fun PodcastInfoSearchOverlay(
                             isResume = playState?.isResume == true,
                             progress = playState?.progress ?: 0f,
                             timeLeft = playState?.timeLeft,
+
                             isDownloaded = isDownloaded,
                             isDownloading = isDownloading,
+                            isQueued = queuedEpisodeIds.contains(episode.id),
+                            isCompleted = isCompleted,
                             onClick = { 
                                 onEpisodeClick(episode)
                                 onClose() // Close search on nav
@@ -1038,6 +1085,7 @@ fun PodcastInfoSearchOverlay(
                             onToggleLike = { onToggleLike(episode) },
                             onQueueClick = { onQueueClick(episode) },
                             onDownloadClick = { onDownloadClick(episode) },
+                            onMarkPlayedClick = { onToggleCompletion(episode) },
                             modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
