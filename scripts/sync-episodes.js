@@ -121,6 +121,8 @@ async function main() {
         "latest_ep_url TEXT",
         "latest_ep_image TEXT",
         "latest_ep_type TEXT",
+        "latest_ep_description TEXT",
+        "vector F32(384)", // Vector embedding
         "last_ep_sync INTEGER" // Timestamp of last sync
     ];
 
@@ -206,6 +208,8 @@ async function main() {
                         latest_ep_url = ?,
                         latest_ep_image = ?,
                         latest_ep_type = ?,
+                        latest_ep_description = ?,
+                        vector = NULL, -- Invalidate vector on new content
                         last_ep_sync = ?
                     WHERE id = ?
                 `;
@@ -218,6 +222,7 @@ async function main() {
                     latestEp.enclosureUrl || "",
                     latestEp.image || latestEp.feedImage || "",
                     latestEp.enclosureType || "audio/mpeg",
+                    (latestEp.description || "").substring(0, 1000), // Truncate description
                     Date.now(),
                     String(pod.id)
                 ]);

@@ -97,6 +97,13 @@ jobs:
           PODCAST_INDEX_API_KEY: ${{ secrets.PODCAST_INDEX_API_KEY }}
           PODCAST_INDEX_API_SECRET: ${{ secrets.PODCAST_INDEX_API_SECRET }}
         run: node scripts/sync-episodes.js
+
+      - name: Generate Vector Embeddings
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+        run: node scripts/vectorize.js
+
           
       - name: Cleanup
         run: rm -f *.db *.tgz *.csv *.txt
