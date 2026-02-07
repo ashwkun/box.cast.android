@@ -21,7 +21,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import cx.aswin.boxcast.core.model.Episode
 import cx.aswin.boxcast.core.model.Podcast
-import cx.aswin.boxcast.feature.player.components.AdvancedPlayerControls
+import cx.aswin.boxcast.core.designsystem.components.AdvancedPlayerControls
 import cx.aswin.boxcast.feature.player.components.SimplePlayerControls
 
 @Composable
@@ -45,6 +45,8 @@ fun SharedPlayerContent(
     onSetSleepTimer: (Int) -> Unit,
     onLikeClick: () -> Unit,
     onDownloadClick: () -> Unit,
+    isDownloaded: Boolean,
+    isDownloading: Boolean,
     onQueueClick: () -> Unit,
     onEpisodeInfoClick: () -> Unit = {},
     onPodcastInfoClick: () -> Unit = {},
@@ -61,6 +63,7 @@ fun SharedPlayerContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
+            Spacer(modifier = Modifier.weight(0.02f))
             // 1. Album Art
             val imageUrl = episode?.imageUrl?.takeIf { it.isNotBlank() } ?: podcast.imageUrl
             
@@ -123,7 +126,7 @@ fun SharedPlayerContent(
                 )
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.weight(0.02f))
             
             // 3. Linear Buffered Slider
             if (durationMs > 0) {
@@ -138,12 +141,12 @@ fun SharedPlayerContent(
                 )
             }
             
-            Spacer(modifier = Modifier.height(8.dp)) // Reduced from 16dp
+            Spacer(modifier = Modifier.weight(0.02f))
             
             // Slot for Visualizer or other content
             extraContent()
             
-            Spacer(modifier = Modifier.height(12.dp)) // Reduced from 20dp
+            Spacer(modifier = Modifier.height(12.dp))
             
             // 4. Player Controls (Play/Pause/Skip)
             PlayerControls(
@@ -156,7 +159,7 @@ fun SharedPlayerContent(
                 onNext = onNext
             )
             
-            Spacer(modifier = Modifier.height(16.dp)) // Reduced from 24dp
+            Spacer(modifier = Modifier.weight(0.05f))
             
             // 5. Controls Section
             // Row 1: Playback Modifiers (Speed, Timer)
@@ -171,21 +174,23 @@ fun SharedPlayerContent(
                  modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
             )
             
-            Spacer(modifier = Modifier.height(24.dp)) // Increased from 16dp
+            Spacer(modifier = Modifier.height(24.dp)) // Maintain fixed gap between control rows
             
             // Row 2: Actions (Like, Download, Queue)
             AdvancedPlayerControls(
                  isLiked = isLiked, 
-                 isDownloaded = false, // TODO: Bind to param
-                 isDownloading = false,
+                 isDownloaded = isDownloaded,
+                 isDownloading = isDownloading,
                  colorScheme = colorScheme,
                  onLikeClick = onLikeClick,
                  onDownloadClick = onDownloadClick,
                  onQueueClick = onQueueClick,
+                 style = cx.aswin.boxcast.core.designsystem.components.ControlStyle.Squircle,
                  modifier = Modifier.fillMaxWidth()
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.weight(0.05f))
+
             
             // Footer (e.g. Up Next List)
             footerContent()

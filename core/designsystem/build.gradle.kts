@@ -37,4 +37,5 @@ dependencies {
     implementation(libs.androidx.graphics.shapes)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.smooth.corner.rect)
 }

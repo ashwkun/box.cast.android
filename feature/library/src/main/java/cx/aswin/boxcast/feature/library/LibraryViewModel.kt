@@ -18,24 +18,28 @@ sealed interface LibraryUiState {
     data object Loading : LibraryUiState
     data class Success(
         val subscribedPodcasts: List<Podcast> = emptyList(),
-        val likedEpisodes: List<ListeningHistoryEntity> = emptyList()
+        val likedEpisodes: List<ListeningHistoryEntity> = emptyList(),
+        val downloadedEpisodes: List<cx.aswin.boxcast.core.data.database.DownloadedEpisodeEntity> = emptyList()
     ) : LibraryUiState
     data class Error(val message: String) : LibraryUiState
 }
 
 class LibraryViewModel(
     private val subscriptionRepository: SubscriptionRepository,
-    private val playbackRepository: PlaybackRepository
+    private val playbackRepository: PlaybackRepository,
+    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository
 ) : ViewModel() {
 
-    // Combine subscriptions and liked episodes
+    // Combine subscriptions, liked episodes, and downloads
     val uiState: StateFlow<LibraryUiState> = combine(
         subscriptionRepository.subscribedPodcasts,
-        playbackRepository.likedEpisodes
-    ) { podcasts, liked ->
+        playbackRepository.likedEpisodes,
+        downloadRepository.downloads
+    ) { podcasts, liked, downloads ->
         LibraryUiState.Success(
             subscribedPodcasts = podcasts,
-            likedEpisodes = liked
+            likedEpisodes = liked,
+            downloadedEpisodes = downloads
         )
     }
         .stateIn(

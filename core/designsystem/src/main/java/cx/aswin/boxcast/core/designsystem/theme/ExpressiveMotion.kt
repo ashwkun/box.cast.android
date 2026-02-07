@@ -44,6 +44,7 @@ object ExpressiveMotion {
  */
 fun Modifier.expressiveClickable(
     enabled: Boolean = true,
+    shape: androidx.compose.ui.graphics.Shape? = null,
     onClick: () -> Unit
 ): Modifier = composed {
     val currentOnClick by androidx.compose.runtime.rememberUpdatedState(onClick)
@@ -54,6 +55,10 @@ fun Modifier.expressiveClickable(
         .graphicsLayer {
             scaleX = scale.value
             scaleY = scale.value
+            if (shape != null) {
+                clip = true
+                this.shape = shape
+            }
         }
         .pointerInput(enabled) {
             if (!enabled) return@pointerInput
@@ -88,5 +93,6 @@ fun Modifier.expressiveClickable(
 fun Modifier.expressiveClickable(
     interactionSource: androidx.compose.foundation.interaction.MutableInteractionSource?,
     enabled: Boolean = true,
+    shape: androidx.compose.ui.graphics.Shape? = null,
     onClick: () -> Unit
-): Modifier = expressiveClickable(enabled = enabled, onClick = onClick)
+): Modifier = expressiveClickable(enabled = enabled, shape = shape, onClick = onClick)

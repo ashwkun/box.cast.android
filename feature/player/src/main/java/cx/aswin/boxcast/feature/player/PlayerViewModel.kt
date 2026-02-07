@@ -35,7 +35,8 @@ class PlayerViewModel(
     application: Application,
     private val apiBaseUrl: String,
     private val publicKey: String,
-    private val analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper
+    private val analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper,
+    private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository
 ) : AndroidViewModel(application) {
 
     private val repository = PodcastRepository(

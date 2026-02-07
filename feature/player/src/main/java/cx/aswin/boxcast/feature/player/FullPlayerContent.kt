@@ -59,6 +59,7 @@ import androidx.compose.ui.layout.ContentScale
 @Composable
 fun FullPlayerContent(
     playbackRepository: PlaybackRepository,
+    downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
     colorScheme: ColorScheme,
     onCollapse: () -> Unit,
     onEpisodeInfoClick: (Episode) -> Unit = {},
@@ -149,6 +150,14 @@ fun FullPlayerContent(
         ) {
             // Item 0: The Main Player (Full Height)
             item {
+                  val isDownloaded by remember(episode.id) { 
+                     downloadRepository.isDownloaded(episode.id)
+                  }.collectAsState(initial = false)
+
+                  val isDownloading by remember(episode.id) {
+                     downloadRepository.isDownloading(episode.id)
+                  }.collectAsState(initial = false)
+
                  SharedPlayerContent(
                     podcast = podcast,
                     episode = episode,
@@ -170,7 +179,17 @@ fun FullPlayerContent(
                     onSetSpeed = { playbackRepository.setPlaybackSpeed(it) },
                     onSetSleepTimer = { playbackRepository.setSleepTimer(it) },
                     onLikeClick = { scope.launch { playbackRepository.toggleLike() } },
-                    onDownloadClick = { /* TODO */ },
+                    onDownloadClick = { 
+                        scope.launch {
+                            if (isDownloaded || isDownloading) {
+                                downloadRepository.removeDownload(episode.id)
+                            } else {
+                                downloadRepository.addDownload(episode, podcast)
+                            }
+                        }
+                    },
+                    isDownloaded = isDownloaded,
+                    isDownloading = isDownloading,
                      onQueueClick = { 
                         isQueueVisible = !isQueueVisible
                     },

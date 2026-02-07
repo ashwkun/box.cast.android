@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -29,12 +30,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.AbsoluteRoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.rounded.Podcasts
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -78,6 +87,8 @@ import cx.aswin.boxcast.core.designsystem.components.BoxCastLoader
 import cx.aswin.boxcast.core.designsystem.theme.ExpressiveMotion
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
 import cx.aswin.boxcast.core.designsystem.theme.m3Shimmer
+import cx.aswin.boxcast.core.designsystem.components.ControlStyle
+import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 
 // Color extraction helper
 private fun extractDominantColor(bitmap: android.graphics.Bitmap): Color {
@@ -109,6 +120,7 @@ fun EpisodeInfoScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val likedEpisodeIds by viewModel.likedEpisodeIds.collectAsState()
     val listState = rememberLazyListState()
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -133,6 +145,10 @@ fun EpisodeInfoScreen(
             podcastTitle = podcastTitle
         )
     }
+
+    // Download State
+    val isDownloaded by viewModel.isDownloaded(episodeId).collectAsState(initial = false)
+    val isDownloading by viewModel.isDownloading(episodeId).collectAsState(initial = false)
 
     // Scroll-driven animation state
     val scrollOffset by remember {
@@ -322,91 +338,54 @@ fun EpisodeInfoScreen(
                             shape = MaterialTheme.shapes.large
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                // Play Button
-                                val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                                val isPressed by interactionSource.collectIsPressedAsState()
+                                // Prepare Progress Data
+                                val progress = if (state.durationMs > 0) (state.resumePositionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
+                                val remainingSeconds = if (state.durationMs > 0) (state.durationMs - state.resumePositionMs) / 1000 else 0
+                                
+                                fun formatRemaining(totalSeconds: Long): String? {
+                                    if (totalSeconds <= 0) return null
+                                    val hours = totalSeconds / 3600
+                                    val minutes = (totalSeconds % 3600) / 60
+                                    return if (hours > 0) "${hours}h ${minutes}m left" else "${minutes}m left"
+                                }
 
-                                val scale by animateFloatAsState(
-                                    targetValue = if (isPressed) 0.9f else 1f,
-                                    animationSpec = if (isPressed) ExpressiveMotion.QuickSpring else ExpressiveMotion.BouncySpring,
-                                    label = "buttonScale"
+                                // Play Button (Integrated Pill) -- 3 STATES
+                                // 1. PLAYING -> Pause
+                                // 2. PAUSED (Current Ep) -> Resume
+                                // 3. PLAY/RESUME (Saved State) -> Resume/Play
+                                
+                                val isPlaying = state.isPlaying
+                                
+                                cx.aswin.boxcast.core.designsystem.components.ExpressivePlayButton(
+                                    onClick = { viewModel.onMainActionClick() },
+                                    isPlaying = isPlaying, 
+                                    isResume = state.resumePositionMs > 0,
+                                    accentColor = MaterialTheme.colorScheme.primary,
+                                    progress = progress,
+                                    timeText = formatRemaining(remainingSeconds),
+                                    modifier = Modifier.fillMaxWidth()
                                 )
 
-                                FilledTonalButton(
-                                    onClick = onPlay,
-                                    interactionSource = interactionSource,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(56.dp)
-                                        .graphicsLayer {
-                                            scaleX = scale
-                                            scaleY = scale
-                                        },
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = accentColor,
-                                        contentColor = Color.White
-                                    )
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.PlayArrow,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = if (state.resumePositionMs > 0) "Resume" else "Play",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-
-                                // Progress Bar (if resuming)
-                                if (state.resumePositionMs > 0 && state.durationMs > 0) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    
-                                    val progress = (state.resumePositionMs.toFloat() / state.durationMs).coerceIn(0f, 1f)
-                                    val playedSeconds = state.resumePositionMs / 1000
-                                    val remainingSeconds = (state.durationMs - state.resumePositionMs) / 1000
-
-                                    fun formatTime(totalSeconds: Long): String {
-                                        val hours = totalSeconds / 3600
-                                        val minutes = (totalSeconds % 3600) / 60
-                                        val seconds = totalSeconds % 60
-                                        return if (hours > 0) {
-                                            String.format("%d:%02d:%02d", hours, minutes, seconds)
-                                        } else {
-                                            String.format("%d:%02d", minutes, seconds)
-                                        }
-                                    }
-
-                                    LinearProgressIndicator(
-                                        progress = { progress },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(6.dp)
-                                            .clip(MaterialTheme.shapes.small),
-                                        color = accentColor,
-                                        trackColor = accentColor.copy(alpha = 0.2f)
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = formatTime(playedSeconds),
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = "-${formatTime(remainingSeconds)} left",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
+                                // Action Buttons Row (Tonal Squircles)
+                                Spacer(modifier = Modifier.height(24.dp))
+                                
+                                val isLiked = likedEpisodeIds.contains(state.episode.id)
+                                
+                                // Shared Action Controls (Unified Logic, Adaptive Look)
+                                val isDownloaded by viewModel.isDownloaded(state.episode.id).collectAsState(initial = false)
+                                
+                                cx.aswin.boxcast.core.designsystem.components.AdvancedPlayerControls(
+                                    isLiked = isLiked,
+                                    isDownloaded = isDownloaded, 
+                                    isDownloading = isDownloading,
+                                    colorScheme = MaterialTheme.colorScheme,
+                                    onLikeClick = { viewModel.onToggleLike(state.episode) },
+                                    onDownloadClick = { viewModel.toggleDownload(state.episode) },
+                                    onQueueClick = { /* TODO */ },
+                                    style = cx.aswin.boxcast.core.designsystem.components.ControlStyle.TonalSquircle,
+                                    overrideColor = accentColor, // Enforce accent color (Use Primary Family)
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                                )
                             }
                         }
                     }
@@ -617,3 +596,5 @@ fun EpisodeInfoScreen(
         }
     }
 }
+
+

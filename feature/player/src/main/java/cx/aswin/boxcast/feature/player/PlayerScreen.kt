@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -72,7 +73,7 @@ import cx.aswin.boxcast.core.model.Podcast
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import cx.aswin.boxcast.feature.player.components.SimplePlayerControls
-import cx.aswin.boxcast.feature.player.components.AdvancedPlayerControls
+import cx.aswin.boxcast.core.designsystem.components.AdvancedPlayerControls
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -91,6 +92,8 @@ fun PlayerRoute(
     modifier: Modifier = Modifier
 ) {
     val application = LocalContext.current.applicationContext as android.app.Application
+    val database = androidx.compose.runtime.remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
+    val downloadRepository = androidx.compose.runtime.remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
     val consentManager = androidx.compose.runtime.remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
     val analyticsHelper = androidx.compose.runtime.remember { cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, consentManager) }
     
@@ -98,7 +101,7 @@ fun PlayerRoute(
         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                return PlayerViewModel(application, apiBaseUrl, publicKey, analyticsHelper) as T
+                return PlayerViewModel(application, apiBaseUrl, publicKey, analyticsHelper, downloadRepository) as T
             }
         }
     )
@@ -111,6 +114,7 @@ fun PlayerRoute(
     
     PlayerScreen(
         uiState = uiState,
+        downloadRepository = downloadRepository,
         onBackClick = onBackClick,
         onPlayPause = viewModel::togglePlayPause,
         onEpisodeClick = viewModel::playEpisode,
@@ -128,6 +132,7 @@ fun PlayerRoute(
 @Composable
 fun PlayerScreen(
     uiState: PlayerUiState,
+    downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
     onBackClick: () -> Unit,
     onPlayPause: () -> Unit,
     onEpisodeClick: (Episode) -> Unit,
@@ -190,6 +195,7 @@ fun PlayerScreen(
                             durationMs = uiState.durationMs,
                             playbackSpeed = uiState.playbackSpeed,
                             sleepTimerEnd = uiState.sleepTimerEnd,
+                            downloadRepository = downloadRepository, // Pass down
 
                             isLiked = uiState.isLiked,
                             onPlayPause = onPlayPause, // Pass down
@@ -224,6 +230,7 @@ fun PlayerContent(
     playbackSpeed: Float,
     sleepTimerEnd: Long?,
     isLiked: Boolean,
+    downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
     onPlayPause: () -> Unit,
     onEpisodeClick: (Episode) -> Unit,
     onSeek: (Long) -> Unit,
@@ -263,12 +270,25 @@ fun PlayerContent(
         }
     }
 
-    // Shared Main Content
-    val episode = currentEpisode
+    // 2. State Observations
+    // Use the downloadRepository to observe download state
+    val isDownloaded by remember(currentEpisode?.id) {
+        if (currentEpisode != null) downloadRepository.isDownloaded(currentEpisode.id) else kotlinx.coroutines.flow.flowOf(false)
+    }.collectAsState(initial = false)
+
+    val isDownloading by remember(currentEpisode?.id) {
+        if (currentEpisode != null) downloadRepository.isDownloading(currentEpisode.id) else kotlinx.coroutines.flow.flowOf(false)
+    }.collectAsState(initial = false)
+
+    LaunchedEffect(currentEpisode?.id, isDownloading, isDownloaded) {
+        if (currentEpisode != null) {
+            android.util.Log.d("PlayerScreen", "Episode: ${currentEpisode.id}, isDownloading: $isDownloading, isDownloaded: $isDownloaded")
+        }
+    }
     
     SharedPlayerContent(
         podcast = podcast,
-        episode = episode,
+        episode = currentEpisode,
         isPlaying = isPlaying,
         isLoading = isLoading,
         positionMs = positionMs,
@@ -285,14 +305,28 @@ fun PlayerContent(
 
         onSetSleepTimer = onSetSleepTimer,
         // Updated: Pass the passed isLiked state
-        isLiked = isLiked, 
+        isLiked = isLiked,
         onLikeClick = onToggleLike,
-        onDownloadClick = { /* TODO */ },
+        // Download Support
+        isDownloaded = isDownloaded,
+        isDownloading = isDownloading,
+        onDownloadClick = {
+            if (currentEpisode != null) {
+                coroutineScope.launch {
+                    if (isDownloaded || isDownloading) {
+                        downloadRepository.removeDownload(currentEpisode.id)
+                    } else {
+                        downloadRepository.addDownload(currentEpisode, podcast)
+                    }
+                }
+            }
+        },
         onQueueClick = { 
              coroutineScope.launch {
                  listState.animateScrollToItem(0)
              }
         },
+
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 24.dp),
@@ -316,14 +350,13 @@ fun PlayerContent(
                  modifier = Modifier
                      .fillMaxWidth()
                      .weight(1f),
-                 contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp),
+                 contentPadding = PaddingValues(bottom = 16.dp),
                  verticalArrangement = Arrangement.spacedBy(8.dp)
              ) {
-                  items(episodes) { ep ->
-                      ElevatedCard(
-                          modifier = Modifier
-                              .fillMaxWidth()
-                              .expressiveClickable { onEpisodeClick(ep) },
+                 items(episodes.filter { it.id != currentEpisode?.id }) { ep ->
+                      androidx.compose.material3.ElevatedCard(
+                          onClick = { onEpisodeClick(ep) },
+                          modifier = Modifier.fillMaxWidth(),
                           shape = MaterialTheme.shapes.medium
                       ) {
                           Row(
@@ -347,7 +380,7 @@ fun PlayerContent(
                               )
                           }
                       }
-                  }
+                 }
              }
         }
     )

@@ -1,0 +1,4 @@
+<resources>
+    <string name="download_notification_channel_name">Downloads</string>
+    <string name="download_notification_channel_description">Shows download progress for podcast episodes</string>
+</resources>

@@ -16,6 +16,7 @@ import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import cx.aswin.boxcast.core.model.Episode
 import cx.aswin.boxcast.core.model.Podcast
 import cx.aswin.boxcast.core.data.service.BoxCastPlaybackService
@@ -70,9 +71,33 @@ class PlaybackRepository(
     private val repositoryScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main + kotlinx.coroutines.SupervisorJob())
     private var progressJob: Job? = null
     private var sleepTimerJob: Job? = null
+    private var likeStateObserverJob: Job? = null
 
     init {
         initializeMediaController()
+        monitorLikeState()
+    }
+
+    private fun monitorLikeState() {
+        repositoryScope.launch {
+            playerState
+                .map { it.currentEpisode?.id }
+                .distinctUntilChanged()
+                .collect { episodeId ->
+                    likeStateObserverJob?.cancel()
+                    if (episodeId != null) {
+                        likeStateObserverJob = launch {
+                            listeningHistoryDao.getHistoryItemFlow(episodeId).collect { history ->
+                                if (history != null) {
+                                    if (_playerState.value.isLiked != history.isLiked) {
+                                        _playerState.value = _playerState.value.copy(isLiked = history.isLiked)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        }
     }
 
     private fun initializeMediaController() {
@@ -256,6 +281,7 @@ class PlaybackRepository(
                     .setUri(episode.audioUrl)
                     .setMediaMetadata(metadata)
                     .setMediaId(episode.id) // Important for identification
+                    .setCustomCacheKey(episode.id) // Match DownloadRequest custom key
                     .build()
             }
             
@@ -295,6 +321,35 @@ class PlaybackRepository(
                     isLiked = initialLikeState
                 )
             }
+        }
+    }
+
+    suspend fun addToQueue(episode: Episode, podcast: Podcast) {
+        if (mediaController == null) {
+            mediaController = mediaControllerFuture?.await()
+        }
+        
+        mediaController?.let { controller ->
+             val metadata = androidx.media3.common.MediaMetadata.Builder()
+                .setTitle(episode.title)
+                .setArtist(podcast.title)
+                .setArtworkUri(android.net.Uri.parse(episode.imageUrl?.takeIf { it.isNotBlank() } ?: podcast.imageUrl))
+                .setDisplayTitle(episode.title)
+                .setSubtitle(podcast.title)
+                .build()
+       
+             val mediaItem = MediaItem.Builder()
+                .setUri(episode.audioUrl)
+                .setMediaMetadata(metadata)
+                .setMediaId(episode.id)
+                .setCustomCacheKey(episode.id) // Match DownloadRequest custom key
+                .build()
+                
+             controller.addMediaItem(mediaItem)
+             
+             // Update local state
+             val currentQueue = _playerState.value.queue
+             _playerState.value = _playerState.value.copy(queue = currentQueue + episode)
         }
     }
 
@@ -357,6 +412,16 @@ class PlaybackRepository(
         prefs.edit().putBoolean(KEY_PLAYER_DISMISSED, true).apply()
     }
     
+    fun togglePlayPause() {
+        val controller = mediaController ?: return
+        if (controller.isPlaying) {
+            controller.pause()
+        } else {
+             // Use our robust resume() which handles state restoration
+             resume()
+        }
+    }
+
     fun pause() {
         mediaController?.pause()
     }
@@ -517,16 +582,44 @@ class PlaybackRepository(
     
     val likedEpisodes: Flow<List<cx.aswin.boxcast.core.data.database.ListeningHistoryEntity>> = listeningHistoryDao.getLikedEpisodes()
 
+    suspend fun toggleLike(episode: Episode, podcastId: String, podcastTitle: String, podcastImageUrl: String?) {
+        val existing = listeningHistoryDao.getHistoryItem(episode.id)
+        val newStatus = !(existing?.isLiked ?: false)
+        
+        // If current player is playing this episode, update state immediately
+        if (_playerState.value.currentEpisode?.id == episode.id) {
+             _playerState.value = _playerState.value.copy(isLiked = newStatus)
+        }
+        
+        if (existing != null) {
+            listeningHistoryDao.setLikeStatus(episode.id, newStatus)
+        } else {
+            // Create new entry if liking something not in history
+            val entity = cx.aswin.boxcast.core.data.database.ListeningHistoryEntity(
+                episodeId = episode.id,
+                podcastId = podcastId,
+                episodeTitle = episode.title,
+                episodeImageUrl = episode.imageUrl,
+                podcastImageUrl = podcastImageUrl,
+                episodeAudioUrl = episode.audioUrl,
+                podcastName = podcastTitle,
+                progressMs = 0L,
+                durationMs = episode.duration * 1000L,
+                isCompleted = false,
+                isLiked = newStatus,
+                lastPlayedAt = System.currentTimeMillis(),
+                isDirty = true
+            )
+            listeningHistoryDao.upsert(entity)
+        }
+    }
+    
+    // Legacy parameterless generic toggle (for player controls)
     suspend fun toggleLike() {
         val state = _playerState.value
-        val episodeId = state.currentEpisode?.id ?: return
-        val newStatus = !state.isLiked
-        
-        _playerState.value = state.copy(isLiked = newStatus)
-        // Persist immediately (UPDATE only)
-        listeningHistoryDao.setLikeStatus(episodeId, newStatus)
-        // Also do a full save to be safe/consistent if upsert happens later
-        saveCurrentState() 
+        val episode = state.currentEpisode ?: return
+        val podcast = state.currentPodcast ?: return
+        toggleLike(episode, podcast.id, podcast.title, podcast.imageUrl)
     }
 
     suspend fun savePlaybackState(

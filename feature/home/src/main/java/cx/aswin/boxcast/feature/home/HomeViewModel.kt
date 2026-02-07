@@ -23,6 +23,14 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.awaitAll
+import java.util.Calendar
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.WbSunny
+import androidx.compose.material.icons.rounded.NightsStay
+import androidx.compose.material.icons.rounded.WbTwilight
+import androidx.compose.material.icons.rounded.Bedtime
 
 @Immutable
 data class SmartHeroItem(
@@ -33,7 +41,22 @@ data class SmartHeroItem(
     val gridItems: List<Podcast> = emptyList() // For RESUME_GRID
 )
 
+
 enum class HeroType { RESUME, RESUME_GRID, JUMP_BACK_IN, NEW_EPISODES_GRID, SPOTLIGHT }
+
+@Immutable
+data class CuratedTimeBlock(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val sections: List<CuratedSectionData>
+)
+
+data class CuratedSectionData(
+    val title: String, 
+    val category: String,
+    val podcasts: List<Podcast>
+)
 
 @Immutable
 data class HomeUiState(
@@ -41,7 +64,7 @@ data class HomeUiState(
     val latestEpisodes: List<Podcast> = emptyList(), // "Latest" Section
     val subscribedPodcasts: List<Podcast> = emptyList(), // "Your Shows" Section
     val selectedCategory: String? = null, // Null = "For You"
-    val risingPodcasts: List<Podcast>, 
+    val timeBlock: CuratedTimeBlock? = null, // Unified Time Block
     val discoverPodcasts: List<Podcast>, 
     val isLoading: Boolean = false, // Initial full-screen loader
     val isFilterLoading: Boolean = false, // Inline loader when switching genres
@@ -59,7 +82,7 @@ class HomeViewModel(
     private val subscriptionRepository = cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao())
     private val playbackRepository = cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao())
 
-    private val _uiState = MutableStateFlow(HomeUiState(emptyList(), emptyList(), emptyList(), null, emptyList(), emptyList(), isLoading = true, isFilterLoading = false))
+    private val _uiState = MutableStateFlow(HomeUiState(emptyList(), emptyList(), emptyList(), null, null, emptyList(), isLoading = true, isFilterLoading = false))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow<String?>(null)
@@ -72,7 +95,7 @@ class HomeViewModel(
     // Cached base data (For You)
     private var cachedForYouTrending: List<Podcast> = emptyList()
     private var cachedHeroItems: List<SmartHeroItem> = emptyList()
-    private var cachedRisingPodcasts: List<Podcast> = emptyList()
+    private var cachedTimeBlock: CuratedTimeBlock? = null
     private var cachedLatestEpisodes: List<Podcast> = emptyList()
     
     // Store current region for use in other scopes
@@ -340,14 +363,44 @@ class HomeViewModel(
                             i++
                         }
 
+                        // --- NEW: Unified Time Block ---
+                        val blockConfig = getTimeBlockConfig()
+                        val daySeed = java.time.LocalDate.now().toEpochDay()
+                        
+                        // Fetch sections in parallel
+                        val sectionJobs = blockConfig.genres.map { genre ->
+                             viewModelScope.async {
+                                 try {
+                                     val list = repository.getTrendingPodcasts(activeRegion, 20, genre.id)
+                                     val filtered = list
+                                         .filter { it.latestEpisode != null }
+                                         .shuffled(kotlin.random.Random(daySeed.toInt() + genre.title.hashCode()))
+                                         .take(10)
+                                     
+                                     if (filtered.isNotEmpty()) {
+                                         CuratedSectionData(genre.title, genre.id, filtered)
+                                     } else null
+                                 } catch (e: Exception) { null }
+                             }
+                        }
+                        
+                        val resolvedSections = sectionJobs.awaitAll().filterNotNull()
+                        val timeBlock = if (resolvedSections.isNotEmpty()) {
+                            CuratedTimeBlock(blockConfig.title, blockConfig.subtitle, blockConfig.icon, resolvedSections)
+                        } else null
+                        
+                        // Update used IDs
+                        timeBlock?.sections?.forEach { sec -> 
+                            sec.podcasts.forEach { usedPodcastIds.add(it.id) } 
+                        }
+
                         val remaining = trendingList.filter { !usedPodcastIds.contains(it.id) }
-                        val rising = remaining.take(10)
-                        val discover = remaining.drop(10)
+                        val discover = remaining 
 
                         if (trendingList.isNotEmpty()) {
                             cachedForYouTrending = trendingList
                             cachedHeroItems = heroList
-                            cachedRisingPodcasts = rising
+                            cachedTimeBlock = timeBlock
                             cachedLatestEpisodes = catchUpList
                         }
 
@@ -356,7 +409,7 @@ class HomeViewModel(
                             latestEpisodes = catchUpList,
                             subscribedPodcasts = subs,
                             selectedCategory = _selectedCategory.value,
-                            risingPodcasts = rising,
+                            timeBlock = timeBlock,
                             discoverPodcasts = discover,
                             isLoading = false,
                             isFilterLoading = trendingList.isEmpty(),
@@ -377,7 +430,7 @@ class HomeViewModel(
                     if (cachedHeroItems.isNotEmpty()) {
                         val discover = cachedForYouTrending.filter { pod ->
                             !cachedHeroItems.any { it.podcast.id == pod.id } &&
-                            !cachedRisingPodcasts.any { it.id == pod.id }
+                            !(cachedTimeBlock?.sections?.any { sec -> sec.podcasts.any { it.id == pod.id } } ?: false)
                         }
                         
                         _uiState.update { 
@@ -437,7 +490,7 @@ class HomeViewModel(
     fun toggleSubscription(podcastId: String) {
         viewModelScope.launch {
             val state = _uiState.value
-            val podcast = state.risingPodcasts.find { it.id == podcastId }
+            val podcast = state.timeBlock?.sections?.flatMap { it.podcasts }?.find { it.id == podcastId }
                 ?: state.discoverPodcasts.find { it.id == podcastId }
                 ?: state.heroItems.find { it.podcast.id == podcastId }?.podcast
             
@@ -456,4 +509,60 @@ class HomeViewModel(
     // Debug Accessors
     val debugHistory = playbackRepository.getAllHistory()
     val debugPodcasts = subscriptionRepository.getAllSubscribedPodcasts()
+    // --- Helper Logic ---
+    data class TimeBlockConfig(val title: String, val subtitle: String, val icon: ImageVector, val genres: List<GenreConfig>)
+    data class GenreConfig(val id: String, val title: String)
+
+    private fun getTimeBlockConfig(): TimeBlockConfig {
+        val cal = Calendar.getInstance()
+        val hour = cal.get(Calendar.HOUR_OF_DAY)
+        val day = cal.get(Calendar.DAY_OF_WEEK) // Sun=1...
+        
+        val isWeekend = day == Calendar.SATURDAY || day == Calendar.SUNDAY
+        val isMonday = day == Calendar.MONDAY
+        val isFriday = day == Calendar.FRIDAY
+
+        return when (hour) {
+            in 5..11 -> TimeBlockConfig(
+                title = "Good Morning",
+                subtitle = if(isWeekend) "Catch up on the week." else "Start your day with these updates.",
+                icon = Icons.Rounded.WbSunny,
+                genres = listOf(
+                    GenreConfig("News", "Top News"),
+                    GenreConfig("Business", "Business & Finance"), 
+                    GenreConfig("Technology", "Technology")
+                )
+            )
+            in 12..16 -> TimeBlockConfig(
+                title = "Afternoon Break",
+                subtitle = "Smart conversations to keep you going.",
+                icon = Icons.Rounded.WbSunny,
+                genres = listOf(
+                    GenreConfig("Society & Culture", "Society & Culture"),
+                    GenreConfig("Science", "Science"),
+                    GenreConfig("Education", "Education")
+                )
+            )
+            in 17..22 -> TimeBlockConfig(
+                title = "Evening Unwind",
+                subtitle = if(isFriday) "Kick off the weekend." else "Relax, laugh, and catch up.",
+                icon = Icons.Rounded.WbTwilight,
+                genres = listOf(
+                    GenreConfig("Comedy", "Comedy"),
+                    GenreConfig("TV & Film", "TV & Film"),
+                    GenreConfig("Sports", "Sports")
+                )
+            )
+            else -> TimeBlockConfig(
+                title = "Late Night Listen",
+                subtitle = "Stories for the dark hours.",
+                icon = Icons.Rounded.NightsStay,
+                genres = listOf(
+                    GenreConfig("True Crime", "True Crime"),
+                    GenreConfig("History", "History"),
+                    GenreConfig("Health", "Health & Wellness")
+                )
+            )
+        }
+    }
 }

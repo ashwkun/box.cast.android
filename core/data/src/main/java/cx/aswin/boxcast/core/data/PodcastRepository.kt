@@ -123,6 +123,26 @@ class PodcastRepository(
         }
     }.flowOn(Dispatchers.IO)
 
+    private val GENRE_PRIORITY = listOf(
+        "Technology", "News", "Business", "Science", "Sports", "True Crime",
+        "History", "Comedy", "Arts", "Fiction", "Music", "Religion & Spirituality",
+        "Kids & Family", "Government", "Health", "TV & Film", "Education"
+    )
+
+    private fun resolvePrimaryGenre(categories: Map<String, String>?): String {
+        if (categories.isNullOrEmpty()) return "Podcast"
+        
+        // Check for high-priority genres first
+        for (priority in GENRE_PRIORITY) {
+            // Case-insensitive check
+            val match = categories.values.find { it.equals(priority, ignoreCase = true) }
+            if (match != null) return match
+        }
+        
+        // Fallback: Return the first value
+        return categories.values.firstOrNull() ?: "Podcast"
+    }
+
     private fun mapFeedsToPodcasts(feeds: List<cx.aswin.boxcast.core.network.model.TrendingFeed>): List<Podcast> {
         return feeds.map { feed ->
             Podcast(
@@ -131,7 +151,7 @@ class PodcastRepository(
                 artist = feed.author ?: "Unknown",
                 imageUrl = (feed.artwork ?: feed.image).toHttps(),
                 description = feed.description,
-                genre = feed.categories.values.firstOrNull() ?: "Podcast",
+                genre = resolvePrimaryGenre(feed.categories),
                 latestEpisode = feed.latestEpisode?.let { mapToEpisode(it) }
             )
         }
@@ -148,9 +168,23 @@ class PodcastRepository(
                         artist = feed.author ?: "Unknown",
                         imageUrl = (feed.artwork ?: feed.image).toHttps(),
                         description = feed.description,
-                        genre = feed.categories.values.firstOrNull() ?: "Podcast"
+                        genre = resolvePrimaryGenre(feed.categories)
                     )
                 }
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun searchEpisodes(feedId: String, query: String): List<Episode> = withContext(Dispatchers.IO) {
+        try {
+            // Use Proxy-side search (Server fetches 1000 items and filters)
+            val response = api.searchEpisodes(publicKey, feedId, query).execute()
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.items.mapNotNull { mapToEpisode(it) }
             } else {
                 emptyList()
             }
@@ -222,7 +256,7 @@ class PodcastRepository(
                     artist = feed.author ?: "Unknown",
                     imageUrl = (feed.artwork ?: feed.image).toHttps(),
                     description = feed.description,
-                    genre = feed.categories.values.firstOrNull() ?: "Podcast"
+                    genre = resolvePrimaryGenre(feed.categories)
                 )
             } else {
                 null

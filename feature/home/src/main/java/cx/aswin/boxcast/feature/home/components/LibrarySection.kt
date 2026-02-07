@@ -76,11 +76,11 @@ fun YourShowsSection(
     if (subscribedPodcasts.isEmpty() && latestEpisodes.isEmpty()) return
 
     Column(modifier = modifier) {
-        // --- Header (Styled like OnTheRise) ---
+        // --- Header (Styled like Master Header) ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 12.dp),
+                .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -89,15 +89,16 @@ fun YourShowsSection(
                     imageVector = Icons.Outlined.Bookmarks,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "Your Shows",
                     style = MaterialTheme.typography.headlineSmall.copy(
-                        fontFamily = SectionHeaderFontFamily
+                        fontFamily = SectionHeaderFontFamily,
+                        fontWeight = FontWeight.Bold
                     ),
-                    letterSpacing = 0.sp
+                    letterSpacing = (-0.5).sp
                 )
             }
 
@@ -118,7 +119,7 @@ fun YourShowsSection(
         if (subscribedPodcasts.isNotEmpty()) {
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp) // Standard margin
+                    .padding(horizontal = 0.dp) // Removed padding
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -205,11 +206,12 @@ fun YourShowsSection(
                 text = "New Episodes",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(vertical = 8.dp)
             )
             
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 8.dp),
+                contentPadding = PaddingValues(horizontal = 0.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(latestEpisodes, key = { "${it.id}_${it.latestEpisode?.id}" }) { podcast ->
@@ -243,7 +245,7 @@ private fun ResponsivePodcastCover(
             .fillMaxWidth()
             .aspectRatio(1f) // Square
             .clip(MaterialTheme.shapes.small)
-            .expressiveClickable(onClick = onClick)
+            .expressiveClickable(shape = MaterialTheme.shapes.small, onClick = onClick)
     ) {
         val state = painter.state
         if (state is AsyncImagePainter.State.Loading || 

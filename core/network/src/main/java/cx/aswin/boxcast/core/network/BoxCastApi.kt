@@ -57,6 +57,13 @@ interface BoxCastApi {
         @Query("sort") sort: String = "newest"
     ): retrofit2.Call<EpisodesPaginatedResponse>
 
+    @GET("episodes/search")
+    fun searchEpisodes(
+        @Header("X-App-Key") publicKey: String,
+        @Query("id") feedId: String,
+        @Query("q") query: String
+    ): retrofit2.Call<EpisodesResponse>
+
     @GET("episode")
     fun getEpisode(
         @Header("X-App-Key") publicKey: String,

@@ -78,6 +78,7 @@ enum class PlayerSheetState { COLLAPSED, EXPANDED }
 @Composable
 fun UnifiedPlayerSheet(
     playbackRepository: PlaybackRepository,
+    downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
     sheetCollapsedTargetY: Float,
     containerHeight: Dp,
     collapsedStateHorizontalPadding: Dp = 12.dp,
@@ -489,6 +490,7 @@ fun UnifiedPlayerSheet(
                         ) {
                             FullPlayerContent(
                                 playbackRepository = playbackRepository,
+                                downloadRepository = downloadRepository,
                                 colorScheme = scheme,
                                 onCollapse = {
                                     scope.launch {
