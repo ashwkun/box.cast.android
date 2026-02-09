@@ -13,6 +13,7 @@ class QueueRepository @Inject constructor(
     private val database: BoxCastDatabase,
     private val podcastRepository: PodcastRepository
 ) {
+    private val TAG = "QueueRepository"
     private val queueDao = database.queueDao()
 
     val queue: Flow<List<EpisodeItem>> = queueDao.getAllQueueItems()
@@ -22,7 +23,16 @@ class QueueRepository @Inject constructor(
         }
 
     suspend fun addToQueue(episode: EpisodeItem, podcast: cx.aswin.boxcast.core.model.Podcast?) {
+        android.util.Log.d(TAG, "addToQueue: episodeId=${episode.id}, title=${episode.title}")
         val maxPos = queueDao.getMaxPosition() ?: 0
+        android.util.Log.d(TAG, "addToQueue: maxPos=$maxPos")
+
+        // Check for duplicates
+        val existingCount = queueDao.countEpisode(episode.id)
+        if (existingCount > 0) {
+            android.util.Log.w(TAG, "addToQueue: Episode ${episode.title} (${episode.id}) already in queue. Skipping.")
+            return
+        }
         
         // Ensure we have podcast metadata. If null, we might be in trouble, 
         // but EpisodeItem often has feedImage. 
@@ -39,6 +49,8 @@ class QueueRepository @Inject constructor(
             title = episode.title,
             podcastId = podcastId,
             podcastTitle = podcastTitle,
+            podcastGenre = podcast?.genre ?: "",
+            podcastImageUrl = podcast?.imageUrl,
             imageUrl = episode.image ?: podcast?.imageUrl,
             audioUrl = episode.enclosureUrl ?: "",
             duration = episode.duration ?: 0,
@@ -46,15 +58,21 @@ class QueueRepository @Inject constructor(
             description = episode.description,
             position = maxPos + 1
         )
+        android.util.Log.d(TAG, "addToQueue: Inserting newItem at position ${maxPos + 1}")
         queueDao.insertQueueItem(newItem)
+        android.util.Log.d(TAG, "addToQueue: Insert complete")
     }
 
     suspend fun clearQueue() {
+        android.util.Log.d(TAG, "clearQueue: Clearing all queue items")
         queueDao.clearQueue()
+        android.util.Log.d(TAG, "clearQueue: Complete")
     }
     
     suspend fun getQueueSnapshot(): List<cx.aswin.boxcast.core.model.Episode> {
+        android.util.Log.d(TAG, "getQueueSnapshot: Fetching sync")
         val items = queueDao.getAllQueueItemsSync()
+        android.util.Log.d(TAG, "getQueueSnapshot: Got ${items.size} items")
         return items.map { it.toDomainEpisode() }
     }
     
@@ -65,8 +83,11 @@ class QueueRepository @Inject constructor(
             description = this.description ?: "",
             audioUrl = this.audioUrl,
             imageUrl = this.imageUrl,
-            podcastImageUrl = this.imageUrl, // Fallback
+            podcastImageUrl = this.podcastImageUrl ?: this.imageUrl, // Use stored podcast image
             podcastTitle = this.podcastTitle,
+            podcastId = this.podcastId.toString(),
+            podcastGenre = this.podcastGenre,
+            podcastArtist = null, // Not stored in QueueItem
             duration = this.duration ?: 0,
             publishedDate = this.pubDate
         )

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -58,21 +59,44 @@ fun SharedPlayerContent(
     val context = LocalContext.current
     
     MaterialTheme(colorScheme = colorScheme) {
-        Column(
-            modifier = modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+        BoxWithConstraints(
+            modifier = modifier.fillMaxSize()
         ) {
-            Spacer(modifier = Modifier.weight(0.02f))
-            // 1. Album Art
-            val imageUrl = episode?.imageUrl?.takeIf { it.isNotBlank() } ?: podcast.imageUrl
+            // Responsive breakpoints based on available height
+            val isCompact = maxHeight < 600.dp
+            val isMedium = maxHeight in 600.dp..700.dp
             
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp) // Added padding to reduce size
-                    .weight(0.35f, fill = false)
-                    .aspectRatio(1f)
+            // Artwork sizing: larger on big screens, smaller on small screens
+            val artworkWidth = when {
+                isCompact -> 0.55f // 55% width on small screens
+                isMedium -> 0.65f // 65% on medium
+                else -> 0.75f // 75% on large screens  
+            }
+            val artworkMaxSize = when {
+                isCompact -> 200.dp
+                isMedium -> 280.dp
+                else -> 360.dp
+            }
+            
+            // Control sizing for PlayerControls
+            val controlRowHeight = if (isCompact) 64.dp else 80.dp
+            val actionButtonSize = if (isCompact) 40.dp else 48.dp
+            val spacingSmall = if (isCompact) 8.dp else 16.dp
+            
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top
+            ) {
+                Spacer(modifier = Modifier.weight(0.01f))
+                // 1. Album Art - responsive sizing
+                val imageUrl = episode?.imageUrl?.takeIf { it.isNotBlank() } ?: podcast.imageUrl
+                
+                Surface(
+                    modifier = Modifier
+                        .widthIn(max = artworkMaxSize)
+                        .fillMaxWidth(artworkWidth)
+                        .aspectRatio(1f)
                     .shadow(
                         12.dp, 
                         RoundedCornerShape(28.dp), 
@@ -94,11 +118,11 @@ fun SharedPlayerContent(
                 )
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(spacingSmall))
         
-            // 2. Metadata
+            // 2. Metadata - removed fixed height for responsiveness
             Column(
-                modifier = Modifier.fillMaxWidth().height(68.dp), 
+                modifier = Modifier.fillMaxWidth(), 
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
@@ -126,7 +150,7 @@ fun SharedPlayerContent(
                 )
             }
             
-            Spacer(modifier = Modifier.weight(0.02f))
+            Spacer(modifier = Modifier.weight(0.01f))
             
             // 3. Linear Buffered Slider
             if (durationMs > 0) {
@@ -150,16 +174,17 @@ fun SharedPlayerContent(
             
             // 4. Player Controls (Play/Pause/Skip)
             PlayerControls(
-                isPlaying = isPlaying, // Note: You might need to import PlayerControls if it's in the same package but not exported? It is in same package.
-                isLoading = isLoading, // Simplified, maybe pass loading state if needed
+                isPlaying = isPlaying,
+                isLoading = isLoading,
                 colorScheme = colorScheme,
                 controlTint = controlTint,
                 onPlayPause = onPlayPause,
                 onPrevious = onPrevious,
-                onNext = onNext
+                onNext = onNext,
+                height = controlRowHeight
             )
             
-            Spacer(modifier = Modifier.weight(0.05f))
+            Spacer(modifier = Modifier.weight(0.02f))
             
             // 5. Controls Section
             // Row 1: Playback Modifiers (Speed, Timer)
@@ -174,7 +199,7 @@ fun SharedPlayerContent(
                  modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
             )
             
-            Spacer(modifier = Modifier.height(24.dp)) // Maintain fixed gap between control rows
+            Spacer(modifier = Modifier.height(16.dp)) // Reduced gap for small screens
             
             // Row 2: Actions (Like, Download, Queue)
             AdvancedPlayerControls(
@@ -186,14 +211,16 @@ fun SharedPlayerContent(
                  onDownloadClick = onDownloadClick,
                  onQueueClick = onQueueClick,
                  style = cx.aswin.boxcast.core.designsystem.components.ControlStyle.Squircle,
+                 controlSize = actionButtonSize,
                  modifier = Modifier.fillMaxWidth()
             )
             
-            Spacer(modifier = Modifier.weight(0.05f))
+            Spacer(modifier = Modifier.weight(0.02f))
 
             
             // Footer (e.g. Up Next List)
             footerContent()
+            }
         }
     }
 }

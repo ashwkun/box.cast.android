@@ -289,7 +289,7 @@ class PlaybackRepository(
     }
 
     suspend fun playQueue(episodes: List<Episode>, podcast: Podcast, startIndex: Int = 0) {
-        Log.d("PlaybackRepo", "playQueue() called: count=${episodes.size}, start=$startIndex")
+        Log.d("PlaybackRepo", "playQueue() called: count=${episodes.size}, start=$startIndex, podcastGenre='${podcast.genre}'")
         
         prefs.edit().putBoolean(KEY_PLAYER_DISMISSED, false).apply()
         
@@ -362,11 +362,21 @@ class PlaybackRepository(
     }
 
     suspend fun addToQueue(episode: Episode, podcast: Podcast) {
+        Log.d("PlaybackRepo", "addToQueue called: episodeId=${episode.id}, title=${episode.title}")
+        
+        // Prevent Duplicates in active queue
+        if (_playerState.value.queue.any { it.id == episode.id }) {
+            Log.w("PlaybackRepo", "addToQueue: Episode ${episode.title} already in active queue. Skipping.")
+            return
+        }
+
         if (mediaController == null) {
+            Log.d("PlaybackRepo", "addToQueue: mediaController null, awaiting...")
             mediaController = mediaControllerFuture?.await()
         }
         
         mediaController?.let { controller ->
+             Log.d("PlaybackRepo", "addToQueue: mediaController ready, mediaItemCount=${controller.mediaItemCount}")
              val metadata = androidx.media3.common.MediaMetadata.Builder()
                 .setTitle(episode.title)
                 .setArtist(podcast.title)
@@ -383,11 +393,13 @@ class PlaybackRepository(
                 .build()
                 
              controller.addMediaItem(mediaItem)
+             Log.d("PlaybackRepo", "addToQueue: Added to Media3, new mediaItemCount=${controller.mediaItemCount}")
              
              // Update local state
              val currentQueue = _playerState.value.queue
              _playerState.value = _playerState.value.copy(queue = currentQueue + episode)
-        }
+             Log.d("PlaybackRepo", "addToQueue: Updated local state, queue size=${_playerState.value.queue.size}")
+        } ?: Log.e("PlaybackRepo", "addToQueue: mediaController still NULL after await!")
      }
 
     suspend fun addToQueueNext(episode: Episode, podcast: Podcast) {
@@ -622,11 +634,27 @@ class PlaybackRepository(
 
     fun skipToEpisode(index: Int) {
         val controller = mediaController
-        android.util.Log.d("PlaybackRepo", "skipToEpisode: index=$index, controller=${controller != null}, mediaItemCount=${controller?.mediaItemCount ?: -1}, currentIndex=${controller?.currentMediaItemIndex ?: -1}")
+        android.util.Log.d("PlaybackRepo", "skipToEpisode: index=$index, controller=${controller != null}, mediaItemCount=${controller?.mediaItemCount ?: -1}")
         
         if (controller == null) {
             android.util.Log.e("PlaybackRepo", "skipToEpisode: mediaController is NULL!")
             return
+        }
+        
+        // Fix for "Resume" after process death: 
+        // If controller is empty (0 items) but we have a local queue, we need to re-initialize playback
+        // instead of just seeking (which fails if count is 0).
+        if (controller.mediaItemCount == 0 && _playerState.value.queue.isNotEmpty()) {
+             android.util.Log.d("PlaybackRepo", "skipToEpisode: Controller empty but local queue exists. Re-initializing playback.")
+             val queue = _playerState.value.queue
+             val podcast = _playerState.value.currentPodcast
+             
+             if (index in queue.indices && podcast != null) {
+                 repositoryScope.launch {
+                     playQueue(queue, podcast, index)
+                 }
+                 return
+             }
         }
         
         if (index >= controller.mediaItemCount) {
@@ -803,12 +831,16 @@ class PlaybackRepository(
         val episode = state.currentEpisode ?: return
         val podcast = state.currentPodcast ?: return
 
+        android.util.Log.d("PlaybackRepo", "Marking episode as completed: ${episode.title}")
+
         // Update DB
         listeningHistoryDao.setCompletionStatus(episode.id, true)
         
         // Update History Entity to ensure consistency
         val existing = listeningHistoryDao.getHistoryItem(episode.id)
+        
         if (existing == null) {
+             android.util.Log.d("PlaybackRepo", "Creating new history item for completed episode")
              val entity = cx.aswin.boxcast.core.data.database.ListeningHistoryEntity(
                 episodeId = episode.id,
                 podcastId = podcast.id,
@@ -825,16 +857,19 @@ class PlaybackRepository(
                 isDirty = true
             )
             listeningHistoryDao.upsert(entity)
+        } else {
+             // UPDATE timestamp too so it appears in recently played (loop prevention)
+             android.util.Log.d("PlaybackRepo", "Updating existing history item as completed")
+             val updated = existing.copy(
+                 isCompleted = true, 
+                 lastPlayedAt = System.currentTimeMillis(),
+                 isDirty = true
+             )
+             listeningHistoryDao.upsert(updated)
         }
     }
-
-    // Legacy parameterless generic toggle (for player controls)
-    suspend fun toggleLike() {
-        val state = _playerState.value
-        val episode = state.currentEpisode ?: return
-        val podcast = state.currentPodcast ?: return
-        toggleLike(episode, podcast.id, podcast.title, podcast.imageUrl)
-    }
+    
+    // ... toggleLike ...
 
     suspend fun savePlaybackState(
         podcastId: String, 
@@ -850,6 +885,7 @@ class PlaybackRepository(
         isCompleted: Boolean,
         isLiked: Boolean
     ) {
+        android.util.Log.v("PlaybackRepo", "Saving playback state: $episodeTitle, pos=$positionMs, completed=$isCompleted")
         val entity = cx.aswin.boxcast.core.data.database.ListeningHistoryEntity(
             episodeId = episodeId,
             podcastId = podcastId,
@@ -867,6 +903,16 @@ class PlaybackRepository(
         )
         listeningHistoryDao.upsert(entity)
     }
+
+    // Legacy parameterless generic toggle (for player controls)
+    suspend fun toggleLike() {
+        val state = _playerState.value
+        val episode = state.currentEpisode ?: return
+        val podcast = state.currentPodcast ?: return
+        toggleLike(episode, podcast.id, podcast.title, podcast.imageUrl)
+    }
+
+
     suspend fun deleteSession(episodeId: String) {
         listeningHistoryDao.delete(episodeId)
     }

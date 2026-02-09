@@ -116,7 +116,10 @@ fun AdvancedPlayerControls(
                 if (overrideColor != null) colorScheme.primaryContainer else colorScheme.tertiaryContainer
             } else Color.Unspecified,
             controlSize = controlSize,
-            onClick = onQueueClick
+            onClick = {
+                android.util.Log.d("AdvancedPlayerControls", "Queue button clicked: isQueued=$isQueued, showAddQueueIcon=$showAddQueueIcon, style=$style")
+                onQueueClick()
+            }
         )
         
         // 3. DOWNLOAD

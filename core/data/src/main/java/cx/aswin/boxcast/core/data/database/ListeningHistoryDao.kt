@@ -54,4 +54,8 @@ interface ListeningHistoryDao {
 
     @Query("SELECT episodeId FROM listening_history WHERE isCompleted = 1")
     suspend fun getCompletedEpisodeIds(): List<String>
+    
+    // Get unique podcast IDs played after the given timestamp
+    @Query("SELECT DISTINCT podcastId FROM listening_history WHERE lastPlayedAt > :sinceTimestamp")
+    suspend fun getRecentlyPlayedPodcasts(sinceTimestamp: Long): List<String>
 }
