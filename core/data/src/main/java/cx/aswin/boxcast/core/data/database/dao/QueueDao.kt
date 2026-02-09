@@ -39,4 +39,7 @@ interface QueueDao {
     
     @Query("SELECT MAX(position) FROM queue_items")
     suspend fun getMaxPosition(): Int?
+
+    @Query("SELECT COUNT(*) FROM queue_items WHERE episodeId = :episodeId")
+    suspend fun countEpisode(episodeId: Long): Int
 }

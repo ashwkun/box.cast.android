@@ -52,7 +52,8 @@ fun PlayerControls(
     controlTint: Color,
     onPlayPause: () -> Unit,
     onPrevious: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    height: androidx.compose.ui.unit.Dp = 80.dp
 ) {
     val interactionSourcePrev = remember { MutableInteractionSource() }
     val interactionSourcePlay = remember { MutableInteractionSource() }
@@ -81,7 +82,7 @@ fun PlayerControls(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp) // Reduced from 96dp (User request: "reduce height", "pill shaped")
+            .height(height)
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically

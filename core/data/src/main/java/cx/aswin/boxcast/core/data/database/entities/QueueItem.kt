@@ -14,6 +14,8 @@ data class QueueItem(
     val title: String,
     val podcastId: Long, // Or String?
     val podcastTitle: String,
+    val podcastGenre: String = "", // NEW: For smart fallback matching
+    val podcastImageUrl: String? = null, // NEW: For podcast artwork fallback
     val imageUrl: String?,
     val audioUrl: String,
     val duration: Int,

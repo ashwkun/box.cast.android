@@ -248,6 +248,7 @@ fun UnifiedPlayerSheet(
                 }
             }
             if (!targetExpanded) {
+                android.util.Log.d("UnifiedSheet", "Collapsing sheet, resetting isQueueVisible to false")
                 isQueueVisible = false
             }
         }
@@ -515,7 +516,10 @@ fun UnifiedPlayerSheet(
                                     }
                                 },
                                 isQueueVisible = isQueueVisible,
-                                onQueueToggle = { isQueueVisible = !isQueueVisible },
+                                onQueueToggle = { 
+                                    android.util.Log.d("UnifiedSheet", "onQueueToggle: isQueueVisible=$isQueueVisible -> ${!isQueueVisible}, queue size=${state.queue.size}")
+                                    isQueueVisible = !isQueueVisible 
+                                },
                                 onEpisodeInfoClick = onEpisodeInfoClick,
                                 onPodcastInfoClick = onPodcastInfoClick
                             )

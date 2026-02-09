@@ -85,6 +85,7 @@ fun FullPlayerContent(
     // isQueueVisible is now hoisted
     
     LaunchedEffect(isQueueVisible) {
+        android.util.Log.d("FullPlayer", "isQueueVisible changed: $isQueueVisible")
         if (isQueueVisible) {
             // Scroll to Title (Index 2, assuming Spacer is Index 1)
             // Or just scroll to ensure Spacer is visible
@@ -192,7 +193,8 @@ fun FullPlayerContent(
                     },
                     isDownloaded = isDownloaded,
                     isDownloading = isDownloading,
-                     onQueueClick = { 
+                    onQueueClick = { 
+                        android.util.Log.d("FullPlayer", "onQueueClick: current isQueueVisible=$isQueueVisible, queue size=${state.queue.size}")
                         onQueueToggle()
                     },
                     onEpisodeInfoClick = { 
@@ -229,8 +231,8 @@ fun FullPlayerContent(
                 }
                 
                 // Items: The Queue
-                // Items: The Queue
                 // drop(1) to skip the currently playing episode which is always at index 0
+                android.util.Log.d("FullPlayer", "Rendering Up Next queue: total=${state.queue.size}, displaying=${state.queue.drop(1).size}")
                 items(state.queue.drop(1)) { ep ->
                     cx.aswin.boxcast.feature.player.QueueItemRow(
                         episode = ep,
@@ -238,10 +240,28 @@ fun FullPlayerContent(
                         colorScheme = colorScheme,
                         onClick = { 
                             scope.launch {
-                                android.util.Log.d("FullPlayer", "Queue item clicked: ${ep.title}")
+                                android.util.Log.d("FullPlayer", "Queue item clicked: ${ep.title}, podcastId=${ep.podcastId}, genre=${ep.podcastGenre}")
                                 // Read fresh queue from playerState to avoid stale lambda capture
                                 val freshQueue = playbackRepository.playerState.value.queue
-                                playbackRepository.playFromQueueIndex(ep.id, freshQueue, podcast)
+                                
+                                // Construct podcast from episode's embedded info (important for fallback episodes from different podcasts)
+                                val epPodcastId = ep.podcastId
+                                val episodePodcast = if (epPodcastId != null && epPodcastId != podcast.id) {
+                                    // This episode is from a different podcast (e.g., fallback episode)
+                                    android.util.Log.d("FullPlayer", "Using episode's embedded podcast: ${ep.podcastTitle}")
+                                    cx.aswin.boxcast.core.model.Podcast(
+                                        id = epPodcastId,
+                                        title = ep.podcastTitle ?: "Unknown",
+                                        artist = ep.podcastArtist ?: "",
+                                        imageUrl = ep.podcastImageUrl ?: "",
+                                        description = null,
+                                        genre = ep.podcastGenre ?: ""
+                                    )
+                                } else {
+                                    // Same podcast as current
+                                    podcast
+                                }
+                                playbackRepository.playFromQueueIndex(ep.id, freshQueue, episodePodcast)
                             }
                         }
                     )

@@ -80,12 +80,6 @@ class BoxCastPlaybackService : MediaLibraryService() {
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val provider = BoxCastNotificationProvider(this)
-        provider.setSmallIcon(cx.aswin.boxcast.core.designsystem.R.drawable.ic_notification)
-
-        // Set provider on the Service (MediaSessionService)
-        setMediaNotificationProvider(provider)
-
         mediaSession = MediaLibrarySession.Builder(this, player, LibrarySessionCallback())
             .setSessionActivity(pendingIntent)
             .build()

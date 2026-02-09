@@ -14,12 +14,15 @@ class QueueManager @Inject constructor(
     private val smartQueueEngine: SmartQueueEngine,
     private val playbackRepository: PlaybackRepository
 ) {
+    private val TAG = "QueueManager"
     private val scope = CoroutineScope(Dispatchers.Main)
     private var isRefilling = false // Prevent multiple refills
     
     init {
+        android.util.Log.d(TAG, "QueueManager initialized")
         // Set up auto-refill callback
         playbackRepository.queueRefillCallback = { currentEpisode, podcast ->
+            android.util.Log.d(TAG, "queueRefillCallback triggered for: ${currentEpisode.title}")
             refillQueue(currentEpisode, podcast)
         }
     }
@@ -46,18 +49,19 @@ class QueueManager @Inject constructor(
                 feedImage = currentEpisode.podcastImageUrl
             )
             
-            // Get more episodes
-            val nextEpisodes = smartQueueEngine.getNextEpisodes(currentItem, podcast, null)
-            android.util.Log.d("QueueManager", "Auto-refill got ${nextEpisodes.size} more episodes")
+            // Get more episodes (returns QueueEntry with correct podcast for each)
+            val nextEntries = smartQueueEngine.getNextEpisodes(currentItem, podcast, null)
+            android.util.Log.d(TAG, "Auto-refill got ${nextEntries.size} more episodes")
             
-            nextEpisodes.forEach { nextEp ->
-                val domainNext = nextEp.toDomain(podcast)
+            nextEntries.forEach { entry ->
+                // Use the podcast from the entry (may differ for fallback episodes!)
+                val domainNext = entry.episode.toDomain(entry.podcast)
                 
                 // Add to Persistence
-                queueRepository.addToQueue(nextEp, podcast)
+                queueRepository.addToQueue(entry.episode, entry.podcast)
                 
                 // Add to Active Player Queue
-                playbackRepository.addToQueue(domainNext, podcast)
+                playbackRepository.addToQueue(domainNext, entry.podcast)
             }
             
             isRefilling = false
@@ -66,7 +70,7 @@ class QueueManager @Inject constructor(
 
     fun playEpisode(episode: EpisodeItem, podcast: cx.aswin.boxcast.core.model.Podcast?, preferredSort: String? = null) {
         scope.launch {
-            android.util.Log.d("QueueManager", "playEpisode called: ${episode.title}, sort=$preferredSort")
+            android.util.Log.d(TAG, "playEpisode called: ${episode.title}, sort=$preferredSort")
             
             if (podcast != null) {
                 // 1. Clear current queue for a fresh start
@@ -76,39 +80,35 @@ class QueueManager @Inject constructor(
                 queueRepository.addToQueue(episode, podcast)
                 
                 // 3. Start playback IMMEDIATELY with just the current episode
+                // The queueRefillCallback will auto-fill more episodes when queue runs low
                 val domainEpisode = episode.toDomain(podcast)
-                android.util.Log.d("QueueManager", "Starting playback immediately for: ${domainEpisode.title}")
+                android.util.Log.d(TAG, "Starting playback immediately for: ${domainEpisode.title}")
                 playbackRepository.playQueue(listOf(domainEpisode), podcast, 0)
                 
-                // 4. Smart Auto-fill (Up Next) in Background
-                // This network call won't block the UI/Player from starting
-                val nextEpisodes = smartQueueEngine.getNextEpisodes(episode, podcast, preferredSort)
-                android.util.Log.d("QueueManager", "SmartEngine returned ${nextEpisodes.size} next episodes")
-                
-                nextEpisodes.forEach { nextEp ->
-                    val domainNext = nextEp.toDomain(podcast)
-                    
-                    // Add to Persistence
-                    queueRepository.addToQueue(nextEp, podcast)
-                    
-                    // Add to Active Player Queue
-                    playbackRepository.addToQueue(domainNext, podcast)
-                }
+                // NOTE: Smart Auto-fill is now handled by queueRefillCallback
+                // which triggers when onMediaItemTransition sees queue is low.
+                // This prevents duplicate episodes from being added.
             } else {
-                 android.util.Log.e("QueueManager", "Podcast is null!")
+                 android.util.Log.e(TAG, "Podcast is null!")
             }
         }
     }
 
     fun addToQueue(episode: EpisodeItem, podcast: cx.aswin.boxcast.core.model.Podcast?) {
+        android.util.Log.d(TAG, "addToQueue called: episodeId=${episode.id}, title=${episode.title}, podcast=${podcast?.title}")
         scope.launch {
             if (podcast != null) {
+                android.util.Log.d(TAG, "addToQueue: Persisting to QueueRepository")
                 // Persist
                 queueRepository.addToQueue(episode, podcast)
                 
                 // Add to Player
                 val domainEpisode = episode.toDomain(podcast)
+                android.util.Log.d(TAG, "addToQueue: Adding to PlaybackRepository queue")
                 playbackRepository.addToQueue(domainEpisode, podcast)
+                android.util.Log.d(TAG, "addToQueue: Complete. Current queue size: ${playbackRepository.playerState.value.queue.size}")
+            } else {
+                android.util.Log.e(TAG, "addToQueue: Podcast is null, ignoring!")
             }
         }
     }
@@ -154,6 +154,9 @@ class QueueManager @Inject constructor(
             imageUrl = (this.image?.takeIf { it.isNotBlank() } ?: this.feedImage?.takeIf { it.isNotBlank() }) ?: podcast.imageUrl,
             podcastImageUrl = this.feedImage?.takeIf { it.isNotBlank() } ?: podcast.imageUrl, // Ensure fallback
             podcastTitle = podcast.title,
+            podcastId = podcast.id,
+            podcastGenre = podcast.genre,
+            podcastArtist = podcast.artist,
             duration = this.duration ?: 0,
             publishedDate = this.datePublished ?: 0L
         )
