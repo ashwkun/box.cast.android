@@ -122,8 +122,12 @@ async function main() {
         "latest_ep_image TEXT",
         "latest_ep_type TEXT",
         "latest_ep_description TEXT",
-        "vector F32(384)", // Vector embedding
-        "last_ep_sync INTEGER" // Timestamp of last sync
+        "latest_ep_chapters_url TEXT",    // P2.0
+        "latest_ep_transcript_url TEXT",  // P2.0
+        "latest_ep_persons TEXT",         // P2.0 JSON
+        "latest_ep_transcripts TEXT",     // P2.0 JSON
+        "vector F32(384)",
+        "last_ep_sync INTEGER"
     ];
 
     console.log("Ensuring schema columns exist...");
@@ -133,7 +137,6 @@ async function main() {
         } catch (e) { /* Ignore */ }
     }
 
-    // 3. Get podcasts needing sync (Priority: Never Synced > Oldest Synced)
     // 3. Get podcasts needing sync (Priority: New > News(4h) > Others(24h))
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
     const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
@@ -192,13 +195,10 @@ async function main() {
             if (episodes.length === 0) return;
 
             // Find the latest episode (usually first, but ensure by date)
-            // Handle bulk publish edge case by preferring higher ID if dates match?
-            // PI returns descending date.
-            const latestEp = episodes[0]; // Simple heuristic for now as PI sorts by new
+            const latestEp = episodes[0];
 
             try {
-                // Update podcast with latest episode metadata
-                // We use UPDATE because the podcast row already exists (from import-pi-data.js)
+                // Update podcast with latest episode metadata + P2.0 fields
                 const sql = `
                     UPDATE podcasts SET 
                         latest_ep_id = ?,
@@ -209,10 +209,20 @@ async function main() {
                         latest_ep_image = ?,
                         latest_ep_type = ?,
                         latest_ep_description = ?,
+                        latest_ep_chapters_url = ?,
+                        latest_ep_transcript_url = ?,
+                        latest_ep_persons = ?,
+                        latest_ep_transcripts = ?,
                         vector = NULL, -- Invalidate vector on new content
                         last_ep_sync = ?
                     WHERE id = ?
                 `;
+
+                // P2.0 Fields extraction
+                const chaptersUrl = latestEp.chaptersUrl || null;
+                const transcriptUrl = latestEp.transcriptUrl || null;
+                const personsJson = latestEp.persons ? JSON.stringify(latestEp.persons) : null;
+                const transcriptsJson = latestEp.transcripts ? JSON.stringify(latestEp.transcripts) : null;
 
                 await executeSQL(sql, [
                     String(latestEp.id),
@@ -223,6 +233,10 @@ async function main() {
                     latestEp.image || latestEp.feedImage || "",
                     latestEp.enclosureType || "audio/mpeg",
                     (latestEp.description || "").substring(0, 1000), // Truncate description
+                    chaptersUrl,
+                    transcriptUrl,
+                    personsJson,
+                    transcriptsJson,
                     Date.now(),
                     String(pod.id)
                 ]);
