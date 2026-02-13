@@ -3,7 +3,6 @@ package cx.aswin.boxcast.core.data
 import cx.aswin.boxcast.core.network.model.EpisodeItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,11 +11,12 @@ import javax.inject.Singleton
 class QueueManager @Inject constructor(
     private val queueRepository: QueueRepository,
     private val smartQueueEngine: SmartQueueEngine,
-    private val playbackRepository: PlaybackRepository
+    private val playbackRepository: PlaybackRepository,
+    private val podcastRepository: PodcastRepository
 ) {
     private val TAG = "QueueManager"
     private val scope = CoroutineScope(Dispatchers.Main)
-    private var isRefilling = false // Prevent multiple refills
+    private var isRefilling = false
     
     init {
         android.util.Log.d(TAG, "QueueManager initialized")
@@ -35,9 +35,8 @@ class QueueManager @Inject constructor(
         isRefilling = true
         
         scope.launch {
-            android.util.Log.d("QueueManager", "Auto-refill triggered for: ${currentEpisode.title}")
+            android.util.Log.d(TAG, "Auto-refill triggered for: ${currentEpisode.title}")
             
-            // Create EpisodeItem from current episode for SmartQueueEngine
             val currentItem = EpisodeItem(
                 id = currentEpisode.id.toLongOrNull() ?: 0L,
                 title = currentEpisode.title,
@@ -49,12 +48,10 @@ class QueueManager @Inject constructor(
                 feedImage = currentEpisode.podcastImageUrl
             )
             
-            // Get more episodes (returns QueueEntry with correct podcast for each)
             val nextEntries = smartQueueEngine.getNextEpisodes(currentItem, podcast, null)
             android.util.Log.d(TAG, "Auto-refill got ${nextEntries.size} more episodes")
             
             nextEntries.forEach { entry ->
-                // Use the podcast from the entry (may differ for fallback episodes!)
                 val domainNext = entry.episode.toDomain(entry.podcast)
                 
                 // Add to Persistence
@@ -76,7 +73,7 @@ class QueueManager @Inject constructor(
                 // 1. Clear current queue for a fresh start
                 queueRepository.clearQueue()
                 
-                // 2. Add selected episode (Current playing) & Persist
+                // 2. Add selected episode & Persist
                 queueRepository.addToQueue(episode, podcast)
                 
                 // 3. Start playback IMMEDIATELY with just the current episode
@@ -84,10 +81,6 @@ class QueueManager @Inject constructor(
                 val domainEpisode = episode.toDomain(podcast)
                 android.util.Log.d(TAG, "Starting playback immediately for: ${domainEpisode.title}")
                 playbackRepository.playQueue(listOf(domainEpisode), podcast, 0)
-                
-                // NOTE: Smart Auto-fill is now handled by queueRefillCallback
-                // which triggers when onMediaItemTransition sees queue is low.
-                // This prevents duplicate episodes from being added.
             } else {
                  android.util.Log.e(TAG, "Podcast is null!")
             }
@@ -98,13 +91,11 @@ class QueueManager @Inject constructor(
         android.util.Log.d(TAG, "addToQueue called: episodeId=${episode.id}, title=${episode.title}, podcast=${podcast?.title}")
         scope.launch {
             if (podcast != null) {
-                android.util.Log.d(TAG, "addToQueue: Persisting to QueueRepository")
                 // Persist
                 queueRepository.addToQueue(episode, podcast)
                 
                 // Add to Player
                 val domainEpisode = episode.toDomain(podcast)
-                android.util.Log.d(TAG, "addToQueue: Adding to PlaybackRepository queue")
                 playbackRepository.addToQueue(domainEpisode, podcast)
                 android.util.Log.d(TAG, "addToQueue: Complete. Current queue size: ${playbackRepository.playerState.value.queue.size}")
             } else {
@@ -122,7 +113,7 @@ class QueueManager @Inject constructor(
         if (podcast != null && currentPodcast?.id == podcast.id) {
              val index = currentQueue.indexOfFirst { it.id == episode.id }
              if (index != -1) {
-                 android.util.Log.d("QueueManager", "Episode found in existing queue at index $index. Skipping to it.")
+                 android.util.Log.d(TAG, "Episode found in existing queue at index $index. Skipping to it.")
                  playbackRepository.skipToEpisode(index)
                  return
              }
@@ -141,10 +132,19 @@ class QueueManager @Inject constructor(
             duration = this.duration,
             datePublished = this.publishedDate,
             image = this.imageUrl,
-            feedImage = this.podcastImageUrl ?: podcast?.imageUrl
+            feedImage = this.podcastImageUrl ?: podcast?.imageUrl,
+            // Podcast 2.0
+            chaptersUrl = this.chaptersUrl,
+            transcriptUrl = this.transcriptUrl,
+            persons = this.persons?.map { cx.aswin.boxcast.core.network.model.PersonItem(name = it.name, role = it.role, img = it.img, href = it.href) },
+            transcripts = this.transcripts?.map { cx.aswin.boxcast.core.network.model.TranscriptItem(url = it.url, type = it.type) }
         )
     }
 
+    /**
+     * Canonical conversion: EpisodeItem + Podcast -> Domain Episode
+     * Ensures ALL podcast metadata fields are populated.
+     */
     private fun EpisodeItem.toDomain(podcast: cx.aswin.boxcast.core.model.Podcast): cx.aswin.boxcast.core.model.Episode {
         return cx.aswin.boxcast.core.model.Episode(
             id = this.id.toString(),
@@ -152,13 +152,18 @@ class QueueManager @Inject constructor(
             description = this.description ?: "",
             audioUrl = this.enclosureUrl ?: "",
             imageUrl = (this.image?.takeIf { it.isNotBlank() } ?: this.feedImage?.takeIf { it.isNotBlank() }) ?: podcast.imageUrl,
-            podcastImageUrl = this.feedImage?.takeIf { it.isNotBlank() } ?: podcast.imageUrl, // Ensure fallback
+            podcastImageUrl = this.feedImage?.takeIf { it.isNotBlank() } ?: podcast.imageUrl,
             podcastTitle = podcast.title,
             podcastId = podcast.id,
             podcastGenre = podcast.genre,
             podcastArtist = podcast.artist,
             duration = this.duration ?: 0,
-            publishedDate = this.datePublished ?: 0L
+            publishedDate = this.datePublished ?: 0L,
+            // Podcast 2.0
+            chaptersUrl = this.chaptersUrl,
+            transcriptUrl = this.transcriptUrl,
+            persons = this.persons?.map { cx.aswin.boxcast.core.model.Person(name = it.name, role = it.role, img = it.img, href = it.href) },
+            transcripts = this.transcripts?.map { cx.aswin.boxcast.core.model.Transcript(url = it.url, type = it.type) }
         )
     }
 }

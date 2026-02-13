@@ -7,7 +7,7 @@ import cx.aswin.boxcast.core.data.database.dao.QueueDao
 
 @Database(
     entities = [ListeningHistoryEntity::class, PodcastEntity::class, DownloadedEpisodeEntity::class, QueueItem::class],
-    version = 9,
+    version = 11,
     exportSchema = false
 )
 abstract class BoxCastDatabase : RoomDatabase() {

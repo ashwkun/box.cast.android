@@ -9,13 +9,14 @@ data class QueueItem(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     
-    // Episode Metadata (Embedded since we don't have a central Episode table)
-    val episodeId: Long, // Or String depending on ID type? API returns Long usually.
+    // Episode Metadata
+    val episodeId: String,
     val title: String,
-    val podcastId: Long, // Or String?
+    val podcastId: String,
     val podcastTitle: String,
-    val podcastGenre: String = "", // NEW: For smart fallback matching
-    val podcastImageUrl: String? = null, // NEW: For podcast artwork fallback
+    val podcastGenre: String = "",
+    val podcastArtist: String = "",
+    val podcastImageUrl: String? = null,
     val imageUrl: String?,
     val audioUrl: String,
     val duration: Int,
@@ -25,18 +26,25 @@ data class QueueItem(
     // Queue Metadata
     val position: Int,
     val addedAt: Long = System.currentTimeMillis(),
-    val contextType: String = "MANUAL", // MANUAL, NEXT_UP, SMART_RECOMMENDATION
-    val contextSourceId: String? = null // Podcast ID, Vibe ID, etc.
+    val contextType: String = "MANUAL",
+    val contextSourceId: String? = null,
+
+    // Podcast 2.0 Fields
+    val chaptersUrl: String? = null,
+    val transcriptUrl: String? = null,
+    val personsJson: String? = null,      // JSON-serialized List<Person>
+    val transcriptsJson: String? = null   // JSON-serialized List<Transcript>
 ) {
     fun toEpisodeItem(): EpisodeItem {
         return EpisodeItem(
-            id = episodeId,
+            id = episodeId.toLongOrNull() ?: 0L,
             title = title,
             enclosureUrl = audioUrl,
             description = description ?: "",
             duration = duration,
-            datePublished = pubDate, // Ensure type matches (Long vs Int)
-            image = imageUrl ?: ""
+            datePublished = pubDate,
+            image = imageUrl ?: "",
+            feedImage = podcastImageUrl // Podcast artwork fallback
         )
     }
 }

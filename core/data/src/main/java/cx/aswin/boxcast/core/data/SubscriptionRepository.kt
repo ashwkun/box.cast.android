@@ -60,4 +60,25 @@ class SubscriptionRepository(
     suspend fun isSubscribed(podcastId: String): Boolean {
         return podcastDao.getPodcast(podcastId)?.isSubscribed == true
     }
+
+    suspend fun subscribe(podcast: Podcast) {
+        val existing = podcastDao.getPodcast(podcast.id)
+        if (existing == null) {
+            val entity = PodcastEntity(
+                podcastId = podcast.id,
+                title = podcast.title,
+                author = podcast.artist,
+                imageUrl = podcast.imageUrl,
+                description = podcast.description,
+                isSubscribed = true,
+                genre = podcast.genre,
+                lastRefreshed = System.currentTimeMillis()
+            )
+            podcastDao.upsert(entity)
+            analyticsHelper?.logSubscribe(podcast.title)
+        } else if (!existing.isSubscribed) {
+            podcastDao.setSubscribed(podcast.id, true)
+            analyticsHelper?.logSubscribe(podcast.title)
+        }
+    }
 }

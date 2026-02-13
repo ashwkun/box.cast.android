@@ -13,5 +13,12 @@ data class Podcast(
     val colorHex: String? = null, // For dynamic theming storage
     val fallbackImageUrl: String? = null, // Logic: Episode Art -> Fallback Podcast Art
     val latestEpisode: Episode? = null,
-    val resumeProgress: Float? = null // 0.0 - 1.0
+    val resumeProgress: Float? = null, // 0.0 - 1.0
+    // --- Podcast 2.0 ---
+    val fundingUrl: String? = null,
+    val fundingMessage: String? = null,
+    val podcastGuid: String? = null,
+    val medium: String? = null,   // "podcast", "music", "video"
+    val ownerName: String? = null,
+    val hasValue: Boolean = false  // true if V4V value tag exists
 )

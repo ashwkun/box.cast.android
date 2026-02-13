@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -99,8 +100,8 @@ class MainActivity : ComponentActivity() {
                 val apiBaseUrl = BuildConfig.BOXCAST_API_BASE_URL
                 val publicKey = BuildConfig.BOXCAST_PUBLIC_KEY
                 
-                // Show bottom nav on all screens except player
-                val showBottomNav = !currentRoute.startsWith("player")
+                // Show bottom nav on all screens except player and onboarding
+                val showBottomNav = !currentRoute.startsWith("player") && currentRoute != "onboarding"
                 
                 // Check if we can go back (for predictive back)
                 val canGoBack = navController.previousBackStackEntry != null
@@ -110,11 +111,11 @@ class MainActivity : ComponentActivity() {
                 val database = remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
                 
                 // 1. Core Data Sources
-                // Note: creating a shared PodcastRepository instance might be better, but existing code creates multiple.
-                // We'll follow existing pattern for now or reuse if convenient.
+                // Create a shared PodcastRepository instance
+                val podcastRepository = remember { cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, application) }
                 
                 // 2. Queue Repository (Must come before PlaybackRepo)
-                val queueRepository = remember { cx.aswin.boxcast.core.data.QueueRepository(database, cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, application)) }
+                val queueRepository = remember { cx.aswin.boxcast.core.data.QueueRepository(database, podcastRepository) }
 
                 // 3. Playback Repository (Depends on QueueRepo)
                 val playbackRepository = remember { cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao(), queueRepository) }
@@ -123,12 +124,18 @@ class MainActivity : ComponentActivity() {
                 // 4. Subscription Repository
                 val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao(), analyticsHelper = null) }
                 
+                // 6. Onboarding ViewModel
+                val onboardingViewModel = remember {
+                    cx.aswin.boxcast.feature.onboarding.OnboardingViewModel(application, podcastRepository, subscriptionRepository)
+                }
+                val onboardingCompleted = remember { onboardingViewModel.isOnboardingCompleted() }
+                
                 // 5. Smart Queue Engine
-                val smartQueueEngine = remember { cx.aswin.boxcast.core.data.DefaultSmartQueueEngine(cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, application), database.listeningHistoryDao(), subscriptionRepository) }
+                val smartQueueEngine = remember { cx.aswin.boxcast.core.data.DefaultSmartQueueEngine(podcastRepository, database.listeningHistoryDao(), subscriptionRepository) }
                 
                 // QueueManager (Singleton-ish) - Needs to be provided to ViewModels/Screens
                 val queueManager = remember { 
-                    cx.aswin.boxcast.core.data.QueueManager(queueRepository, smartQueueEngine, playbackRepository)
+                    cx.aswin.boxcast.core.data.QueueManager(queueRepository, smartQueueEngine, playbackRepository, podcastRepository)
                 }
 
                 // Privacy & Analytics & Preferences
@@ -198,7 +205,7 @@ class MainActivity : ComponentActivity() {
 
                             NavHost(
                                 navController = navController,
-                                startDestination = "home",
+                                startDestination = if (onboardingCompleted) "home" else "onboarding",
                                 modifier = Modifier, // No padding(innerPadding) -> Fixes GAP issue
                                 enterTransition = {
                                     val fromIndex = getRouteIndex(initialState.destination.route)
@@ -245,6 +252,18 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             ) {
+                            // Onboarding
+                            composable("onboarding") {
+                                cx.aswin.boxcast.feature.onboarding.OnboardingScreen(
+                                    viewModel = onboardingViewModel,
+                                    onComplete = {
+                                        navController.navigate("home") {
+                                            popUpTo("onboarding") { inclusive = true }
+                                        }
+                                    }
+                                )
+                            }
+
                             // Main tabs
                             composable("home") {
                                 HomeRoute(
@@ -281,13 +300,13 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     onEpisodeClick = { episode, podcast ->
-                                        fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                        fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
                                         navController.navigate(
-                                            "episode/${episode.id}/${encode(episode.title)}/" +
+                                            "episode/${encode(episode.id)}/${encode(episode.title)}/" +
                                             "${encode(episode.description.take(500))}/" +
                                             "${encode(episode.imageUrl)}/" +
                                             "${encode(episode.audioUrl)}/" +
-                                            "${episode.duration}/${podcast.id}/" +
+                                            "${episode.duration}/${encode(podcast.id)}/" +
                                             encode(podcast.title)
                                         )
                                     },
@@ -610,7 +629,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 )
-                                fun decode(s: String?) = java.net.URLDecoder.decode(s ?: "", "UTF-8").let { if (it == "_") "" else it }
+                                fun decode(s: String?) = try { android.net.Uri.decode(s ?: "").let { if (it == "_") "" else it } } catch (_: Exception) { s ?: "" }
                                 
                                 val podcastId = args.getString("podcastId") ?: ""
                                 val podcastTitle = decode(args.getString("podcastTitle"))
@@ -734,13 +753,13 @@ class MainActivity : ComponentActivity() {
                         onEpisodeInfoClick = { episode ->
                             // Navigate to episode info
                             val podcast = playbackRepository.playerState.value.currentPodcast
-                            fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                            fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
                             navController.navigate(
-                                "episode/${episode.id}/${encode(episode.title)}/" +
+                                "episode/${encode(episode.id)}/${encode(episode.title)}/" +
                                 "${encode(episode.description.take(500))}/" +
                                 "${encode(episode.imageUrl)}/" +
                                 "${encode(episode.audioUrl)}/" +
-                                "${episode.duration}/${podcast?.id ?: "unknown"}/" +
+                                "${episode.duration}/${encode(podcast?.id ?: "unknown")}/" +
                                 encode(podcast?.title ?: "Podcast")
                             ) {
                                 launchSingleTop = true
@@ -757,6 +776,11 @@ class MainActivity : ComponentActivity() {
                     
                     // Privacy Consent Dialog (Overlay on everything)
                     if (!hasUserSetConsent) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surface)
+                        )
                         cx.aswin.boxcast.core.designsystem.components.PrivacyConsentDialog(
                             onConsentDecided = { crash, usage ->
                                 scope.launch {

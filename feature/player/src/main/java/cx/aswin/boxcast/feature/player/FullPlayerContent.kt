@@ -20,13 +20,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,61 +44,34 @@ import androidx.compose.ui.unit.dp
 import cx.aswin.boxcast.core.data.PlaybackRepository
 import cx.aswin.boxcast.core.model.Episode
 import cx.aswin.boxcast.core.model.Podcast
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.text.style.TextOverflow
-import coil.compose.AsyncImage
-import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
-import androidx.compose.ui.layout.ContentScale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullPlayerContent(
     playbackRepository: PlaybackRepository,
     downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
     colorScheme: ColorScheme,
     onCollapse: () -> Unit,
-    isQueueVisible: Boolean,
-    onQueueToggle: () -> Unit,
     onEpisodeInfoClick: (Episode) -> Unit = {},
     onPodcastInfoClick: (Podcast) -> Unit = {}
 ) {
     val state by playbackRepository.playerState.collectAsState()
     val episode = state.currentEpisode ?: return
-    val podcast = state.currentPodcast ?: return // Safety check
+    val podcast = state.currentPodcast ?: return
     
-    // Use passed colorScheme which is already adaptive
-    val containerColor = colorScheme.primaryContainer.copy(alpha = 0.6f).compositeOver(colorScheme.surface) // Blend for depth
+    val containerColor = colorScheme.primaryContainer.copy(alpha = 0.6f).compositeOver(colorScheme.surface)
     
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val isDarkTheme = isSystemInDarkTheme()
     
-    // Manage system bars
     val window = (LocalContext.current as? android.app.Activity)?.window
-    val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    // isQueueVisible is now hoisted
     
-    LaunchedEffect(isQueueVisible) {
-        android.util.Log.d("FullPlayer", "isQueueVisible changed: $isQueueVisible")
-        if (isQueueVisible) {
-            // Scroll to Title (Index 2, assuming Spacer is Index 1)
-            // Or just scroll to ensure Spacer is visible
-            listState.animateScrollToItem(1)
-        }
-    }
+    // Queue bottom sheet state
+    var showQueueSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     SideEffect {
         window?.let { win ->
@@ -145,129 +125,111 @@ fun FullPlayerContent(
         
         Spacer(modifier = Modifier.height(12.dp))
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            userScrollEnabled = isQueueVisible // Only allow scroll if Queue is visible
-        ) {
-            // Item 0: The Main Player (Full Height)
-            item {
-                  val isDownloaded by remember(episode.id) { 
-                     downloadRepository.isDownloaded(episode.id)
-                  }.collectAsState(initial = false)
+        // Main Player Content (fills available space)
+        val isDownloaded by remember(episode.id) { 
+            downloadRepository.isDownloaded(episode.id)
+        }.collectAsState(initial = false)
 
-                  val isDownloading by remember(episode.id) {
-                     downloadRepository.isDownloading(episode.id)
-                  }.collectAsState(initial = false)
+        val isDownloading by remember(episode.id) {
+            downloadRepository.isDownloading(episode.id)
+        }.collectAsState(initial = false)
 
-                 SharedPlayerContent(
-                    podcast = podcast,
-                    episode = episode,
-                    isPlaying = state.isPlaying,
-                    isLoading = state.isLoading,
-                    positionMs = state.position,
-                    durationMs = state.duration,
-                    bufferedPositionMs = state.bufferedPosition,
-                    playbackSpeed = state.playbackSpeed,
-                    sleepTimerEnd = state.sleepTimerEnd,
-                    isLiked = state.isLiked,
-                    colorScheme = colorScheme,
-                    onPlayPause = {
-                        if (state.isPlaying) playbackRepository.pause() else playbackRepository.resume()
-                    },
-                    onSeek = { playbackRepository.seekTo(it) },
-                    onPrevious = { playbackRepository.skipBackward() },
-                    onNext = { playbackRepository.skipForward() },
-                    onSetSpeed = { playbackRepository.setPlaybackSpeed(it) },
-                    onSetSleepTimer = { playbackRepository.setSleepTimer(it) },
-                    onLikeClick = { scope.launch { playbackRepository.toggleLike() } },
-                    onDownloadClick = { 
-                        scope.launch {
-                            if (isDownloaded || isDownloading) {
-                                downloadRepository.removeDownload(episode.id)
-                            } else {
-                                downloadRepository.addDownload(episode, podcast)
-                            }
-                        }
-                    },
-                    isDownloaded = isDownloaded,
-                    isDownloading = isDownloading,
-                    onQueueClick = { 
-                        android.util.Log.d("FullPlayer", "onQueueClick: current isQueueVisible=$isQueueVisible, queue size=${state.queue.size}")
-                        onQueueToggle()
-                    },
-                    onEpisodeInfoClick = { 
-                        onCollapse() // Minimize player first
-                        onEpisodeInfoClick(episode) 
-                    },
-                    onPodcastInfoClick = { 
-                        onCollapse() // Minimize player first
-                        onPodcastInfoClick(podcast) 
-                    },
+        SharedPlayerContent(
+            podcast = podcast,
+            episode = episode,
+            isPlaying = state.isPlaying,
+            isLoading = state.isLoading,
+            positionMs = state.position,
+            durationMs = state.duration,
+            bufferedPositionMs = state.bufferedPosition,
+            playbackSpeed = state.playbackSpeed,
+            sleepTimerEnd = state.sleepTimerEnd,
+            isLiked = state.isLiked,
+            colorScheme = colorScheme,
+            onPlayPause = {
+                if (state.isPlaying) playbackRepository.pause() else playbackRepository.resume()
+            },
+            onSeek = { playbackRepository.seekTo(it) },
+            onPrevious = { playbackRepository.skipBackward() },
+            onNext = { playbackRepository.skipForward() },
+            onSetSpeed = { playbackRepository.setPlaybackSpeed(it) },
+            onSetSleepTimer = { playbackRepository.setSleepTimer(it) },
+            onLikeClick = { scope.launch { playbackRepository.toggleLike() } },
+            onDownloadClick = { 
+                scope.launch {
+                    if (isDownloaded || isDownloading) {
+                        downloadRepository.removeDownload(episode.id)
+                    } else {
+                        downloadRepository.addDownload(episode, podcast)
+                    }
+                }
+            },
+            isDownloaded = isDownloaded,
+            isDownloading = isDownloading,
+            onQueueClick = { showQueueSheet = true },
+            onEpisodeInfoClick = { 
+                onCollapse()
+                onEpisodeInfoClick(episode) 
+            },
+            onPodcastInfoClick = { 
+                onCollapse()
+                onPodcastInfoClick(podcast) 
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+        )
+    }
+    
+    // Queue Bottom Sheet
+    if (showQueueSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showQueueSheet = false },
+            sheetState = sheetState,
+            containerColor = colorScheme.surface,
+            contentColor = colorScheme.onSurface,
+            dragHandle = {
+                // Drag handle pill
+                Box(
                     modifier = Modifier
-                        .fillParentMaxHeight() // Takes full available height
-                        .padding(horizontal = 24.dp)
+                        .padding(vertical = 10.dp)
+                        .size(width = 36.dp, height = 4.dp)
+                        .clip(MaterialTheme.shapes.extraLarge)
+                        .background(colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
                 )
             }
-            
-            if (isQueueVisible) {
-                // Spacer between Player and Queue
-                item {
-                    Spacer(modifier = Modifier.height(32.dp))
-                }
-                
-                // Item 1: "Up Next" Title
-                item {
-                    Text(
-                         text = "Up Next",
-                         style = MaterialTheme.typography.titleMedium,
-                         fontWeight = FontWeight.Bold,
-                         color = colorScheme.onSurface,
-                         modifier = Modifier
-                            .padding(horizontal = 24.dp)
-                            .padding(bottom = 8.dp)
-                     )
-                }
-                
-                // Items: The Queue
-                // drop(1) to skip the currently playing episode which is always at index 0
-                android.util.Log.d("FullPlayer", "Rendering Up Next queue: total=${state.queue.size}, displaying=${state.queue.drop(1).size}")
-                items(state.queue.drop(1)) { ep ->
-                    cx.aswin.boxcast.feature.player.QueueItemRow(
-                        episode = ep,
-                        podcast = podcast, // Passing current podcast as fallback/context
-                        colorScheme = colorScheme,
-                        onClick = { 
-                            scope.launch {
-                                android.util.Log.d("FullPlayer", "Queue item clicked: ${ep.title}, podcastId=${ep.podcastId}, genre=${ep.podcastGenre}")
-                                // Read fresh queue from playerState to avoid stale lambda capture
-                                val freshQueue = playbackRepository.playerState.value.queue
-                                
-                                // Construct podcast from episode's embedded info (important for fallback episodes from different podcasts)
-                                val epPodcastId = ep.podcastId
-                                val episodePodcast = if (epPodcastId != null && epPodcastId != podcast.id) {
-                                    // This episode is from a different podcast (e.g., fallback episode)
-                                    android.util.Log.d("FullPlayer", "Using episode's embedded podcast: ${ep.podcastTitle}")
-                                    cx.aswin.boxcast.core.model.Podcast(
-                                        id = epPodcastId,
-                                        title = ep.podcastTitle ?: "Unknown",
-                                        artist = ep.podcastArtist ?: "",
-                                        imageUrl = ep.podcastImageUrl ?: "",
-                                        description = null,
-                                        genre = ep.podcastGenre ?: ""
-                                    )
-                                } else {
-                                    // Same podcast as current
-                                    podcast
-                                }
-                                playbackRepository.playFromQueueIndex(ep.id, freshQueue, episodePodcast)
-                            }
+        ) {
+            QueueSheetContent(
+                queue = state.queue.drop(1), // Skip currently playing
+                currentPodcast = podcast,
+                colorScheme = colorScheme,
+                onPlayEpisode = { ep ->
+                    scope.launch {
+                        val freshQueue = playbackRepository.playerState.value.queue
+                        val epPodcastId = ep.podcastId
+                        val episodePodcast = if (epPodcastId != null && epPodcastId != podcast.id) {
+                            cx.aswin.boxcast.core.model.Podcast(
+                                id = epPodcastId,
+                                title = ep.podcastTitle ?: "Unknown",
+                                artist = ep.podcastArtist ?: "",
+                                imageUrl = ep.podcastImageUrl ?: "",
+                                description = null,
+                                genre = ep.podcastGenre ?: ""
+                            )
+                        } else {
+                            podcast
                         }
-                    )
-                }
-            }
+                        playbackRepository.playFromQueueIndex(ep.id, freshQueue, episodePodcast)
+                        showQueueSheet = false
+                    }
+                },
+                onRemoveEpisode = { ep ->
+                    scope.launch {
+                        playbackRepository.removeFromQueue(ep.id)
+                    }
+                },
+                onClose = { showQueueSheet = false }
+            )
         }
     }
 }
-

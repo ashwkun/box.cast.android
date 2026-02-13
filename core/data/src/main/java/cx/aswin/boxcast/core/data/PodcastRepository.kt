@@ -1,7 +1,9 @@
 package cx.aswin.boxcast.core.data
 
 import cx.aswin.boxcast.core.model.Episode
+import cx.aswin.boxcast.core.model.Person
 import cx.aswin.boxcast.core.model.Podcast
+import cx.aswin.boxcast.core.model.Transcript
 import cx.aswin.boxcast.core.network.BoxCastApi
 import cx.aswin.boxcast.core.network.NetworkModule
 import kotlinx.coroutines.Dispatchers
@@ -272,7 +274,14 @@ class PodcastRepository(
                     artist = feed.author ?: "Unknown",
                     imageUrl = (feed.artwork ?: feed.image).toHttps(),
                     description = feed.description,
-                    genre = resolvePrimaryGenre(feed.categories)
+                    genre = resolvePrimaryGenre(feed.categories),
+                    // Podcast 2.0
+                    fundingUrl = feed.funding?.url,
+                    fundingMessage = feed.funding?.message,
+                    podcastGuid = feed.podcastGuid,
+                    medium = feed.medium,
+                    ownerName = feed.ownerName,
+                    hasValue = feed.value != null
                 )
             } else {
                 null
@@ -304,6 +313,7 @@ class PodcastRepository(
     
     private fun mapToEpisode(item: cx.aswin.boxcast.core.network.model.EpisodeItem): Episode? {
         val audioUrl = item.enclosureUrl ?: return null
+        android.util.Log.d("BoxCastRepo", "mapToEpisode: ${item.title} | persons=${item.persons?.size} | chaptersUrl=${item.chaptersUrl != null} | transcripts=${item.transcripts?.size}")
         return Episode(
             id = item.id.toString(),
             title = item.title,
@@ -312,7 +322,15 @@ class PodcastRepository(
             imageUrl = (item.image?.takeIf { it.isNotBlank() } ?: item.feedImage?.takeIf { it.isNotBlank() }).toHttps(),
             podcastImageUrl = item.feedImage?.takeIf { it.isNotBlank() }?.let { it.toHttps() },
             duration = item.duration ?: 0,
-            publishedDate = item.datePublished ?: 0L
+            publishedDate = item.datePublished ?: 0L,
+            // Podcast 2.0
+            chaptersUrl = item.chaptersUrl,
+            transcriptUrl = item.transcriptUrl,
+            transcripts = item.transcripts?.map { Transcript(url = it.url, type = it.type) },
+            persons = item.persons?.map { Person(name = it.name, role = it.role, img = it.img, href = it.href) },
+            seasonNumber = item.season,
+            episodeNumber = item.episodeNumber,
+            episodeType = item.episodeType
         )
     }
     suspend fun getPodcastType(feedId: String): String = withContext(Dispatchers.IO) {

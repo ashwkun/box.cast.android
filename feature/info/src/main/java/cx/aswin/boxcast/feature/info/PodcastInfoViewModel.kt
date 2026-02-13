@@ -394,7 +394,7 @@ class PodcastInfoViewModel(
             }
         }
     }
-    
+
     // Track queued episodes
     val queuedEpisodeIds: StateFlow<Set<String>> = playbackRepository.playerState
         .map { state -> state.queue.map { it.id }.toSet() }

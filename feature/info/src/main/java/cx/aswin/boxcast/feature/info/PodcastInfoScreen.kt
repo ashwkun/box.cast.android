@@ -47,6 +47,8 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Favorite
+
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.rounded.MoreVert
@@ -232,6 +234,8 @@ fun PodcastInfoScreen(
 
     // Playback state
     val episodePlaybackState by viewModel.episodePlaybackState.collectAsState()
+    
+
 
     // REWRITE: Structure using Box to allow Overlay
     Box(modifier = Modifier.fillMaxSize()) {
@@ -358,6 +362,45 @@ fun PodcastInfoScreen(
                                             )
                                         }
                                     }
+
+                                    // Podcast 2.0: Funding & V4V Action Chips
+                                    val hasFunding = state.podcast.fundingUrl != null
+                                    val hasValue = state.podcast.hasValue
+                                    if (hasFunding || hasValue) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            if (hasFunding) {
+                                                Surface(
+                                                    shape = ExpressiveShapes.Pill,
+                                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                                    modifier = Modifier.expressiveClickable {
+                                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(state.podcast.fundingUrl))
+                                                        context.startActivity(intent)
+                                                    }
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Filled.Favorite,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(14.dp),
+                                                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                                        )
+                                                        Text(
+                                                            text = state.podcast.fundingMessage ?: "Support",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -469,6 +512,9 @@ fun PodcastInfoScreen(
                     }
                 }
                 
+                // SNACKBAR HOST (Overlay)
+
+                
                 // FLOATING TITLE
                 Text(
                     text = state.podcast.title,
@@ -486,42 +532,39 @@ fun PodcastInfoScreen(
                             alpha = titleAlpha 
                         }
                 )
-            }
-        }
-    }
 
-    // SEARCH OVERLAY
-    val successState = uiState as? PodcastInfoUiState.Success
-    AnimatedVisibility(
-        visible = isSearchActive && successState != null,
-        enter = fadeIn() + slideInVertically { it / 2 },
-        exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
-    ) {
-        if (successState != null) {
-            PodcastInfoSearchOverlay(
-                query = successState.searchQuery,
-                onQueryChange = { viewModel.searchEpisodes(it) },
-                onClose = { 
-                    isSearchActive = false
-                    viewModel.searchEpisodes("") // Clear on exit
-                },
-                results = successState.searchResults,
-                allEpisodes = successState.episodes,
-                onEpisodeClick = onEpisodeClick,
-                onPlayClick = { viewModel.onPlayClick(it) },
-                onToggleLike = { viewModel.onToggleLike(it) },
-                onQueueClick = { viewModel.toggleQueue(it) },
-                onDownloadClick = { viewModel.toggleDownload(it) },
-                onToggleCompletion = { viewModel.onToggleCompletion(it) },
-                likedEpisodeIds = likedEpisodeIds,
-                completedEpisodeIds = completedEpisodeIds,
-                queuedEpisodeIds = queuedEpisodeIds,
-                episodePlaybackState = episodePlaybackState,
-                isSearching = successState.isSearching,
-                accentColor = accentColor,
-                isDownloadedFlow = viewModel::isDownloaded,
-                isDownloadingFlow = viewModel::isDownloading
-            )
+                // SEARCH OVERLAY (Nested inside Success)
+                AnimatedVisibility(
+                    visible = isSearchActive,
+                    enter = fadeIn() + slideInVertically { it / 2 },
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
+                ) {
+                    PodcastInfoSearchOverlay(
+                        query = state.searchQuery,
+                        onQueryChange = { viewModel.searchEpisodes(it) },
+                        onClose = { 
+                            isSearchActive = false
+                            viewModel.searchEpisodes("") // Clear on exit
+                        },
+                        results = state.searchResults,
+                        allEpisodes = state.episodes,
+                        onEpisodeClick = onEpisodeClick,
+                        onPlayClick = { viewModel.onPlayClick(it) },
+                        onToggleLike = { viewModel.onToggleLike(it) },
+                        onQueueClick = { viewModel.toggleQueue(it) },
+                        onDownloadClick = { viewModel.toggleDownload(it) },
+                        onToggleCompletion = { viewModel.onToggleCompletion(it) },
+                        likedEpisodeIds = likedEpisodeIds,
+                        completedEpisodeIds = completedEpisodeIds,
+                        queuedEpisodeIds = queuedEpisodeIds,
+                        episodePlaybackState = episodePlaybackState,
+                        isSearching = state.isSearching,
+                        accentColor = accentColor,
+                        isDownloadedFlow = viewModel::isDownloaded,
+                        isDownloadingFlow = viewModel::isDownloading
+                    )
+                }
+            }
         }
     }
 }
@@ -632,6 +675,24 @@ fun EpisodeListItem(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Podcast 2.0: Season/Episode number
+                        val seLabel = buildString {
+                            episode.seasonNumber?.let { append("S$it ") }
+                            episode.episodeNumber?.let { append("E$it") }
+                        }.trim()
+                        if (seLabel.isNotEmpty()) {
+                            Text(
+                                text = seLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "•",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
                         Text(
                             text = formatRelativeDate(episode.publishedDate),
                             style = MaterialTheme.typography.labelSmall,
@@ -647,6 +708,30 @@ fun EpisodeListItem(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        // Podcast 2.0: Episode type badge
+                        if (episode.episodeType != null && episode.episodeType != "full") {
+                            Text(
+                                text = "•",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                            Surface(
+                                shape = ExpressiveShapes.Pill,
+                                color = if (episode.episodeType == "trailer") 
+                                    MaterialTheme.colorScheme.tertiaryContainer 
+                                else MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = episode.episodeType!!.replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (episode.episodeType == "trailer") 
+                                        MaterialTheme.colorScheme.onTertiaryContainer 
+                                    else MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
                     
                     Spacer(modifier = Modifier.height(4.dp))
