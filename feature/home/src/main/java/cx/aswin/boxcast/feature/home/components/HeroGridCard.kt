@@ -44,6 +44,13 @@ fun HeroGridCard(
         Box(modifier = Modifier.fillMaxSize()) {
             // Expressive Shapes Background
             ExpressiveBackground()
+            
+            // DEBUG LOGGING
+            androidx.compose.runtime.LaunchedEffect(items) {
+                items.take(6).forEachIndexed { index, podcast ->
+                    android.util.Log.d("HeroGrid", "Update [$index]: Pod=${podcast.title}, Ep=${podcast.latestEpisode?.title}, Auth=${podcast.artist}, Img=${podcast.imageUrl}")
+                }
+            }
 
             Column(
                 modifier = Modifier.fillMaxSize()

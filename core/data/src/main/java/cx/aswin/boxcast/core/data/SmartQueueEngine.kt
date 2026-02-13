@@ -36,49 +36,34 @@ class DefaultSmartQueueEngine @Inject constructor(
             return emptyList()
         }
 
-        // 1. Fetch all episodes for context (Network call)
-        // We use the new paginated endpoint in repo to get up to 1000 items
+        // 1. Fetch all episodes for context
         val rawEpisodes = podcastRepository.getEpisodes(podcast.id)
-        android.util.Log.d("SmartQueue", "Fetched ${rawEpisodes.size} episodes from repo for context")
+        android.util.Log.d("SmartQueue", "Fetched ${rawEpisodes.size} episodes from repo")
         
         if (rawEpisodes.isEmpty()) {
              android.util.Log.w("SmartQueue", "Repo returned NO episodes")
              return emptyList()
         }
 
-        // 1.5 ALWAYS Sort Chronologically (Oldest -> Newest)
-        // User Request: "no one wants to listen to pods in a reverse cron order"
-        // Even if they sort UI by Newest, if they play Ep 50, they likely want Ep 51 next, not Ep 49.
-        
-        android.util.Log.d("SmartQueue", "Sorting strategy: ALWAYS Chronological (Oldest -> Newest)")
+        // Sort Chronologically (Oldest -> Newest)
         val allEpisodes = rawEpisodes.sortedBy { it.publishedDate }
 
         // 2. Find current episode index
-        // Note: EpisodeItem.id is Long, PodcastRepository returns domain Episode with String id.
-        // We need to compare carefully.
         val searchId = currentEpisode.id.toString()
         val currentIndex = allEpisodes.indexOfFirst { it.id == searchId }
         
-        android.util.Log.d("SmartQueue", "Searching for ID $searchId in list. Found at index: $currentIndex. Top item: ${allEpisodes.firstOrNull()?.title}")
+        android.util.Log.d("SmartQueue", "Searching for ID $searchId. Found at index: $currentIndex")
 
         if (currentIndex == -1) {
-            android.util.Log.e("SmartQueue", "Current episode NOT found in context list of size ${allEpisodes.size}. Dumping first 5 IDs: ${allEpisodes.take(5).map { it.id }}")
+            android.util.Log.e("SmartQueue", "Current episode NOT found in list of ${allEpisodes.size}. IDs: ${allEpisodes.take(5).map { it.id }}")
             return emptyList()
         }
 
-        // 3. Standard "Play Down The List" behavior
-        // Whether it's Serial or Episodic, users usually expect the player to continue 
-        // with the items visible below the current one in the list.
-        // Assuming the list itself is sorted correctly (Newest->Oldest or Oldest->Newest),
-        // we just take the next N items.
-        
+        // 3. Take next episodes from the same podcast
         val candidates = mutableListOf<Episode>()
-        
-        // Take next 20 items to populate queue
-        // (currentIndex + 1) is the next item in the list
         val remainingCount = allEpisodes.size - (currentIndex + 1)
         
-        android.util.Log.d("SmartQueue", "Play Down List: Current=$currentIndex, Total=${allEpisodes.size}, Remaining=$remainingCount")
+        android.util.Log.d("SmartQueue", "Current=$currentIndex, Total=${allEpisodes.size}, Remaining=$remainingCount")
 
         if (remainingCount > 0) {
             val limit = minOf(remainingCount, 20)
@@ -87,13 +72,13 @@ class DefaultSmartQueueEngine @Inject constructor(
             }
         } else {
             // FALLBACK: End of current podcast -> Smart Discovery
-            android.util.Log.d("SmartQueue", "End of podcast! Triggering Smart Fallback for genre=${podcast.genre}")
+            android.util.Log.d("SmartQueue", "End of podcast! Triggering Smart Fallback")
             val fallbackEpisodes = getSmartFallbackEpisodes(podcast)
             android.util.Log.d("SmartQueue", "Fallback returned ${fallbackEpisodes.size} episodes")
             return fallbackEpisodes
         }
         
-        android.util.Log.d("SmartQueue", "Returning ${candidates.size} candidates")
+        android.util.Log.d("SmartQueue", "Returning ${candidates.size} candidates from same podcast")
 
         return candidates.map { domainEp ->
             val episodeItem = EpisodeItem(
@@ -113,98 +98,71 @@ class DefaultSmartQueueEngine @Inject constructor(
     /**
      * Smart Fallback: When the current podcast has no more episodes.
      * Priority:
-     * 1. User's subscriptions matching the same genre -> newest unplayed episode
+     * 1. User's subscriptions (ANY sub with unplayed episodes, no genre matching)
      * 2. Trending podcasts in the same genre -> latest episode
      * Returns QueueEntry with the CORRECT podcast for each episode.
      */
     private suspend fun getSmartFallbackEpisodes(currentPodcast: Podcast): List<QueueEntry> {
-        // Fetch fresh podcast details to ensure we have the correct genre
-        // (The passed 'currentPodcast' might be from UI or persistence with missing/default genre)
-        
-        // 1. Try to find in subscriptions first (Fastest & most likely correct for Subs)
-        val subscribedPodcasts = subscriptionRepository.subscribedPodcasts.first()
-        val cachedPodcast = subscribedPodcasts.find { it.id == currentPodcast.id }
-        
-        val fullPodcast = if (cachedPodcast != null && !cachedPodcast.genre.isNullOrEmpty()) {
-            android.util.Log.d("SmartQueue", "Found podcast in subscriptions: ${cachedPodcast.title}, genre='${cachedPodcast.genre}'")
-            cachedPodcast
-        } else {
-            // 2. If not in subs or missing genre, try network fetch (Slower but necessary for non-subs)
-            try {
-                android.util.Log.d("SmartQueue", "Fetching full podcast details from network for ${currentPodcast.id}")
-                podcastRepository.getPodcastDetails(currentPodcast.id) ?: currentPodcast
-            } catch (e: Exception) {
-                android.util.Log.w("SmartQueue", "Failed to fetch full podcast details for ${currentPodcast.id}, using provided object", e)
-                currentPodcast
-            }
-        }
-        
-        val currentGenre = fullPodcast.genre 
-        val currentPodcastTitle = fullPodcast.title // For name-based exclusion
         val completedEpisodeIds = listeningHistoryDao.getCompletedEpisodeIds().toSet()
         
-        android.util.Log.d("SmartQueue", "Fallback: Genre='$currentGenre' (final), CompletedCount=${completedEpisodeIds.size}, Exclude='$currentPodcastTitle'")
-        android.util.Log.d("SmartQueue", "Fallback: User has ${subscribedPodcasts.size} subscriptions")
-        
-        // DEBUG: Dump all subscription genres
-        subscribedPodcasts.forEach { sub ->
-            android.util.Log.d("SmartQueue", "  Sub: '${sub.title}' -> genre='${sub.genre}' (expected='$currentGenre')")
-        }
-        
-        // Filter by genre (case-insensitive match on primary genre)
-        // Also exclude current podcast by ID AND Title (name match per user request)
-        // AND exclude recently played podcasts (loop prevention)
-        val limitTimestamp = System.currentTimeMillis() - (12 * 60 * 60 * 1000) // 12 hours ago
+        // Loop prevention: exclude recently played podcasts (12h)
+        val limitTimestamp = System.currentTimeMillis() - (12 * 60 * 60 * 1000)
         val recentPodcasts = listeningHistoryDao.getRecentlyPlayedPodcasts(limitTimestamp).toSet()
         
-        android.util.Log.d("SmartQueue", "Filtering out ${recentPodcasts.size} recently played podcasts: $recentPodcasts")
+        android.util.Log.d("SmartQueue", "Fallback: ${completedEpisodeIds.size} completed, ${recentPodcasts.size} recently played")
 
-        val genreMatchingSubs = subscribedPodcasts.filter { sub ->
+        // --- Priority 1: Any subscription with unplayed episodes (NO genre matching) ---
+        val subscribedPodcasts = subscriptionRepository.subscribedPodcasts.first()
+        
+        val eligibleSubs = subscribedPodcasts.filter { sub ->
             sub.id != currentPodcast.id && 
-            !sub.title.equals(currentPodcastTitle, ignoreCase = true) &&
-            sub.genre.equals(currentGenre, ignoreCase = true) &&
-            !recentPodcasts.contains(sub.id) // Loop prevention
+            !sub.title.equals(currentPodcast.title, ignoreCase = true) &&
+            !recentPodcasts.contains(sub.id)
         }
-        android.util.Log.d("SmartQueue", "Fallback: ${genreMatchingSubs.size} subs match genre '$currentGenre'")
+        android.util.Log.d("SmartQueue", "Fallback: ${eligibleSubs.size} eligible subscriptions (no genre filter)")
 
-        for (sub in genreMatchingSubs) {
-            // Fetch episodes for this subscription
+        for (sub in eligibleSubs) {
             val subEpisodes = podcastRepository.getEpisodes(sub.id)
-                .sortedByDescending { it.publishedDate } // Newest first for discovery
-                .filter { it.id !in completedEpisodeIds } // Unplayed (not completed) only
+                .sortedByDescending { it.publishedDate }
+                .filter { it.id !in completedEpisodeIds }
             
             if (subEpisodes.isNotEmpty()) {
-                android.util.Log.d("SmartQueue", "Fallback: Found unplayed episode in subscribed pod '${sub.title}'")
-                // Return the newest unplayed episode with the SUBSCRIPTION podcast
+                android.util.Log.d("SmartQueue", "Fallback: Found unplayed episode in '${sub.title}'")
                 val nextEp = subEpisodes.first()
                 return listOf(nextEp.toQueueEntry(sub))
             }
         }
 
-        // 2. Fallback to Trending
-        android.util.Log.d("SmartQueue", "Fallback: No matching subs with unplayed. Trying Trending for '$currentGenre'")
+        // --- Priority 2: Trending (genre-matched, last resort) ---
+        // Fetch full podcast for accurate genre
+        val fullPodcast = try {
+            val cached = subscribedPodcasts.find { it.id == currentPodcast.id }
+            if (cached != null && !cached.genre.isNullOrEmpty()) cached
+            else podcastRepository.getPodcastDetails(currentPodcast.id) ?: currentPodcast
+        } catch (e: Exception) { currentPodcast }
+        
+        val currentGenre = fullPodcast.genre
+        android.util.Log.d("SmartQueue", "Fallback: Trying Trending for genre='$currentGenre'")
+        
         val trendingPodcasts = podcastRepository.getTrendingPodcasts(category = currentGenre)
-        android.util.Log.d("SmartQueue", "Fallback: Got ${trendingPodcasts.size} trending podcasts for genre")
 
         for (trendingPod in trendingPodcasts) {
-            // Skip current podcast by ID or Title (name match per user request)
             if (trendingPod.id == currentPodcast.id) continue
-            if (trendingPod.title.equals(currentPodcastTitle, ignoreCase = true)) continue
+            if (trendingPod.title.equals(currentPodcast.title, ignoreCase = true)) continue
             
-            // Loop prevention for Trending too!
-            if (recentPodcasts.contains(trendingPod.id)) {
-                android.util.Log.d("SmartQueue", "Fallback: Skipping trending podcast '${trendingPod.title}' (Recently Played)")
+            val cleanId = trendingPod.id.trim()
+            if (recentPodcasts.any { it.trim() == cleanId }) {
+                android.util.Log.d("SmartQueue", "Fallback: Skipping trending '${trendingPod.title}' (recently played)")
                 continue
             }
             
             val trendingEpisodes = podcastRepository.getEpisodes(trendingPod.id)
                 .sortedByDescending { it.publishedDate }
-                .filter { it.id !in completedEpisodeIds } // Unplayed (not completed) only
+                .filter { it.id !in completedEpisodeIds }
 
             if (trendingEpisodes.isNotEmpty()) {
-                android.util.Log.d("SmartQueue", "Fallback: Found trending podcast '${trendingPod.title}' with unplayed")
+                android.util.Log.d("SmartQueue", "Fallback: Found trending '${trendingPod.title}' with unplayed")
                 val nextEp = trendingEpisodes.first()
-                // Return with the TRENDING podcast, not the original!
                 return listOf(nextEp.toQueueEntry(trendingPod))
             }
         }
@@ -228,19 +186,5 @@ class DefaultSmartQueueEngine @Inject constructor(
             feedImage = this.podcastImageUrl ?: podcast.imageUrl
         )
         return QueueEntry(episode = episodeItem, podcast = podcast)
-    }
-
-    @Deprecated("Use toQueueEntry instead")
-    private fun Episode.toEpisodeItem(podcast: Podcast): EpisodeItem {
-        return EpisodeItem(
-            id = this.id.toLongOrNull() ?: 0L,
-            title = this.title,
-            description = this.description,
-            enclosureUrl = this.audioUrl,
-            duration = this.duration.toInt(),
-            datePublished = this.publishedDate,
-            image = this.imageUrl,
-            feedImage = this.podcastImageUrl ?: podcast.imageUrl
-        )
     }
 }

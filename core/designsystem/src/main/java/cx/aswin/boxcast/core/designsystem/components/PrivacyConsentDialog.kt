@@ -178,7 +178,46 @@ private fun ConsentOptions(
     privacyPolicyAccepted: Boolean,
     onPolicyChange: (Boolean) -> Unit
 ) {
+    val allChecked = crashReporting && usageAnalytics && privacyPolicyAccepted
+    
     Column {
+        // Agree to All
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.medium)
+                .background(if (!allChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f) else Color.Transparent)
+                .clickable {
+                    val newState = !allChecked
+                    onCrashChange(newState)
+                    onUsageChange(newState)
+                    onPolicyChange(newState)
+                }
+                .padding(vertical = 10.dp, horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = allChecked,
+                onCheckedChange = { checked ->
+                    onCrashChange(checked)
+                    onUsageChange(checked)
+                    onPolicyChange(checked)
+                }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Agree to all",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 8.dp),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
+        
         ToggleRow("Share Crash Reports (Optional)", crashReporting, onCrashChange)
         Spacer(modifier = Modifier.height(8.dp))
         ToggleRow("Share Usage Statistics (Optional)", usageAnalytics, onUsageChange)
