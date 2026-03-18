@@ -1,6 +1,7 @@
 package cx.aswin.boxcast.feature.explore
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,6 +12,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowOverflow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,8 +38,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +52,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SearchBarDefaults
@@ -61,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -122,13 +131,17 @@ fun ExploreContent(
     val state = uiState as ExploreUiState.Success
     val displayList = if (state.isSearching) state.searchResults else state.trending
     
-    // Scroll-driven genre collapse (like original)
-    var isGenreVisible by rememberSaveable { mutableStateOf(true) }
+    // Genre expansion state
+    var isGenreExpanded by rememberSaveable { mutableStateOf(false) }
+
+    // Scroll handling: Collapse genre cloud on scroll
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -5f) isGenreVisible = false
-                else if (available.y > 5f) isGenreVisible = true
+                // If scrolling down (content moving up) and expanded, collapse it
+                if (available.y < -5f && isGenreExpanded) {
+                    isGenreExpanded = false
+                }
                 return Offset.Zero
             }
         }
@@ -150,6 +163,7 @@ fun ExploreContent(
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 16.dp)
+                .animateContentSize() // Smooth resize when cloud collapses/expands
         ) {
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -168,23 +182,17 @@ fun ExploreContent(
                 )
             ) { }
             
-            // Collapsible Genre Chips (like original)
-            AnimatedVisibility(
-                visible = isGenreVisible && !state.isSearching,
-                enter = expandVertically(animationSpec = tween(300)) + fadeIn(),
-                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut()
-            ) {
-                Column {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    ExploreGenreSelector(
-                        selectedCategory = state.currentCategory,
-                        onCategorySelected = onCategorySelected
-                    )
-                }
+            // Expandable Genre Cloud
+            if (!state.isSearching) {
+                Spacer(modifier = Modifier.height(8.dp))
+                ExploreGenreSelector(
+                    selectedCategory = state.currentCategory,
+                    onCategorySelected = onCategorySelected
+                )
             }
             
             // Bottom spacing (always visible - prevents cut-off look)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(4.dp))
         }
 
         // SCROLLABLE CONTENT: Grid
@@ -243,46 +251,184 @@ fun ExploreContent(
 }
 
 // ============================================================================
-// COMPONENTS - Matching HomeScreen exactly
+// COMPONENTS
 // ============================================================================
 
 /**
- * Genre selector matching HomeScreen's GenreSelector exactly
+ * Expandable Genre Cloud for Explore
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun ExploreGenreSelector(
     selectedCategory: String,
     onCategorySelected: (String) -> Unit
 ) {
-    val categories = listOf("All", "News", "Technology", "Comedy", "True Crime", "Business", "Sports", "History", "Arts")
+    var showSheet by remember { mutableStateOf(false) }
+
+    // Dynamic list construction
+    val displayGenres = remember(selectedCategory) {
+        val topGenres = EXPLORE_GENRES.take(5)
+        if (selectedCategory != "All") {
+            val selectedGenre = EXPLORE_GENRES.find { it.value == selectedCategory }
+            if (selectedGenre != null) {
+                // Selected + (Top 5 - Selected)
+                listOf(selectedGenre) + (topGenres - selectedGenre)
+            } else {
+                topGenres
+            }
+        } else {
+            topGenres
+        }
+    }
+
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     
+    androidx.compose.runtime.LaunchedEffect(selectedCategory) {
+        listState.animateScrollToItem(0)
+    }
+
+    // Top horizontal list (Subset)
     LazyRow(
-        contentPadding = PaddingValues(horizontal = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 0.dp),
+        state = listState,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(categories) { category ->
-            val isSelected = selectedCategory == category
-            
+        // 1. "All" (Always first)
+        item {
             FilterChip(
-                selected = isSelected,
-                onClick = { onCategorySelected(category) },
-                label = { Text(category) },
+                selected = selectedCategory == "All",
+                onClick = { onCategorySelected("All") },
+                label = { Text("All", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 ),
                 border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = isSelected,
-                    borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+                     enabled = true,
+                     selected = selectedCategory == "All",
+                     borderColor = Color.Transparent
+                )
+            )
+        }
+
+        // 2. Dynamic List
+        items(displayGenres) { genre ->
+            val isSelected = selectedCategory == genre.value
+            FilterChip(
+                selected = isSelected,
+                onClick = { onCategorySelected(genre.value) },
+                label = { Text(genre.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                 ),
-                modifier = Modifier.expressiveClickable(onClick = { onCategorySelected(category) })
+                border = FilterChipDefaults.filterChipBorder(
+                     enabled = true,
+                     selected = isSelected,
+                     borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+                )
+            )
+        }
+
+        // 3. "More" Button
+        item {
+            FilterChip(
+                selected = false,
+                onClick = { showSheet = true },
+                label = { Text("More") },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = false,
+                    borderColor = Color.Transparent
+                )
             )
         }
     }
+
+    // Full Genre Sheet
+    if (showSheet) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 48.dp) // Nav bar padding
+            ) {
+                Text(
+                    text = "Browse Genres",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // "All" in sheet
+                    FilterChip(
+                        selected = selectedCategory == "All",
+                        onClick = { 
+                            onCategorySelected("All")
+                            showSheet = false 
+                        },
+                        label = { Text("All") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                             enabled = true,
+                             selected = selectedCategory == "All",
+                             borderColor = Color.Transparent
+                        )
+                    )
+
+                    EXPLORE_GENRES.forEach { genre ->
+                        val isSelected = selectedCategory == genre.value
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { 
+                                onCategorySelected(genre.value)
+                                showSheet = false 
+                            },
+                            label = { Text(genre.label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                 enabled = true,
+                                 selected = isSelected,
+                                 borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
+
 
 /**
  * Featured hero row - horizontal scrolling spotlight of top 3 podcasts
@@ -323,12 +469,12 @@ private fun ExploreFeaturedRow(
         val carouselState = rememberCarouselState { podcasts.size }
         HorizontalMultiBrowseCarousel(
             state = carouselState,
-            preferredItemWidth = 280.dp,
-            itemSpacing = 12.dp,
-            contentPadding = PaddingValues(end = 16.dp),
+            preferredItemWidth = 320.dp,
+            itemSpacing = 16.dp,
+            contentPadding = PaddingValues(0.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(170.dp)
+                .height(200.dp)
         ) { index ->
             val podcast = podcasts[index]
             ExploreFeaturedCard(
@@ -358,8 +504,8 @@ private fun ExploreFeaturedCard(
         colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
-            .width(280.dp)
-            .height(170.dp)
+            .width(320.dp)
+            .height(200.dp)
             .expressiveClickable(onClick = onClick)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -581,3 +727,28 @@ private fun ExploreEmptyState() {
         }
     }
 }
+
+// Data Handling (Synced with GenreSelector.kt and OnboardingScreen.kt)
+private data class ExploreGenreItem(val label: String, val value: String, val icon: ImageVector)
+
+private val EXPLORE_GENRES = listOf(
+    ExploreGenreItem("News", "News", Icons.Rounded.Newspaper),
+    ExploreGenreItem("Tech", "Technology", Icons.Rounded.Computer),
+    ExploreGenreItem("Business", "Business", Icons.Rounded.Work),
+    ExploreGenreItem("Comedy", "Comedy", Icons.Rounded.EmojiEvents),
+    ExploreGenreItem("True Crime", "True Crime", Icons.Rounded.Search),
+    ExploreGenreItem("Sports", "Sports", Icons.Rounded.SportsBaseball),
+    ExploreGenreItem("Health", "Health", Icons.Rounded.FavoriteBorder),
+    ExploreGenreItem("History", "History", Icons.Rounded.AccountBalance),
+    ExploreGenreItem("Arts", "Arts", Icons.Rounded.Palette),
+    ExploreGenreItem("Society", "Society & Culture", Icons.Rounded.Person),
+    ExploreGenreItem("Education", "Education", Icons.Rounded.School),
+    ExploreGenreItem("Science", "Science", Icons.Rounded.Science),
+    ExploreGenreItem("TV & Film", "TV & Film", Icons.Rounded.Movie),
+    ExploreGenreItem("Fiction", "Fiction", Icons.Rounded.AutoStories),
+    ExploreGenreItem("Music", "Music", Icons.Rounded.MusicNote),
+    ExploreGenreItem("Religion", "Religion & Spirituality", Icons.Rounded.Star),
+    ExploreGenreItem("Family", "Kids & Family", Icons.Rounded.Face),
+    ExploreGenreItem("Leisure", "Leisure", Icons.Rounded.Weekend),
+    ExploreGenreItem("Govt", "Government", Icons.Rounded.Gavel)
+)

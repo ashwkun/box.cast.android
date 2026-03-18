@@ -2,7 +2,6 @@ package cx.aswin.boxcast.feature.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,6 +50,7 @@ import kotlinx.coroutines.launch
 fun FullPlayerContent(
     playbackRepository: PlaybackRepository,
     downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
+    isDarkTheme: Boolean,
     colorScheme: ColorScheme,
     onCollapse: () -> Unit,
     onEpisodeInfoClick: (Episode) -> Unit = {},
@@ -64,7 +64,6 @@ fun FullPlayerContent(
     
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val isDarkTheme = isSystemInDarkTheme()
     
     val window = (LocalContext.current as? android.app.Activity)?.window
     val scope = rememberCoroutineScope()

@@ -23,8 +23,8 @@ android {
         applicationId = "cx.aswin.boxcast"
         minSdk = 31
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.0.9"
+        versionCode = 11
+        versionName = "1.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -59,6 +59,7 @@ android {
     lint {
         checkReleaseBuilds = true
         abortOnError = false
+        disable += "NullSafeMutableLiveData"
     }
 
     compileOptions {

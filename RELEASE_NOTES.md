@@ -7,10 +7,14 @@ Performance: Faster app loads and ~90% faster search.
 Explore: Podcasts in a new grid layout.
 UI Polish: "Peek back" gesture, playback indicators, and smoother animations.
 Privacy: Critical fix for Privacy Consent Dialog.
-versionName = "1.0.9"
-implemented adaptive UI for small screens to avoid clipping of components
+
+
+```markdown
 ### v1.0.9 - Bug Fixes & Improvements
-- **Queue Stability**: Fixed an issue where the same episode would appear multiple times in the Up Next queue.
-- **Playback Resume**: Fixed a critical issue where the "Resume" button on the home screen failed to start playback after the app was restarted.
-- **Loop Prevention**: "Smart Shuffle" now intelligently excludes recently played podcasts to prevent repetitive queues.
-- **Completion Tracking**: Fixed reliability issues with marking episodes as "played".
+- **Playback Resume**: Resolved a critical issue where the "Resume" button on the Home screen failed to initiate playback after an app restart.
+- **Onboarding**: Introduced a guided onboarding experience to provide personalized content suggestions for new users.
+- **Podcast 2.0**: Integrated backend support for Podcast 2.0 standards; user interface updates are forthcoming.
+- **Queue Stability**: Fixed a bug that caused duplicate episodes to appear in the "Up Next" queue.
+- **Completion Tracking**: Improved the reliability of marking episodes as "played."
+- **Adaptive UI**: Optimized the interface for small-screen devices to prevent component clipping.
+- **Smart Shuffle**: Enhanced shuffle logic to exclude recently played podcasts and

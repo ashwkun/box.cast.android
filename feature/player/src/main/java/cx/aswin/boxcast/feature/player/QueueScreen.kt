@@ -136,7 +136,7 @@ fun QueueItemRow(
         
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = episode.title,
+                text = episode.title.replace("+", " "),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
                 color = colorScheme.onSurface,
@@ -145,7 +145,7 @@ fun QueueItemRow(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = episode.podcastTitle ?: podcast?.title ?: "Unknown Podcast",
+                text = (episode.podcastTitle ?: podcast?.title ?: "Unknown Podcast").replace("+", " "),
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onSurfaceVariant,
                 maxLines = 1,

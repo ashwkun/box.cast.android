@@ -74,7 +74,7 @@ import kotlinx.coroutines.launch
 import kotlin.random.Random
 import cx.aswin.boxcast.feature.player.components.SimplePlayerControls
 import cx.aswin.boxcast.core.designsystem.components.AdvancedPlayerControls
-import androidx.compose.foundation.isSystemInDarkTheme
+import cx.aswin.boxcast.core.designsystem.theme.generateBrandColorScheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.ColorScheme
@@ -246,7 +246,7 @@ fun PlayerContent(
 ) {
     // 1. Color Extraction Logic
     val context = LocalContext.current
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
     var extractedColorScheme by remember { mutableStateOf<ColorScheme?>(null) }
     val colorScheme = extractedColorScheme ?: MaterialTheme.colorScheme
     
@@ -266,7 +266,7 @@ fun PlayerContent(
              val bitmap = (state.result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
              if (bitmap != null) {
                  val seed = extractSeedColor(bitmap)
-                 extractedColorScheme = generateColorScheme(seed, isDarkTheme)
+                 extractedColorScheme = generateBrandColorScheme(seed, isDarkTheme)
              }
         }
     }

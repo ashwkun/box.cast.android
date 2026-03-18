@@ -40,49 +40,7 @@ suspend fun extractSeedColor(bitmap: Bitmap): Color = withContext(Dispatchers.De
     color
 }
 
-/**
- * Generates a color scheme from a seed color.
- */
-fun generateColorScheme(seedColor: Color, isDark: Boolean): ColorScheme {
-    val hsl = FloatArray(3)
-    ColorUtils.RGBToHSL(
-        (seedColor.red * 255).toInt(),
-        (seedColor.green * 255).toInt(),
-        (seedColor.blue * 255).toInt(),
-        hsl
-    )
-    
-    fun hslToColor(h: Float, s: Float, l: Float): Color {
-        return Color(ColorUtils.HSLToColor(floatArrayOf(h, s.coerceIn(0f, 1f), l.coerceIn(0f, 1f))))
-    }
-    
-    val hue = hsl[0]
-    val saturation = hsl[1].coerceIn(0.3f, 0.7f)
-    
-    return if (isDark) {
-        darkColorScheme(
-            primary = hslToColor(hue, saturation, 0.7f),
-            onPrimary = hslToColor(hue, saturation * 0.3f, 0.15f),
-            primaryContainer = hslToColor(hue, saturation * 0.5f, 0.25f),
-            onPrimaryContainer = hslToColor(hue, saturation * 0.3f, 0.9f),
-            surface = hslToColor(hue, saturation * 0.2f, 0.12f),
-            onSurface = hslToColor(hue, saturation * 0.1f, 0.9f),
-            surfaceVariant = hslToColor(hue, saturation * 0.3f, 0.2f),
-            onSurfaceVariant = hslToColor(hue, saturation * 0.2f, 0.75f),
-        )
-    } else {
-        lightColorScheme(
-            primary = hslToColor(hue, saturation, 0.4f),
-            onPrimary = hslToColor(hue, saturation * 0.2f, 0.95f),
-            primaryContainer = hslToColor(hue, saturation * 0.6f, 0.9f),
-            onPrimaryContainer = hslToColor(hue, saturation * 0.5f, 0.15f),
-            surface = hslToColor(hue, saturation * 0.3f, 0.96f),
-            onSurface = hslToColor(hue, saturation * 0.2f, 0.1f),
-            surfaceVariant = hslToColor(hue, saturation * 0.4f, 0.92f),
-            onSurfaceVariant = hslToColor(hue, saturation * 0.3f, 0.3f),
-        )
-    }
-}
+
 
 /**
  * Formats milliseconds to time string.

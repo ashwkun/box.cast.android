@@ -93,14 +93,14 @@ fun PodcastCard(
             
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = podcast.title,
+                    text = podcast.title.replace("+", " "),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = podcast.artist,
+                    text = podcast.artist.replace("+", " "),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

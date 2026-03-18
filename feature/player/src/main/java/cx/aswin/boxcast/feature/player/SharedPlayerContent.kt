@@ -139,7 +139,7 @@ fun SharedPlayerContent(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = episode?.title ?: podcast.title,
+                    text = (episode?.title ?: podcast.title).replace("+", " "),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     color = colorScheme.onSurface,
                     maxLines = 1,
@@ -151,7 +151,7 @@ fun SharedPlayerContent(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = if (episode != null) podcast.title else "",
+                    text = if (episode != null) podcast.title.replace("+", " ") else "",
                     style = MaterialTheme.typography.bodyLarge,
                     color = colorScheme.onSurface.copy(alpha = 0.7f),
                     maxLines = 1,

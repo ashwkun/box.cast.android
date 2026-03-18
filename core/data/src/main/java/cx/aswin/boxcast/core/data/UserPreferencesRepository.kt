@@ -19,6 +19,9 @@ class UserPreferencesRepository(context: Context) {
 
     private object Keys {
         val REGION = stringPreferencesKey("region")
+        val THEME_CONFIG = stringPreferencesKey("theme_config")
+        val USE_DYNAMIC_COLOR = androidx.datastore.preferences.core.booleanPreferencesKey("use_dynamic_color")
+        val THEME_BRAND = stringPreferencesKey("theme_brand")
     }
 
     val regionStream: Flow<String> = dataStore.data
@@ -36,6 +39,49 @@ class UserPreferencesRepository(context: Context) {
     suspend fun setRegion(region: String) {
         dataStore.edit { preferences ->
             preferences[Keys.REGION] = region
+        }
+    }
+
+    // THEME PREFERENCES
+    val themeConfigStream: Flow<String> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences()) else throw exception
+        }
+        .map { preferences ->
+            preferences[Keys.THEME_CONFIG] ?: "system"
+        }
+
+    suspend fun setThemeConfig(themeConfig: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.THEME_CONFIG] = themeConfig
+        }
+    }
+
+    val useDynamicColorStream: Flow<Boolean> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences()) else throw exception
+        }
+        .map { preferences ->
+            preferences[Keys.USE_DYNAMIC_COLOR] ?: true
+        }
+
+    suspend fun setUseDynamicColor(useDynamicColor: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.USE_DYNAMIC_COLOR] = useDynamicColor
+        }
+    }
+
+    val themeBrandStream: Flow<String> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) emit(emptyPreferences()) else throw exception
+        }
+        .map { preferences ->
+            preferences[Keys.THEME_BRAND] ?: "violet"
+        }
+
+    suspend fun setThemeBrand(themeBrand: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.THEME_BRAND] = themeBrand
         }
     }
 }

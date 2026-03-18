@@ -95,7 +95,7 @@ fun MiniPlayerContent(
             // Title and podcast
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                 Text(
-                    text = episode.title,
+                    text = episode.title.replace("+", " "),
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -106,7 +106,7 @@ fun MiniPlayerContent(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = podcastTitle,
+                    text = podcastTitle.replace("+", " "),
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontSize = 13.sp,
                         letterSpacing = 0.sp

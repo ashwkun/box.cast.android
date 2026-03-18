@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +43,13 @@ fun ProfileScreen(
     onToggleAnalytics: (Boolean) -> Unit = {},
     isCrashReportingEnabled: Boolean = false,
     onToggleCrashReporting: (Boolean) -> Unit = {},
-    appInstanceId: String? = null
+    appInstanceId: String? = null,
+    currentThemeConfig: String = "system",
+    isDynamicColorEnabled: Boolean = true,
+    currentThemeBrand: String = "violet",
+    onSetThemeConfig: (String) -> Unit = {},
+    onToggleDynamicColor: (Boolean) -> Unit = {},
+    onSetThemeBrand: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showResetDialog by remember { mutableStateOf(false) }
@@ -130,6 +141,160 @@ fun ProfileScreen(
                                     },
                                     modifier = Modifier.weight(1f)
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // SECTION: Theming
+            item {
+                CollapsibleSection("Appearance", initiallyExpanded = false) {
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column(Modifier.padding(vertical = 8.dp)) {
+                            // Theme Mode
+                            ListItem(
+                                headlineContent = { Text("Theme Mode") },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = when(currentThemeConfig) {
+                                            "light" -> Icons.Rounded.LightMode
+                                            "dark" -> Icons.Rounded.DarkMode
+                                            else -> Icons.Rounded.BrightnessAuto
+                                        },
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            )
+                            
+                            // Segmented Button Row
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                val modes = listOf(
+                                    "system" to "System",
+                                    "light" to "Light",
+                                    "dark" to "Dark"
+                                )
+                                
+                                modes.forEach { (mode, label) ->
+                                    FilterChip(
+                                        selected = currentThemeConfig == mode,
+                                        onClick = { onSetThemeConfig(mode) },
+                                        label = { Text(label) },
+                                        leadingIcon = {
+                                            if (currentThemeConfig == mode) {
+                                                Icon(Icons.Rounded.Check, null, Modifier.size(16.dp))
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                            
+                            HorizontalDivider()
+
+                            // Dynamic Color Toggle
+                            ListItem(
+                                headlineContent = { Text("Dynamic Color") },
+                                supportingContent = { Text("Use wallpaper colors (Android 12+).") },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Palette,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                trailingContent = {
+                                    Switch(
+                                        checked = isDynamicColorEnabled,
+                                        onCheckedChange = { 
+                                            onToggleDynamicColor(it)
+                                            // Optional: If turning ON dynamic color, we might want to reset brand? 
+                                            // No, let's keep it independent.
+                                        }
+                                    )
+                                }
+                            )
+
+                            // Static Theme Picker (Only if Dynamic Color is OFF)
+                            androidx.compose.animation.AnimatedVisibility(visible = !isDynamicColorEnabled) {
+                                Column {
+                                    HorizontalDivider()
+                                    
+                                    Text(
+                                        text = "Color Palette",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                                    )
+                                    
+                                    // Theme Brands
+                                    val brands = listOf(
+                                        Triple("violet", "Violet", androidx.compose.ui.graphics.Color(0xFF6750A4)),
+                                        Triple("emerald", "Emerald", androidx.compose.ui.graphics.Color(0xFF006C4C)),
+                                        Triple("ocean", "Ocean", androidx.compose.ui.graphics.Color(0xFF0061A4)),
+                                        Triple("sakura", "Sakura", androidx.compose.ui.graphics.Color(0xFFBC004B)),
+                                        Triple("tangerine", "Tangerine", androidx.compose.ui.graphics.Color(0xFF964900)),
+                                        Triple("crimson", "Crimson", androidx.compose.ui.graphics.Color(0xFFB91823)),
+                                        Triple("canary", "Canary", androidx.compose.ui.graphics.Color(0xFF725C00))
+                                    )
+                                    
+                                    FlowRow(
+                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        brands.forEach { (id, label, color) ->
+                                            val isSelected = currentThemeBrand == id
+                                            
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                modifier = Modifier.width(60.dp)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(48.dp)
+                                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                                        .background(color)
+                                                        .clickable { onSetThemeBrand(id) }
+                                                        .then(
+                                                            if (isSelected) {
+                                                                Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, androidx.compose.foundation.shape.CircleShape)
+                                                            } else Modifier
+                                                        ),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    if (isSelected) {
+                                                        Icon(
+                                                            imageVector = Icons.Rounded.Check,
+                                                            contentDescription = null,
+                                                            tint = androidx.compose.ui.graphics.Color.White,
+                                                            modifier = Modifier.size(24.dp)
+                                                        )
+                                                    }
+                                                }
+                                                Spacer(Modifier.height(4.dp))
+                                                Text(
+                                                    text = label,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    maxLines = 1,
+                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                }
                             }
                         }
                     }

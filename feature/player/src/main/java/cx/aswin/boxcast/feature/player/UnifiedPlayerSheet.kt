@@ -13,7 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.isSystemInDarkTheme
+import cx.aswin.boxcast.core.designsystem.theme.generateBrandColorScheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -85,6 +85,7 @@ fun UnifiedPlayerSheet(
     expandTrigger: Long = 0L, // New param: timestamp to force expansion
     onEpisodeInfoClick: (cx.aswin.boxcast.core.model.Episode) -> Unit = {},
     onPodcastInfoClick: (cx.aswin.boxcast.core.model.Podcast) -> Unit = {},
+    isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
     val state by playbackRepository.playerState.collectAsState()
@@ -99,7 +100,6 @@ fun UnifiedPlayerSheet(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
-    val isDarkTheme = isSystemInDarkTheme()
     val window = (context as? android.app.Activity)?.window
 
     SideEffect {
@@ -133,7 +133,7 @@ fun UnifiedPlayerSheet(
             val bitmap = (painterState.result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
             if (bitmap != null) {
                 val seedColor = extractSeedColor(bitmap)
-                extractedColorScheme = generateColorScheme(seedColor, isDarkTheme)
+                extractedColorScheme = generateBrandColorScheme(seedColor, isDarkTheme)
             }
         }
     }
@@ -491,6 +491,7 @@ fun UnifiedPlayerSheet(
                             FullPlayerContent(
                                 playbackRepository = playbackRepository,
                                 downloadRepository = downloadRepository,
+                                isDarkTheme = isDarkTheme,
                                 colorScheme = scheme,
                                 onCollapse = {
                                     scope.launch {

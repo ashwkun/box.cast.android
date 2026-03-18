@@ -7,6 +7,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,38 +51,51 @@ fun PrivacyConsentDialog(
             color = MaterialTheme.colorScheme.surfaceContainer,
             tonalElevation = 6.dp
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                PrivacyHeader()
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                PrivacyBody()
-                Spacer(modifier = Modifier.height(24.dp))
-                
+            Column {
                 // State
                 var crashReporting by remember { mutableStateOf(false) }
                 var usageAnalytics by remember { mutableStateOf(false) }
                 var privacyPolicyAccepted by remember { mutableStateOf(false) }
 
-                ConsentOptions(
-                    crashReporting = crashReporting,
-                    onCrashChange = { crashReporting = it },
-                    usageAnalytics = usageAnalytics,
-                    onUsageChange = { usageAnalytics = it },
-                    privacyPolicyAccepted = privacyPolicyAccepted,
-                    onPolicyChange = { privacyPolicyAccepted = it }
-                )
+                Column(
+                    modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp)
+                ) {
+                    // Header
+                    PrivacyHeader()
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Options First (Redesign)
+                    ConsentOptions(
+                        crashReporting = crashReporting,
+                        onCrashChange = { crashReporting = it },
+                        usageAnalytics = usageAnalytics,
+                        onUsageChange = { usageAnalytics = it },
+                        privacyPolicyAccepted = privacyPolicyAccepted,
+                        onPolicyChange = { privacyPolicyAccepted = it }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    // Info/Legal Text Last
+                    PrivacyInfo()
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
 
-                Spacer(modifier = Modifier.height(32.dp))
-
-                ConsentActions(
-                    isEnabled = privacyPolicyAccepted,
-                    onAccept = { onConsentDecided(crashReporting, usageAnalytics) }
-                )
+                // Footer
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    tonalElevation = 8.dp,
+                    shadowElevation = 4.dp
+                ) {
+                     Column(modifier = Modifier.padding(24.dp)) {
+                         ConsentActions(
+                             isEnabled = privacyPolicyAccepted,
+                             onAccept = { onConsentDecided(crashReporting, usageAnalytics) }
+                         )
+                     }
+                }
             }
         }
     }
@@ -87,40 +103,56 @@ fun PrivacyConsentDialog(
 
 @Composable
 private fun PrivacyHeader() {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = Modifier.fillMaxWidth(), // Ensure full width for centering
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(16.dp))
         Box(contentAlignment = Alignment.Center) {
             Surface(
-                modifier = Modifier.size(80.dp),
+                modifier = Modifier.size(64.dp),
                 shape = ExpressiveShapes.Burst,
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
             ) {}
-            BoxCastLogo(textColor = MaterialTheme.colorScheme.primary)
+            BoxCastLogo(
+                modifier = Modifier.scale(0.8f),
+                textColor = MaterialTheme.colorScheme.primary
+            )
         }
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Help improve boxcast",
-            style = MaterialTheme.typography.headlineSmall,
+            text = "Data & Privacy",
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Text(
+            text = "Customize your data sharing settings",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-private fun PrivacyBody() {
+private fun PrivacyInfo() {
     Column {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "The data shared will only be used to help us improve the product by understanding user behaviour and global suggestions. No user-specific targeted personalization will be done, and no data collected will ever be user-identifiable. We will never use this data for advertising or any monetary gains.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = "Why we collect data",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "The data shared helps us improve the product by understanding user behaviour. No user-specific targeted personalization will be done, and no data collected will ever be user-identifiable.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
         Spacer(modifier = Modifier.height(16.dp))
         DataCollectedExpander()
     }
@@ -134,7 +166,7 @@ private fun DataCollectedExpander() {
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .clickable { isExpanded = !isExpanded }
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
             .padding(12.dp)
     ) {
         Row(
@@ -143,13 +175,14 @@ private fun DataCollectedExpander() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "View Data Collected",
-                style = MaterialTheme.typography.labelLarge,
+                text = "View Technical Details",
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold
             )
             Icon(
                 imageVector = if (isExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                contentDescription = null
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
             )
         }
         
@@ -159,11 +192,11 @@ private fun DataCollectedExpander() {
             exit = shrinkVertically() + fadeOut()
         ) {
             Column(modifier = Modifier.padding(top = 12.dp)) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(12.dp))
-                DataPoint("Crash Reports", "Technical data (stack traces) to help us identify and fix bugs.")
+                DataPoint("Crash Reports", "Stack traces, device state, and crash logs to identify stability issues.")
                 Spacer(modifier = Modifier.height(8.dp))
-                DataPoint("Usage Statistics", "Anonymous interaction data to help us understand popular features.")
+                DataPoint("Usage Statistics", "Events such as play, subscribe, search, screen views, and playback state.")
             }
         }
     }
@@ -180,79 +213,132 @@ private fun ConsentOptions(
 ) {
     val allChecked = crashReporting && usageAnalytics && privacyPolicyAccepted
     
-    Column {
-        // Agree to All
-        Row(
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Master Toggle Card
+        Surface(
+            color = if (allChecked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = if (allChecked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+            shape = MaterialTheme.shapes.large,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(MaterialTheme.shapes.medium)
-                .background(if (!allChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f) else Color.Transparent)
                 .clickable {
                     val newState = !allChecked
                     onCrashChange(newState)
                     onUsageChange(newState)
                     onPolicyChange(newState)
                 }
-                .padding(vertical = 10.dp, horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = allChecked,
-                onCheckedChange = { checked ->
-                    onCrashChange(checked)
-                    onUsageChange(checked)
-                    onPolicyChange(checked)
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = allChecked,
+                    onCheckedChange = null, // Handled by Surface click
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = MaterialTheme.colorScheme.primary,
+                        uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Agree to All",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Enables Crash Reporting, Usage Analytics, and accepts Privacy Policy.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (allChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha=0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Agree to all",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            }
         }
         
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 8.dp),
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text("Individual Settings", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        
+        // Individual Cards
+        ToggleCard(
+            title = "Crash Reports (Optional)",
+            description = "Share stack traces when the app crashes so we can fix bugs.",
+            checked = crashReporting,
+            onCheckedChange = onCrashChange
         )
         
-        ToggleRow("Share Crash Reports (Optional)", crashReporting, onCrashChange)
-        Spacer(modifier = Modifier.height(8.dp))
-        ToggleRow("Share Usage Statistics (Optional)", usageAnalytics, onUsageChange)
-        Spacer(modifier = Modifier.height(16.dp))
+        ToggleCard(
+            title = "Usage Statistics (Optional)",
+            description = "Share anonymous interaction data to help us identify popular features.",
+            checked = usageAnalytics,
+            onCheckedChange = onUsageChange
+        )
         
-        // Privacy Policy
-        val uriHandler = LocalUriHandler.current
-        Row(
+        // Privacy Policy Card
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shape = MaterialTheme.shapes.large,
+            border = BorderStroke(1.dp, if (!privacyPolicyAccepted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(MaterialTheme.shapes.small)
                 .clickable { onPolicyChange(!privacyPolicyAccepted) }
-                .padding(vertical = 8.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(checked = privacyPolicyAccepted, onCheckedChange = null)
+                Spacer(modifier = Modifier.width(12.dp))
+                val uriHandler = LocalUriHandler.current
+                Column {
+                    Text(
+                        text = "Privacy Policy",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                     Text(
+                        text = "I have read and agree to the Privacy Policy",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Read Policy",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(top = 4.dp).clickable {
+                             try { uriHandler.openUri("https://aswin.cx/boxcast/privacy") } catch(_: Exception) {}
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ToggleCard(
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.large,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(
-                checked = privacyPolicyAccepted,
-                onCheckedChange = null // Handled by Row
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "I agree to the ",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "Privacy Policy",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable {
-                        try { uriHandler.openUri("https://aswin.cx/boxcast/privacy") } catch(_: Exception) {}
-                    }
-                )
+            Checkbox(checked = checked, onCheckedChange = null)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(text = title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text(text = description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -278,22 +364,6 @@ private fun ConsentActions(
         ) {
             Text("Accept & Continue")
         }
-    }
-}
-
-@Composable
-private fun ToggleRow(text: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .clickable { onCheckedChange(!checked) }
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(checked = checked, onCheckedChange = null)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = text, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

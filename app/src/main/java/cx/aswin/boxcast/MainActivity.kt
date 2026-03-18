@@ -91,87 +91,104 @@ class MainActivity : ComponentActivity() {
         handlePlayerIntent(intent)
         
         setContent {
-            BoxCastTheme {
-                val navController = rememberNavController()
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route ?: "home"
-                
-                // API config from BuildConfig
-                val apiBaseUrl = BuildConfig.BOXCAST_API_BASE_URL
-                val publicKey = BuildConfig.BOXCAST_PUBLIC_KEY
-                
-                // Show bottom nav on all screens except player and onboarding
-                val showBottomNav = !currentRoute.startsWith("player") && currentRoute != "onboarding"
-                
-                // Check if we can go back (for predictive back)
-                val canGoBack = navController.previousBackStackEntry != null
-                
-                // App-level Repositories
-                val application = (applicationContext as android.app.Application)
-                val database = remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
-                
-                // 1. Core Data Sources
-                // Create a shared PodcastRepository instance
-                val podcastRepository = remember { cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, application) }
-                
-                // 2. Queue Repository (Must come before PlaybackRepo)
-                val queueRepository = remember { cx.aswin.boxcast.core.data.QueueRepository(database, podcastRepository) }
+            val navController = rememberNavController()
+            val navBackStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = navBackStackEntry?.destination?.route ?: "home"
+            
+            // API config from BuildConfig
+            val apiBaseUrl = BuildConfig.BOXCAST_API_BASE_URL
+            val publicKey = BuildConfig.BOXCAST_PUBLIC_KEY
+            
+            // Show bottom nav on all screens except player and onboarding
+            val showBottomNav = !currentRoute.startsWith("player") && currentRoute != "onboarding"
+            
+            // Check if we can go back (for predictive back)
+            val canGoBack = navController.previousBackStackEntry != null
+            
+            // App-level Repositories
+            val application = (applicationContext as android.app.Application)
+            val database = remember { cx.aswin.boxcast.core.data.database.BoxCastDatabase.getDatabase(application) }
+            
+            // 1. Core Data Sources
+            // Create a shared PodcastRepository instance
+            val podcastRepository = remember { cx.aswin.boxcast.core.data.PodcastRepository(apiBaseUrl, publicKey, application) }
+            
+            // 2. Queue Repository (Must come before PlaybackRepo)
+            val queueRepository = remember { cx.aswin.boxcast.core.data.QueueRepository(database, podcastRepository) }
 
-                // 3. Playback Repository (Depends on QueueRepo)
-                val playbackRepository = remember { cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao(), queueRepository) }
-                val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
-                
-                // 4. Subscription Repository
-                val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao(), analyticsHelper = null) }
-                
-                // 6. Onboarding ViewModel
-                val onboardingViewModel = remember {
-                    cx.aswin.boxcast.feature.onboarding.OnboardingViewModel(application, podcastRepository, subscriptionRepository)
-                }
-                val onboardingCompleted = remember { onboardingViewModel.isOnboardingCompleted() }
-                
-                // 5. Smart Queue Engine
-                val smartQueueEngine = remember { cx.aswin.boxcast.core.data.DefaultSmartQueueEngine(podcastRepository, database.listeningHistoryDao(), subscriptionRepository) }
-                
-                // QueueManager (Singleton-ish) - Needs to be provided to ViewModels/Screens
-                val queueManager = remember { 
-                    cx.aswin.boxcast.core.data.QueueManager(queueRepository, smartQueueEngine, playbackRepository, podcastRepository)
-                }
+            // 3. Playback Repository (Depends on QueueRepo)
+            val playbackRepository = remember { cx.aswin.boxcast.core.data.PlaybackRepository(application, database.listeningHistoryDao(), queueRepository) }
+            val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
+            
+            // 4. Subscription Repository
+            val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao(), analyticsHelper = null) }
+            
+            // 6. Onboarding ViewModel
+            val onboardingViewModel = remember {
+                cx.aswin.boxcast.feature.onboarding.OnboardingViewModel(application, podcastRepository, subscriptionRepository)
+            }
+            val onboardingCompleted = remember { onboardingViewModel.isOnboardingCompleted() }
+            
+            // 5. Smart Queue Engine
+            val smartQueueEngine = remember { cx.aswin.boxcast.core.data.DefaultSmartQueueEngine(podcastRepository, database.listeningHistoryDao(), subscriptionRepository) }
+            
+            // QueueManager (Singleton-ish) - Needs to be provided to ViewModels/Screens
+            val queueManager = remember { 
+                cx.aswin.boxcast.core.data.QueueManager(queueRepository, smartQueueEngine, playbackRepository, podcastRepository)
+            }
 
-                // Privacy & Analytics & Preferences
-                val consentManager = remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
-                val analyticsHelper = remember { cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, consentManager) }
-                val userPrefs = remember { cx.aswin.boxcast.core.data.UserPreferencesRepository(application) }
-                
-                // Check Consent Status
-                // Initial = true to prevent flashing dialog while DataStore loads.
-                // If user hasn't set consent, this will become false shortly and show dialog.
-                val hasUserSetConsent by consentManager.hasUserSetConsent.collectAsState(initial = true)
+            // Privacy & Analytics & Preferences
+            val consentManager = remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
+            val analyticsHelper = remember { cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, consentManager) }
+            val userPrefs = remember { cx.aswin.boxcast.core.data.UserPreferencesRepository(application) }
+            
+            // Check Consent Status
+            // Initial = true to prevent flashing dialog while DataStore loads.
+            // If user hasn't set consent, this will become false shortly and show dialog.
+            val hasUserSetConsent by consentManager.hasUserSetConsent.collectAsState(initial = true)
 
-                val analyticsConsent by consentManager.isUsageAnalyticsConsented.collectAsState(initial = false)
-                val crashlyticsConsent by consentManager.isCrashReportingConsented.collectAsState(initial = false)
-                val currentRegion by userPrefs.regionStream.collectAsState(initial = "us")
-                
-                var appInstanceId by remember { mutableStateOf<String?>(null) }
-                LaunchedEffect(Unit) {
-                    try {
-                        com.google.firebase.analytics.FirebaseAnalytics.getInstance(application).appInstanceId.addOnSuccessListener { 
-                            appInstanceId = it
-                        }
-                    } catch(e: Exception) { /* Ignore if missing */ }
-                }
-                
-                val scope = rememberCoroutineScope() // Scope for playback actions
-                
-                // Restore last session on app startup
-                LaunchedEffect(Unit) {
-                    playbackRepository.restoreLastSession()
-                }
+            val analyticsConsent by consentManager.isUsageAnalyticsConsented.collectAsState(initial = false)
+            val crashlyticsConsent by consentManager.isCrashReportingConsented.collectAsState(initial = false)
+            val currentRegion by userPrefs.regionStream.collectAsState(initial = "us")
+            
+            // Theme Preferences
+            val themeConfig by userPrefs.themeConfigStream.collectAsState(initial = "system")
+            val useDynamicColor by userPrefs.useDynamicColorStream.collectAsState(initial = true)
+            val themeBrand by userPrefs.themeBrandStream.collectAsState(initial = "violet")
+            
+            val darkTheme = when(themeConfig) {
+                "light" -> false
+                "dark" -> true
+                else -> androidx.compose.foundation.isSystemInDarkTheme()
+            }
+            
+            var appInstanceId by remember { mutableStateOf<String?>(null) }
+            LaunchedEffect(Unit) {
+                try {
+                    com.google.firebase.analytics.FirebaseAnalytics.getInstance(application).appInstanceId.addOnSuccessListener { 
+                        appInstanceId = it
+                    }
+                } catch(e: Exception) { /* Ignore if missing */ }
+            }
+            
+            val scope = rememberCoroutineScope() // Scope for playback actions
+            
+            // Restore last session on app startup
+            LaunchedEffect(Unit) {
+                playbackRepository.restoreLastSession()
+            }
 
-                // Global Screen View Tracking
-                LaunchedEffect(currentRoute) {
-                    analyticsHelper.logScreenView(currentRoute)
-                }
+            // Global Screen View Tracking
+            LaunchedEffect(currentRoute) {
+                analyticsHelper.logScreenView(currentRoute)
+            }
+
+            BoxCastTheme(
+                darkTheme = darkTheme,
+                dynamicColor = useDynamicColor,
+                themeBrand = themeBrand
+            ) {
+
 
                 androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
@@ -286,7 +303,7 @@ class MainActivity : ComponentActivity() {
                                     onHeroArrowClick = { heroItem ->
                                         val ep = heroItem.podcast.latestEpisode
                                         if (ep != null) {
-                                            fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                            fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
                                             navController.navigate(
                                                 "episode/${ep.id}/${encode(ep.title)}/" +
                                                 "${encode(ep.description.take(500))}/" +
@@ -365,7 +382,14 @@ class MainActivity : ComponentActivity() {
                                             consentManager.setConsent(enabled, analyticsConsent)
                                         }
                                     },
-                                    appInstanceId = appInstanceId
+                                    appInstanceId = appInstanceId,
+                                    // Theme Props
+                                    currentThemeConfig = themeConfig,
+                                    isDynamicColorEnabled = useDynamicColor,
+                                    currentThemeBrand = themeBrand,
+                                    onSetThemeConfig = { config -> scope.launch { userPrefs.setThemeConfig(config) } },
+                                    onToggleDynamicColor = { enabled -> scope.launch { userPrefs.setUseDynamicColor(enabled) } },
+                                    onSetThemeBrand = { brand -> scope.launch { userPrefs.setThemeBrand(brand) } }
                                 )
                             }
                             
@@ -463,7 +487,7 @@ class MainActivity : ComponentActivity() {
                                     viewModel = viewModel,
                                     onBack = { navController.popBackStack() },
                                     onEpisodeClick = { episode, podcast ->
-                                        fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                        fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
                                         navController.navigate(
                                             "episode/${episode.id}/${encode(episode.title)}/" +
                                             "${encode(episode.description.take(500))}/" +
@@ -530,7 +554,7 @@ class MainActivity : ComponentActivity() {
                                     viewModel = viewModel,
                                     onBack = { navController.popBackStack() },
                                     onEpisodeClick = { episode, podcast ->
-                                        fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                        fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
                                         navController.navigate(
                                             "episode/${episode.id}/${encode(episode.title)}/" +
                                             "${encode(episode.description.take(500))}/" +
@@ -578,7 +602,7 @@ class MainActivity : ComponentActivity() {
                                         onBack = { navController.popBackStack() },
                                         bottomContentPadding = miniPlayerPadding,
                                         onEpisodeClick = { episode ->
-                                            fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                            fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
                                             navController.navigate(
                                                 "episode/${episode.id}/${encode(episode.title)}/" +
                                                 "${encode(episode.description.take(500))}/" +
@@ -650,7 +674,7 @@ class MainActivity : ComponentActivity() {
                                     onPodcastClick = { pId -> navController.navigate("podcast/$pId") },
                                     onEpisodeClick = { ep ->
                                         // Navigate to the clicked episode
-                                        fun encode(s: String?) = java.net.URLEncoder.encode(s?.ifEmpty { "_" } ?: "_", "UTF-8")
+                                        fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
                                         navController.navigate(
                                             "episode/${ep.id}/${encode(ep.title)}/${encode(ep.description)}/${encode(ep.imageUrl)}/${encode(ep.audioUrl)}/${ep.duration}/${podcastId}/${encode(podcastTitle)}"
                                         )
@@ -750,6 +774,7 @@ class MainActivity : ComponentActivity() {
                         containerHeight = containerHeight,
                         collapsedStateHorizontalPadding = 12.dp,
                         expandTrigger = expandPlayerTrigger, // Pass the trigger here
+                        isDarkTheme = darkTheme,
                         onEpisodeInfoClick = { episode ->
                             // Navigate to episode info
                             val podcast = playbackRepository.playerState.value.currentPodcast

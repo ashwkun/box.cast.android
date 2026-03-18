@@ -152,7 +152,7 @@ fun HeroCard(
                 if (isDiscovery) {
                     // SPOTLIGHT: Show Title prominent, Episode secondary
                     Text(
-                        text = item.podcast.title,
+                        text = item.podcast.title.replace("+", " "),
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         maxLines = 2,
@@ -160,7 +160,7 @@ fun HeroCard(
                         lineHeight = 22.sp
                     )
                     Text(
-                        text = item.podcast.artist,
+                        text = item.podcast.artist.replace("+", " "),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.6f),
                         maxLines = 1,
@@ -168,7 +168,7 @@ fun HeroCard(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = displayDesc,
+                        text = displayDesc.replace("+", " "),
                         style = MaterialTheme.typography.bodyLarge,
                         color = Color.White.copy(alpha = 0.85f),
                         maxLines = 3,
@@ -178,7 +178,7 @@ fun HeroCard(
                 } else {
                     // RESUME / JUMP_BACK_IN: Episode prominent, Show secondary
                     Text(
-                        text = displayDesc,
+                        text = displayDesc.replace("+", " "),
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         maxLines = 3,
@@ -187,7 +187,7 @@ fun HeroCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${item.podcast.title} • ${item.podcast.artist}",
+                        text = "${item.podcast.title.replace("+", " ")} • ${item.podcast.artist.replace("+", " ")}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color.White.copy(alpha = 0.7f),
                         maxLines = 1,

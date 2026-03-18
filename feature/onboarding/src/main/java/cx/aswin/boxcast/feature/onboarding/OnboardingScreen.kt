@@ -12,7 +12,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -26,6 +27,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -44,15 +47,29 @@ data class GenreItem(val label: String, val value: String, val icon: ImageVector
 
 val ONBOARDING_GENRES = listOf(
     GenreItem("News", "News", Icons.Rounded.Newspaper),
-    GenreItem("Technology", "Technology", Icons.Rounded.Computer),
+    GenreItem("Tech", "Technology", Icons.Rounded.Computer),
     GenreItem("Business", "Business", Icons.Rounded.Work),
     GenreItem("Comedy", "Comedy", Icons.Rounded.EmojiEvents),
     GenreItem("True Crime", "True Crime", Icons.Rounded.Search),
     GenreItem("Sports", "Sports", Icons.Rounded.SportsBaseball),
     GenreItem("Health", "Health", Icons.Rounded.FavoriteBorder),
     GenreItem("History", "History", Icons.Rounded.AccountBalance),
-    GenreItem("Arts", "Arts", Icons.Rounded.Palette)
+    GenreItem("Arts", "Arts", Icons.Rounded.Palette),
+    GenreItem("Society", "Society & Culture", Icons.Rounded.Person),
+    GenreItem("Education", "Education", Icons.Rounded.School),
+    GenreItem("Science", "Science", Icons.Rounded.Science),
+    GenreItem("TV & Film", "TV & Film", Icons.Rounded.Movie),
+    GenreItem("Fiction", "Fiction", Icons.Rounded.AutoStories),
+    GenreItem("Music", "Music", Icons.Rounded.MusicNote),
+    GenreItem("Religion", "Religion & Spirituality", Icons.Rounded.Star),
+    GenreItem("Family", "Kids & Family", Icons.Rounded.Face),
+    GenreItem("Leisure", "Leisure", Icons.Rounded.Weekend),
+    GenreItem("Govt", "Government", Icons.Rounded.Gavel)
 )
+
+// ============================================================
+// GENRE PICKER
+// ============================================================
 
 @Composable
 fun OnboardingScreen(
@@ -87,6 +104,7 @@ fun OnboardingScreen(
                     isLoading = uiState.isLoadingPodcasts,
                     onToggleSubscription = viewModel::togglePodcastSubscription,
                     onSearch = viewModel::navigateToSearch,
+                    onBack = viewModel::navigateBackFromPodcasts,
                     onDone = { viewModel.completeOnboarding(onComplete) }
                 )
             }
@@ -106,11 +124,7 @@ fun OnboardingScreen(
     }
 }
 
-// ============================================================
-// GENRE PICKER
-// ============================================================
-
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun GenrePickerScreen(
     selectedGenres: Set<String>,
@@ -119,103 +133,124 @@ private fun GenrePickerScreen(
     onSearch: () -> Unit,
     onSkip: () -> Unit
 ) {
-    Column(
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = 24.dp)
-    ) {
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        Text(
-            text = "Can we get to\nknow you better?",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Text(
-            text = "Pick the topics you enjoy",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // Genre chips in flow layout
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.weight(1f)
-        ) {
-            ONBOARDING_GENRES.forEach { genre ->
-                val isSelected = genre.value in selectedGenres
-                GenreChip(
-                    genre = genre,
-                    isSelected = isSelected,
-                    onClick = { onToggleGenre(genre.value) }
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        text = "Can we get to know you better?",
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
+            )
+        },
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp,
+                shadowElevation = 4.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Button(
+                        onClick = onContinue,
+                        enabled = selectedGenres.isNotEmpty(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = MaterialTheme.shapes.extraLarge
+                    ) {
+                        Text(
+                            if (selectedGenres.isEmpty()) "Pick at least 1"
+                            else "Continue (${selectedGenres.size} selected)",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+    
+                    TextButton(
+                        onClick = onSearch,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Search for your favorite podcasts instead",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    
+                    TextButton(onClick = onSkip) {
+                        Text(
+                            "Skip",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         }
-        
-        // Bottom actions
+    ) { innerPadding ->
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(bottom = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
         ) {
-            Button(
-                onClick = onContinue,
-                enabled = selectedGenres.isNotEmpty(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = MaterialTheme.shapes.extraLarge
-            ) {
-                Text(
-                    if (selectedGenres.isEmpty()) "Pick at least 1"
-                    else "Continue (${selectedGenres.size} selected)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+            Text(
+                text = "Pick the topics you enjoy",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             
-            Spacer(modifier = Modifier.height(12.dp))
-
-            TextButton(
-                onClick = onSearch,
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    Icons.Rounded.Search,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    "Search for your favorite podcasts instead",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                ONBOARDING_GENRES.forEach { genre ->
+                    val isSelected = genre.value in selectedGenres
+                    GenreChip(
+                        genre = genre,
+                        isSelected = isSelected,
+                        onClick = { onToggleGenre(genre.value) }
+                    )
+                }
             }
             
-            TextButton(onClick = onSkip) {
-                Text(
-                    "Skip",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
 
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PodcastPicksScreen(
     podcasts: List<Podcast>,
@@ -223,120 +258,132 @@ private fun PodcastPicksScreen(
     isLoading: Boolean,
     onToggleSubscription: (String) -> Unit,
     onSearch: () -> Unit,
+    onBack: () -> Unit,
     onDone: () -> Unit
 ) {
-    Box(
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    Scaffold(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(horizontal = 24.dp)
-        ) {
-            Spacer(modifier = Modifier.height(48.dp))
-            
-            Text(
-                text = "Here are some\npicks for you",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        text = "Here are some picks for you",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
             )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = "Tap to subscribe — you can always change later",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.height(20.dp))
-            
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+        },
+        bottomBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp,
+                shadowElevation = 4.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.navigationBars)
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 240.dp), // Increased space for bottom bar
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(podcasts, key = { it.id }) { podcast ->
-                        PodcastPickCard(
-                            podcast = podcast,
-                            isSubscribed = podcast.id in subscribedIds,
-                            onToggle = { onToggleSubscription(podcast.id) }
+                    Button(
+                        onClick = onDone,
+                        enabled = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text(
+                            if (subscribedIds.isEmpty()) "Pick at least 1" else "Subscribe & Start (${subscribedIds.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    TextButton(
+                        onClick = onSearch,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Search for more",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    
+                    TextButton(onClick = onDone) {
+                        Text(
+                            "Skip",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
             }
         }
-        
-        // Bottom actions (Fixed at bottom with scrim)
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 1f)
-                        )
-                    )
-                )
-        ) {
-            Column(
+    ) { innerPadding ->
+        if (isLoading) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
             ) {
-                Button(
-                    onClick = onDone,
-                    enabled = subscribedIds.isNotEmpty(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = MaterialTheme.shapes.extraLarge,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                     Text(
-                        "Subscribe & Start (${subscribedIds.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        text = "Tap to subscribe — you can always change later",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
                 }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                TextButton(
-                    onClick = onSearch,
-                    modifier = Modifier.height(48.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        "Search for more",
-                        style = MaterialTheme.typography.bodyMedium
+                items(podcasts, key = { it.id }) { podcast ->
+                    PodcastPickCard(
+                        podcast = podcast,
+                        isSubscribed = podcast.id in subscribedIds,
+                        onToggle = { onToggleSubscription(podcast.id) }
                     )
                 }
             }
@@ -441,27 +488,29 @@ private fun GenreChip(
     Surface(
         color = containerColor,
         contentColor = contentColor,
-        shape = MaterialTheme.shapes.extraLarge, // Standard Pill/Rounded shape
+        shape = MaterialTheme.shapes.extraLarge,
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         modifier = Modifier
+            .height(64.dp)
             .expressiveClickable(onClick = onClick)
-            .height(64.dp) // Large height (reduced from 72dp to fit better)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 24.dp), // Moderate padding (reduced from 32dp)
+            modifier = Modifier.padding(horizontal = 16.dp), // Reduced padding (from 24dp)
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp) // Reduced spacing (from 12dp)
         ) {
             Icon(
                 genre.icon,
                 contentDescription = null,
-                modifier = Modifier.size(28.dp), // Large icon (reduced from 32dp)
+                modifier = Modifier.size(24.dp), // Reduced icon size (from 28dp)
                 tint = if (isSelected) MaterialTheme.colorScheme.primary else contentColor
             )
             Text(
                 genre.label,
-                style = MaterialTheme.typography.titleLarge, // Large text (reduced from HeadlineSmall)
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                style = MaterialTheme.typography.titleMedium, // Reduced text size (from TitleLarge)
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

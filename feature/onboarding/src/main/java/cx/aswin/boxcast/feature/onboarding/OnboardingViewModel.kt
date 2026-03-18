@@ -113,6 +113,10 @@ class OnboardingViewModel(
         _uiState.update { it.copy(currentStep = OnboardingStep.SEARCH) }
     }
     
+    fun navigateBackFromPodcasts() {
+        _uiState.update { it.copy(currentStep = OnboardingStep.GENRES) }
+    }
+    
     fun navigateBackFromSearch() {
         _uiState.update { state ->
             val backStep = if (state.selectedGenres.isNotEmpty()) OnboardingStep.PODCASTS else OnboardingStep.GENRES
