@@ -34,3 +34,8 @@ captures/
 API_GUIDE.md
 proxy/
 node_modules/
+
+# Sensitive files
+*.keystore
+*.jks
+google-services.json
