@@ -40,3 +40,9 @@ node_modules/
 *.jks
 google-services.json
 bench_node.js
+
+# Reference Files
+rules.md
+RELEASE_NOTES.md
+ROADMAP.md
+API_GUIDE.md
