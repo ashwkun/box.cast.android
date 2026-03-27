@@ -1,21 +1,37 @@
-title: ""
+title: "❓ [Question] "
 body:
   - type: markdown
     attributes:
       value: |
-        Have a question about BoxCast or need help troubleshooting? 
-        Please provide the details below, and the community will jump in to help!
+        Have a question about using BoxCast? Can't figure something out?
+        Ask the community here! 🙋‍♂️
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: What is this related to?
+      options:
+        - How-to / Usage
+        - Troubleshooting
+        - Supported Devices
+        - Setup / Installation
+        - Other
+    validations:
+      required: true
+
   - type: textarea
     id: question
     attributes:
       label: What is your question?
-      description: Be as specific as possible.
+      description: "Please be as specific as possible so others can help you better."
+      placeholder: "How do I..."
     validations:
       required: true
+
   - type: textarea
-    id: details
+    id: context
     attributes:
       label: Additional Context
-      description: Provide any screenshots, device specs, or other relevant information.
+      description: "Any screenshots, device specs, or other relevant information."
     validations:
       required: false

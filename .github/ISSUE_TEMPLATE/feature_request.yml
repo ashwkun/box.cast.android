@@ -1,17 +1,16 @@
-name: Feature Request
-description: Suggest an idea for BoxCast
-title: "[Feature]: "
-labels: ["enhancement", "triage"]
+name: 💡 Feature Request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to suggest a new feature for BoxCast!
+        Got an idea to make BoxCast even better? We'd love to hear it! 📺
+
   - type: dropdown
-    id: component
+    id: area
     attributes:
-      label: Component / Area
-      description: What part of the app does this apply to? (e.g., Playback, Search)
+      label: Which area does this relate to?
       options:
         - Playback / Streams
         - Search
@@ -19,34 +18,32 @@ body:
         - Settings
         - Network / Connectivity
         - UI / Design
+        - New Feature
         - Other
     validations:
       required: true
+
   - type: textarea
-    id: problem
+    id: description
     attributes:
-      label: Is your feature request related to a problem? Please describe.
-      description: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+      label: Describe the feature
+      description: "What would you like to see? Be as detailed as possible."
+      placeholder: "It would be great if the app could..."
     validations:
       required: true
+
   - type: textarea
-    id: solution
+    id: motivation
     attributes:
-      label: Describe the solution you'd like
-      description: A clear and concise description of what you want to happen.
-    validations:
-      required: true
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Describe alternatives you've considered
-      description: A clear and concise description of any alternative solutions or features you've considered.
+      label: Why is this useful?
+      description: "How would this improve your watching experience?"
     validations:
       required: false
+
   - type: textarea
-    id: additional_context
+    id: mockups
     attributes:
-      label: Additional context
-      description: Add any other context or screenshots about the feature request here.
+      label: Mockups / References
+      description: "Any screenshots, sketches, or links to similar features in other apps?"
     validations:
       required: false
