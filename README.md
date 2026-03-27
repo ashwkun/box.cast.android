@@ -7,7 +7,7 @@
 *Built completely with Jetpack Compose featuring a beautiful Material 3 Design.*
 *Download the APK below and start listening!*
 
-[![Download APK](https://img.shields.io/badge/⬇_DOWNLOAD_APK-Latest_Release-00C853?style=for-the-badge&logo=android&logoColor=white&labelColor=1a1a2e)](https://github.com/ashwkun/box.cast.android/releases/latest/download/app-release.apk)
+[![Download APK](https://img.shields.io/badge/⬇_DOWNLOAD_APK-Latest_Release-00C853?style=for-the-badge&logo=android&logoColor=white&labelColor=1a1a2e)](https://github.com/ashwkun/box.cast.android/releases/latest/download/boxcast-release.apk)
 
 [![GPL v3 License](https://img.shields.io/badge/License-GPLv3-ff0080.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Android](https://img.shields.io/badge/Platform-Android-3DDC84.svg)](https://www.android.com/)
