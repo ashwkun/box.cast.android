@@ -175,7 +175,15 @@ This is a personal passion project, but contributions are welcome! Here's how yo
 
 ## 📄 License
 
-This is a personal open-source fan project. All rights reserved.
+This project is licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
+
+**Key Terms:**
+- ✅ You may use, modify, and distribute this software
+- ✅ Any derivative work **must also be open source** under GPL v3
+- ✅ You must disclose the source code of any modifications
+- ⚠️ No warranty is provided
+
+---
 
 <div align="center">
 
