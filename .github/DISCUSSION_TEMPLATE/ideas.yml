@@ -1,0 +1,21 @@
+title: "[Idea] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Welcome to BoxCast Discussions!
+        Please share your ideas and feature requests here.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What is your idea?
+      description: Describe the feature or improvement you would like to see in BoxCast.
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Why is this needed?
+      description: Explain how this feature improves the user experience.
+    validations:
+      required: false
