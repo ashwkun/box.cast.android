@@ -1,103 +1,164 @@
-# BoxCast
+# 🎙️ BoxCast
+*The Ultimate Podcast App For Android*
 
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-7F52FF.svg)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4.svg)](https://developer.android.com/jetpack/compose)
 [![Reddit](https://img.shields.io/badge/Connect%20on-Reddit-FF4500.svg?logo=reddit&logoColor=white)](https://www.reddit.com/user/Altruistic_Plenty696)
 
-*A premium podcast companion app for Android, built with Kotlin and Jetpack Compose.*
-
-BoxCast focuses on clean design, fast discovery, and a playback experience that stays out of your way. It follows [Material 3 Expressive](https://m3.material.io/) guidelines — spring-based motion, dynamic color extraction, variable typography, and expressive shapes throughout.
+*Because listening to stories is free and I love podcasts* 🎙️
 
 ---
 
-## Features
+## 📱 About
 
-### Home
-- **Hero Carousel:** Spotlight trending podcasts with full-bleed artwork and one-tap playback.
-- **Curated Time Blocks:** Morning, afternoon, and evening picks that adapt to when you open the app.
-- **Your Shows:** New episodes from subscriptions, synced live via the Podcast Index API.
-- **Smart Shuffle:** Resume listening with a mosaic grid of recently played and new episodes from your library.
-
-### Player
-- **Dynamic Theming:** Album art colors are extracted in real-time and applied to the entire player surface.
-- **Sleep Timer:** Preset durations with a fade-out before stopping.
-- **Variable Speed:** 0.5× to 3× with pitch correction.
-- **Queue & Up Next:** Drag-to-reorder queue with mark-as-played and play-next actions.
-
-### Discover & Explore
-- **Genre Browsing:** Filter trending charts by category (News, Comedy, True Crime, etc.).
-- **Hybrid Search:** Queries hit both the local edge database (for instant chart matches) and the Podcast Index API (for global coverage).
-
-### Library
-- **Offline Downloads:** Save episodes for offline listening with a background download service.
-- **Listening History:** Full playback history with resume positions natively synced.
+BoxCast focuses on clean design, fast discovery, and a playback experience that stays out of your way. Built entirely with Kotlin and Jetpack Compose, it embraces [Material 3 Expressive](https://m3.material.io/) guidelines with spring-based motion, dynamic color extraction, variable typography, and expressive shapes.
 
 ---
 
-## Screenshots
+## ✨ Features
 
-<table align="center">
+### 🏠 **Home — Your Podcast Hub**
+- **Hero Carousel**: Spotlight trending podcasts with full-bleed artwork
+- **Curated Time Blocks**: Picks that adapt to your time of day
+- **Your Shows**: New episodes from subscriptions
+- **Smart Shuffle**: Resume listening instantly
+
+### 🎵 **Player — Beautiful Playback**
+- **Dynamic Theming**: Album art colors are extracted in real-time
+- **Variable Speed**: 0.5× to 3× with pitch correction
+- **Queue & Up Next**: Drag-to-reorder queue
+- **Sleep Timer**: Preset durations with a fade-out
+
+### 🔍 **Explore & Search**
+- **Genre Browsing**: Filter trending charts by category
+- **Hybrid Search**: Local edge database matching + full Podcast Index catalog
+- **Region Support**: Browse charts by localized countries
+
+### 📚 **Library & Offline**
+- **Offline Downloads**: Save episodes with background downloading
+- **Listening History**: Full playback history with resume positions natively synced
+- **Liked Episodes**: Quick-access list of hearted content
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+
+### Feed & Home
+
+<table>
   <tr>
-    <td align="center"><img src="images/playart_01.jpg" width="220" alt="Discover Podcasts"/><br/><sub><b>Discover Podcasts</b></sub></td>
-    <td align="center"><img src="images/playart_02.jpg" width="220" alt="Beautiful Player"/><br/><sub><b>Beautiful Player</b></sub></td>
-    <td align="center"><img src="images/playart_03.jpg" width="220" alt="Your Library"/><br/><sub><b>Your Library</b></sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="images/playart_04.jpg" width="220" alt="Smart Search"/><br/><sub><b>Smart Search</b></sub></td>
-    <td align="center"><img src="images/playart_05.jpg" width="220" alt="Material 3 Expressive"/><br/><sub><b>Material 3 Expressive</b></sub></td>
-    <td></td>
+    <td><img src="images/playart_01.jpg" width="200" alt="Discover Podcasts"/><br/><sub><b>Discover</b> - Trending</sub></td>
+    <td><img src="images/playart_02.jpg" width="200" alt="Beautiful Player"/><br/><sub><b>Player</b> - Dynamic Theme</sub></td>
+    <td><img src="images/playart_03.jpg" width="200" alt="Your Library"/><br/><sub><b>Library</b> - Subscriptions</sub></td>
   </tr>
 </table>
 
+### Search & UI Components
+
+<table>
+  <tr>
+    <td><img src="images/playart_04.jpg" width="200" alt="Smart Search"/><br/><sub><b>Search</b> - Hybrid Results</sub></td>
+    <td><img src="images/playart_05.jpg" width="200" alt="Material 3 Expressive"/><br/><sub><b>UI</b> - Material 3</sub></td>
+  </tr>
+</table>
+
+</div>
+
 ---
 
-## Getting Started & Downloads
+## 🛠️ Tech Stack
 
-You can try out BoxCast right now by downloading the latest APK!
+### **Core Technologies**
 
-**Download & Install:**
-1. Head over to the **[Releases](../../releases/latest)** section on GitHub.
-2. Download the `app-release.apk` file from the latest version.
-3. Once downloaded, open it on your Android device (you may need to allow "Install from Unknown Sources").
+| Technology | Purpose |
+|-----------|---------|
+| **Kotlin** | 100% Kotlin codebase for type-safe, concise code |
+| **Jetpack Compose** | Modern declarative UI framework with Material 3 Expressive |
+| **Clean Architecture** | Predictable state management |
+| **Coroutines & Flow** | Asynchronous programming and reactive streams |
 
-**Build from Source:**
+### **Networking & Database**
+
+| Component | Usage |
+|---------|-------|
+| **Retrofit 2** | REST API client |
+| **Room** | Local database for user history and library |
+| **Cloudflare Workers** | Backend proxy (TypeScript) handling remote queries |
+| **Turso (libSQL)** | Distributed edge database storing chart rankings |
+
+### **Media & Playback**
+
+| Component | Description |
+|-----------|-------------|
+| **ExoPlayer (Media3)** | High performance audio playback for podcasts |
+| **MediaSession** | System-level playback controls and background service |
+| **Coil** | Image loading with caching and color extraction |
+
+---
+
+## 🌐 Data Sources
+
+This app aggregates data from multiple public sources to provide a unified podcast experience:
+
+| Source | Data Provided |
+|--------|---------------|
+| **Podcast Index API** | Global catalog of podcasts, episodes, and search results |
+| **Apple Podcast Charts** | Daily scraped trending feeds via GitHub Actions |
+
+---
+
+## 🚀 Getting Started
+
+### **Download & Install**
+
+1. Download the latest APK from [Releases](../../releases) or click the **Download APK** badge above
+2. Enable "Install from Unknown Sources" in Android settings
+3. Install and enjoy! 🎙️
+
+### **Build from Source**
 
 ```bash
 # Clone the repository
 git clone https://github.com/ashwkun/box.cast.android.git
-
-# Navigate into the directory
 cd box.cast.android
 
-# Build the debug APK
+# Build the APK
 ./gradlew assembleDebug
+
+# Install to connected device
+./gradlew installDebug
 ```
 
----
-
-## Architecture & Tech Stack
-
-Multi-module Gradle project following a feature-first architecture.
-
-| Layer | Technology |
-|-------|-----------|
-| **Language** | Kotlin |
-| **UI** | Jetpack Compose + Material 3 Expressive |
-| **Image Loading** | Coil |
-| **Networking** | Retrofit + kotlinx.serialization |
-| **Local Database**| Room |
-| **Playback** | Media3 / ExoPlayer |
-| **Analytics** | Firebase Analytics + Crashlytics |
-
-### Backend (Proxy)
-
-A **Cloudflare Worker** (TypeScript) that sits between the Android app and the [Podcast Index API](https://podcastindex.org/):
-- **Edge Database:** [Turso](https://turso.tech/) (distributed SQLite) stores chart rankings and podcast metadata.
-- **Live Proxy:** Subscription sync (`/sync`) proxies directly to the Podcast Index for guaranteed freshness.
-- **Data Pipeline:** A GitHub Actions workflow runs daily to scrape charts.
+**Requirements:**
+- Android Studio Ladybug or later
+- Android SDK 35+
+- JDK 17
+- Kotlin 1.9+
 
 ---
 
-## License
+## 🤝 Contributing
+
+This is a personal passion project, but contributions are welcome! Here's how you can help:
+
+1. **Report Bugs** — Open an issue with detailed reproduction steps
+2. **Suggest Features** — Share your ideas in the Discussions tab
+3. **Submit PRs** — Fork, code, and submit pull requests
+
+---
+
+## 📄 License
 
 This is a personal open-source fan project. All rights reserved.
+
+<div align="center">
+
+### Made with ❤️ and ☕ by a Podcast fan
+
+**If you love podcasts and this app, give it a ⭐ on GitHub!**
+
+[⬆ Back to Top](#%EF%B8%8F-boxcast)
+
+</div>
