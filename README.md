@@ -45,7 +45,7 @@ BoxCast focuses on clean design, fast discovery, and a playback experience that 
 - **Hero Carousel**: Spotlight trending podcasts with full-bleed artwork
 - **Curated Time Blocks**: Picks that adapt to your time of day
 - **Your Shows**: New episodes from subscriptions
-- **Smart Shuffle**: Resume listening instantly
+- **Resume Playback**: Resume listening instantly
 
 ### 🎵 **Player — Beautiful Playback**
 - **Dynamic Theming**: Album art colors are extracted in real-time
