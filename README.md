@@ -1,11 +1,23 @@
-# 🎙️ BoxCast
-*The Ultimate Podcast App For Android*
+<div align="center">
 
+# 🎙️ BoxCast
+
+### *The Ultimate Podcast App For Android*
+
+*Built completely with Jetpack Compose featuring a beautiful Material 3 Design.*
+*Download the APK below and start listening!*
+
+[![Download APK](https://img.shields.io/badge/⬇_DOWNLOAD_APK-Latest_Release-00C853?style=for-the-badge&logo=android&logoColor=white&labelColor=1a1a2e)](https://github.com/ashwkun/box.cast.android/releases/latest/download/app-release.apk)
+
+[![GPL v3 License](https://img.shields.io/badge/License-GPLv3-ff0080.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Android](https://img.shields.io/badge/Platform-Android-3DDC84.svg)](https://www.android.com/)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-7F52FF.svg)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4.svg)](https://developer.android.com/jetpack/compose)
 [![Reddit](https://img.shields.io/badge/Connect%20on-Reddit-FF4500.svg?logo=reddit&logoColor=white)](https://www.reddit.com/user/Altruistic_Plenty696)
 
 *Because listening to stories is free and I love podcasts* 🎙️
+
+</div>
 
 ---
 
