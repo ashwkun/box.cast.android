@@ -36,7 +36,7 @@ body:
     id: motivation
     attributes:
       label: Why is this useful?
-      description: "How would this improve your watching experience?"
+      description: "How would this improve your listening experience?"
     validations:
       required: false
 

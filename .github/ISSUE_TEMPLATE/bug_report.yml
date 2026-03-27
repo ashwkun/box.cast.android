@@ -45,7 +45,7 @@ body:
     attributes:
       label: What happened?
       description: "Describe the bug clearly. What did you expect vs what actually happened?"
-      placeholder: "When I open a stream, the video loads but there's no audio..."
+      placeholder: "When I play a podcast episode, it unexpectedly skips forward..."
     validations:
       required: true
 
@@ -56,8 +56,8 @@ body:
       description: "How can we trigger this bug?"
       placeholder: |
         1. Open BoxCast
-        2. Go to ...
-        3. Select ...
+        2. Go to Library
+        3. Select a Podcast
         4. ...
     validations:
       required: false
