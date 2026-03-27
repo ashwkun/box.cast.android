@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -52,6 +53,8 @@ fun HeroCard(
     onClick: () -> Unit,
     onArrowClick: () -> Unit,
     onToggleSubscription: () -> Unit,
+    currentPlayingPodcastId: String? = null,
+    isPlaying: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -202,7 +205,10 @@ fun HeroCard(
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Leading Button (Play/Resume) - Rounded Left, Flat Right
+                    // Leading Button (Play/Resume/Pause) - Rounded Left, Flat Right
+                    val isCurrentPodcast = currentPlayingPodcastId == item.podcast.id
+                    val showPause = isCurrentPodcast && isPlaying
+                    
                     Surface(
                         color = MaterialTheme.colorScheme.primary,
                         shape = RoundedCornerShape(
@@ -220,14 +226,14 @@ fun HeroCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.PlayArrow,
+                                imageVector = if (showPause) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (item.type == HeroType.RESUME) "Resume" else "Play",
+                                text = if (showPause) "Pause" else if (item.type == HeroType.RESUME || isCurrentPodcast) "Resume" else "Play",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )

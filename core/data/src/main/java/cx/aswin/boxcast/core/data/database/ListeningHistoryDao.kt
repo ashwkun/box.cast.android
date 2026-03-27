@@ -13,7 +13,7 @@ interface ListeningHistoryDao {
     suspend fun upsert(history: ListeningHistoryEntity)
     
     // Fetch Top 7 items for the new Split UI (1st is Hero, 2-7 are Grid)
-    @Query("SELECT * FROM listening_history WHERE isCompleted = 0 ORDER BY lastPlayedAt DESC LIMIT 7")
+    @Query("SELECT * FROM listening_history WHERE isCompleted = 0 AND progressMs > 0 ORDER BY lastPlayedAt DESC LIMIT 7")
     fun getResumeItems(): Flow<List<ListeningHistoryEntity>>
     
     @Query("SELECT * FROM listening_history ORDER BY lastPlayedAt DESC")

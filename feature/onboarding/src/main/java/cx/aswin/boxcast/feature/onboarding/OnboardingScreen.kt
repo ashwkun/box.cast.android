@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import cx.aswin.boxcast.core.designsystem.theme.ExpressiveShapes
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
+import cx.aswin.boxcast.core.designsystem.components.BoxCastLoader
 import cx.aswin.boxcast.core.model.Podcast
 
 // Genre data matching GenreSelector.kt
@@ -105,7 +106,8 @@ fun OnboardingScreen(
                     onToggleSubscription = viewModel::togglePodcastSubscription,
                     onSearch = viewModel::navigateToSearch,
                     onBack = viewModel::navigateBackFromPodcasts,
-                    onDone = { viewModel.completeOnboarding(onComplete) }
+                    onDone = { viewModel.completeOnboarding(onComplete) },
+                    onSkip = { viewModel.skipOnboarding(onComplete) }
                 )
             }
             OnboardingStep.SEARCH -> {
@@ -259,7 +261,8 @@ private fun PodcastPicksScreen(
     onToggleSubscription: (String) -> Unit,
     onSearch: () -> Unit,
     onBack: () -> Unit,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    onSkip: () -> Unit
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
@@ -341,7 +344,7 @@ private fun PodcastPicksScreen(
                         )
                     }
                     
-                    TextButton(onClick = onDone) {
+                    TextButton(onClick = onSkip) {
                         Text(
                             "Skip",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -359,7 +362,7 @@ private fun PodcastPicksScreen(
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                BoxCastLoader.Expressive()
             }
         } else {
             LazyVerticalGrid(
@@ -572,7 +575,7 @@ private fun OnboardingSearchScreen(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    BoxCastLoader.Expressive()
                 }
             }
             query.length >= 2 && results.isEmpty() && !isSearching -> {

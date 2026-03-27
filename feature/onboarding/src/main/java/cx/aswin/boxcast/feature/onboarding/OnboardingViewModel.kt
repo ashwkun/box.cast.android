@@ -34,7 +34,8 @@ enum class OnboardingStep {
 class OnboardingViewModel(
     application: Application,
     private val podcastRepository: PodcastRepository,
-    private val subscriptionRepository: SubscriptionRepository
+    private val subscriptionRepository: SubscriptionRepository,
+    private val analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper? = null
 ) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("boxcast_prefs", Context.MODE_PRIVATE)
@@ -62,6 +63,11 @@ class OnboardingViewModel(
     }
     
     fun continueToRecommendations() {
+        val selectedCount = _uiState.value.selectedGenres.size
+        analyticsHelper?.logOnboardingStep(
+            "genres_selected", 
+            mapOf("has_selected_genres" to (selectedCount > 0).toString(), "genre_count" to selectedCount.toString())
+        )
         _uiState.update { it.copy(currentStep = OnboardingStep.PODCASTS, isLoadingPodcasts = true) }
         viewModelScope.launch {
             val selectedGenres = _uiState.value.selectedGenres.toList()
@@ -110,6 +116,7 @@ class OnboardingViewModel(
     }
     
     fun navigateToSearch() {
+        analyticsHelper?.logOnboardingStep("search_shown")
         _uiState.update { it.copy(currentStep = OnboardingStep.SEARCH) }
     }
     
@@ -178,6 +185,13 @@ class OnboardingViewModel(
             // Mark onboarding as completed
             prefs.edit().putBoolean("onboarding_completed", true).apply()
             
+            // Analytics: Track completion with counts
+            val podcastCount = state.subscribedPodcastIds.size
+            analyticsHelper?.logOnboardingStep(
+                "completed",
+                mapOf("has_selected_podcasts" to (podcastCount > 0).toString(), "podcast_count" to podcastCount.toString())
+            )
+            
             // Save selected genres for future personalization
             prefs.edit().putStringSet("user_genres", state.selectedGenres).apply()
             
@@ -186,6 +200,7 @@ class OnboardingViewModel(
     }
     
     fun skipOnboarding(onDone: () -> Unit) {
+        analyticsHelper?.logOnboardingStep("skipped")
         prefs.edit().putBoolean("onboarding_completed", true).apply()
         onDone()
     }

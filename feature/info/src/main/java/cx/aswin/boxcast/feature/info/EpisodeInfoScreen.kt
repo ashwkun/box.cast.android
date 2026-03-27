@@ -89,6 +89,7 @@ import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
 import cx.aswin.boxcast.core.designsystem.theme.m3Shimmer
 import cx.aswin.boxcast.core.designsystem.components.ControlStyle
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
+import kotlinx.coroutines.delay
 
 // Color extraction helper
 private fun extractDominantColor(bitmap: android.graphics.Bitmap): Color {
@@ -116,6 +117,8 @@ fun EpisodeInfoScreen(
     onPodcastClick: (String) -> Unit,
     onEpisodeClick: (cx.aswin.boxcast.core.model.Episode) -> Unit,
     onPlay: () -> Unit,
+    showMarkPlayedTip: Boolean = false,
+    onMarkPlayedTipDismissed: () -> Unit = {},
     bottomContentPadding: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
@@ -391,6 +394,47 @@ fun EpisodeInfoScreen(
                                     onMarkPlayedClick = { viewModel.onToggleCompletion() },
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
                                 )
+                            }
+                        }
+                    }
+
+                    // One-time mark-played tooltip
+                    if (showMarkPlayedTip) {
+                        item {
+                            var tipVisible by remember { mutableStateOf(true) }
+                            
+                            LaunchedEffect(Unit) {
+                                delay(4000)
+                                tipVisible = false
+                                onMarkPlayedTipDismissed()
+                            }
+                            
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = tipVisible,
+                                enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(300)) + 
+                                        androidx.compose.animation.slideInVertically(initialOffsetY = { -it/2 }),
+                                exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(500))
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(end = 40.dp, bottom = 8.dp), // Align with the last button in the row
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Surface(
+                                        shape = MaterialTheme.shapes.small,
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        shadowElevation = 4.dp
+                                    ) {
+                                        Text(
+                                            text = "Tap to mark played ↑",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

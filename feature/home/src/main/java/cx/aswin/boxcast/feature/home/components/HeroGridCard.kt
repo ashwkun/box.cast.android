@@ -33,6 +33,8 @@ fun HeroGridCard(
     title: String,
     onPlayClick: (Podcast) -> Unit,
     onDetailsClick: (Podcast) -> Unit, // Renamed from onClick for clarity
+    currentPlayingPodcastId: String? = null,
+    isPlaying: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(

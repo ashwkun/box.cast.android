@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "cx.aswin.boxcast"
-    compileSdk = 35
+    compileSdk = 36
 
     // Load local.properties globally for the android block
     val localPropsFile = rootProject.file("local.properties")
@@ -22,9 +22,9 @@ android {
     defaultConfig {
         applicationId = "cx.aswin.boxcast"
         minSdk = 31
-        targetSdk = 35
-        versionCode = 11
-        versionName = "1.1.1"
+        targetSdk = 36
+        versionCode = 16
+        versionName = "1.2.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

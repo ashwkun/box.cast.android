@@ -71,6 +71,13 @@ data class HomeUiState(
     val isError: Boolean = false
 )
 
+data class HomeDataWrapper(
+    val trending: List<Podcast>,
+    val resume: List<cx.aswin.boxcast.core.data.PlaybackSession>,
+    val subs: List<Podcast>,
+    val history: List<cx.aswin.boxcast.core.data.database.ListeningHistoryEntity>
+)
+
 class HomeViewModel(
     application: Application,
     apiBaseUrl: String,
@@ -94,6 +101,9 @@ class HomeViewModel(
     
     // Expose region to UI
     val currentRegion = userPrefs.regionStream
+    
+    // Playback state to UI
+    val playerState = playbackRepository.playerState
     
     // Cached base data (For You)
     private var cachedForYouTrending: List<Podcast> = emptyList()
@@ -123,10 +133,16 @@ class HomeViewModel(
                     playbackRepository.resumeSessions
                         .onStart { emit(emptyList()) },
                     subscriptionRepository.subscribedPodcasts
+                        .onStart { emit(emptyList()) },
+                    playbackRepository.getAllHistory()
                         .onStart { emit(emptyList()) }
-                ) { trendingList, resumeList, subs ->
-                     Triple(trendingList, resumeList, subs)
-                }.collect { (trendingList, resumeList, subs) ->
+                ) { trendingList, resumeList, subs, allHistory ->
+                     HomeDataWrapper(trendingList, resumeList, subs, allHistory)
+                }.collect { wrapper ->
+                    val trendingList = wrapper.trending
+                    val resumeList = wrapper.resume
+                    val subs = wrapper.subs
+                    val allHistory = wrapper.history
                     // ... (Logic copied below) ...
                     
                     // Note: Resume/Hero logic shouldn't disappear when filtering genres...
@@ -277,10 +293,9 @@ class HomeViewModel(
                                     for (pod in candidates) {
                                         val freshEpisode = syncResults[pod.id]
                                         if (freshEpisode != null) {
-                                            val lastPlayedSession = resumeList.find { it.podcastId == pod.id }
-                                            val isActuallyNew = lastPlayedSession == null || lastPlayedSession.episodeId != freshEpisode.id
+                                            val isCompletelyUnplayed = allHistory.none { it.episodeId == freshEpisode.id && (it.progressMs > 0L || it.isCompleted) }
                                             
-                                            if (isActuallyNew) {
+                                            if (isCompletelyUnplayed) {
                                                 catchUpList.add(pod.copy(latestEpisode = freshEpisode))
                                             }
                                         }
@@ -503,6 +518,10 @@ class HomeViewModel(
                 subscriptionRepository.toggleSubscription(podcast)
             }
         }
+    }
+
+    fun togglePlayback() {
+        playbackRepository.togglePlayPause()
     }
 
     fun deleteHistoryItem(episodeId: String) {

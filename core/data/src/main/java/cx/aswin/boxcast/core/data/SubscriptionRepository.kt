@@ -39,7 +39,7 @@ class SubscriptionRepository(
         if (isCurrentlySubscribed) {
             // Unsubscribe
             podcastDao.setSubscribed(podcast.id, false)
-            analyticsHelper?.logUnsubscribe(podcast.title)
+            analyticsHelper?.logSubscribeAction(false)
         } else {
             // Subscribe (Upsert to ensure we have data for offline/Jump Back In)
             val entity = PodcastEntity(
@@ -53,7 +53,7 @@ class SubscriptionRepository(
                 lastRefreshed = System.currentTimeMillis()
             )
             podcastDao.upsert(entity)
-            analyticsHelper?.logSubscribe(podcast.title)
+            analyticsHelper?.logSubscribeAction(true)
         }
     }
 
@@ -75,10 +75,10 @@ class SubscriptionRepository(
                 lastRefreshed = System.currentTimeMillis()
             )
             podcastDao.upsert(entity)
-            analyticsHelper?.logSubscribe(podcast.title)
+            analyticsHelper?.logSubscribeAction(true)
         } else if (!existing.isSubscribed) {
             podcastDao.setSubscribed(podcast.id, true)
-            analyticsHelper?.logSubscribe(podcast.title)
+            analyticsHelper?.logSubscribeAction(true)
         }
     }
 }

@@ -84,4 +84,57 @@ class UserPreferencesRepository(context: Context) {
             preferences[Keys.THEME_BRAND] = themeBrand
         }
     }
+
+    // TOOLTIP PREFERENCES (one-time tips)
+    private object TooltipKeys {
+        val HAS_SEEN_SWIPE_DISMISS_TIP = androidx.datastore.preferences.core.booleanPreferencesKey("has_seen_swipe_dismiss_tip")
+        val HAS_SEEN_TITLE_TAP_TIP = androidx.datastore.preferences.core.booleanPreferencesKey("has_seen_title_tap_tip")
+        val HAS_SEEN_SWIPE_MINIMIZE_TIP = androidx.datastore.preferences.core.booleanPreferencesKey("has_seen_swipe_minimize_tip")
+        val HAS_SEEN_MARK_PLAYED_TIP = androidx.datastore.preferences.core.booleanPreferencesKey("has_seen_mark_played_tip")
+    }
+
+    val hasSeenSwipeDismissTip: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[TooltipKeys.HAS_SEEN_SWIPE_DISMISS_TIP] ?: false }
+
+    val hasSeenTitleTapTip: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[TooltipKeys.HAS_SEEN_TITLE_TAP_TIP] ?: false }
+
+    val hasSeenSwipeMinimizeTip: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[TooltipKeys.HAS_SEEN_SWIPE_MINIMIZE_TIP] ?: false }
+
+    suspend fun markSwipeDismissTipSeen() {
+        dataStore.edit { it[TooltipKeys.HAS_SEEN_SWIPE_DISMISS_TIP] = true }
+    }
+
+    suspend fun markTitleTapTipSeen() {
+        dataStore.edit { it[TooltipKeys.HAS_SEEN_TITLE_TAP_TIP] = true }
+    }
+
+    suspend fun markSwipeMinimizeTipSeen() {
+        dataStore.edit { it[TooltipKeys.HAS_SEEN_SWIPE_MINIMIZE_TIP] = true }
+    }
+
+    val hasSeenMarkPlayedTip: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[TooltipKeys.HAS_SEEN_MARK_PLAYED_TIP] ?: false }
+
+    suspend fun markMarkPlayedTipSeen() {
+        dataStore.edit { it[TooltipKeys.HAS_SEEN_MARK_PLAYED_TIP] = true }
+    }
+
+    // ANALYTICS KEYS
+    private object AnalyticsKeys {
+        val HAS_LOGGED_FIRST_PLAY = androidx.datastore.preferences.core.booleanPreferencesKey("has_logged_first_play")
+    }
+
+    val hasLoggedFirstPlay: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[AnalyticsKeys.HAS_LOGGED_FIRST_PLAY] ?: false }
+
+    suspend fun markFirstPlayLogged() {
+        dataStore.edit { it[AnalyticsKeys.HAS_LOGGED_FIRST_PLAY] = true }
+    }
 }

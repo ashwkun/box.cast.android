@@ -60,6 +60,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import cx.aswin.boxcast.core.data.PlaybackRepository
+import cx.aswin.boxcast.core.data.UserPreferencesRepository
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -79,6 +80,8 @@ enum class PlayerSheetState { COLLAPSED, EXPANDED }
 fun UnifiedPlayerSheet(
     playbackRepository: PlaybackRepository,
     downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
+    analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper? = null,
+    userPrefs: UserPreferencesRepository,
     sheetCollapsedTargetY: Float,
     containerHeight: Dp,
     collapsedStateHorizontalPadding: Dp = 12.dp,
@@ -101,6 +104,11 @@ fun UnifiedPlayerSheet(
     val scope = rememberCoroutineScope()
     val hapticFeedback = LocalHapticFeedback.current
     val window = (context as? android.app.Activity)?.window
+
+    // Tooltip states
+    val hasSeenSwipeDismissTip by userPrefs.hasSeenSwipeDismissTip.collectAsState(initial = true)
+    val hasSeenTitleTapTip by userPrefs.hasSeenTitleTapTip.collectAsState(initial = true)
+    val hasSeenSwipeMinimizeTip by userPrefs.hasSeenSwipeMinimizeTip.collectAsState(initial = true)
 
     SideEffect {
         window?.let { win ->
@@ -453,6 +461,8 @@ fun UnifiedPlayerSheet(
                             isPlaying = state.isPlaying,
                             onDismiss = { playbackRepository.clearSession() },
                             backgroundColor = scheme.primaryContainer,
+                            showSwipeTip = !hasSeenSwipeDismissTip && !state.isPlaying,
+                            onSwipeTipDismissed = { scope.launch { userPrefs.markSwipeDismissTipSeen() } },
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
                                 .graphicsLayer { alpha = miniAlpha }
@@ -491,6 +501,7 @@ fun UnifiedPlayerSheet(
                             FullPlayerContent(
                                 playbackRepository = playbackRepository,
                                 downloadRepository = downloadRepository,
+                                analyticsHelper = analyticsHelper,
                                 isDarkTheme = isDarkTheme,
                                 colorScheme = scheme,
                                 onCollapse = {
@@ -512,7 +523,12 @@ fun UnifiedPlayerSheet(
                                     }
                                 },
                                 onEpisodeInfoClick = onEpisodeInfoClick,
-                                onPodcastInfoClick = onPodcastInfoClick
+                                onPodcastInfoClick = onPodcastInfoClick,
+                                showSwipeMinimizeTip = !hasSeenSwipeMinimizeTip,
+                                onSwipeMinimizeTipDismissed = { scope.launch { userPrefs.markSwipeMinimizeTipSeen() } },
+                                showTitleTip = !hasSeenTitleTapTip,
+                                onTitleTipDismissed = { scope.launch { userPrefs.markTitleTapTipSeen() } },
+                                isExpanded = playerContentExpansionFraction.value >= 0.5f
                             )
                         }
                     }

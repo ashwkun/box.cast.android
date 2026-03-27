@@ -123,9 +123,13 @@ class MainActivity : ComponentActivity() {
             // 4. Subscription Repository
             val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(database.podcastDao(), analyticsHelper = null) }
             
+            // Privacy & Analytics & Preferences
+            val consentManager = remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
+            val analyticsHelper = remember { cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, consentManager) }
+            
             // 6. Onboarding ViewModel
             val onboardingViewModel = remember {
-                cx.aswin.boxcast.feature.onboarding.OnboardingViewModel(application, podcastRepository, subscriptionRepository)
+                cx.aswin.boxcast.feature.onboarding.OnboardingViewModel(application, podcastRepository, subscriptionRepository, analyticsHelper)
             }
             val onboardingCompleted = remember { onboardingViewModel.isOnboardingCompleted() }
             
@@ -134,12 +138,9 @@ class MainActivity : ComponentActivity() {
             
             // QueueManager (Singleton-ish) - Needs to be provided to ViewModels/Screens
             val queueManager = remember { 
-                cx.aswin.boxcast.core.data.QueueManager(queueRepository, smartQueueEngine, playbackRepository, podcastRepository)
+                cx.aswin.boxcast.core.data.QueueManager(queueRepository, smartQueueEngine, playbackRepository, podcastRepository, analyticsHelper)
             }
 
-            // Privacy & Analytics & Preferences
-            val consentManager = remember { cx.aswin.boxcast.core.data.privacy.ConsentManager(application) }
-            val analyticsHelper = remember { cx.aswin.boxcast.core.data.analytics.AnalyticsHelper(application, consentManager) }
             val userPrefs = remember { cx.aswin.boxcast.core.data.UserPreferencesRepository(application) }
             
             // Check Consent Status
@@ -155,6 +156,9 @@ class MainActivity : ComponentActivity() {
             val themeConfig by userPrefs.themeConfigStream.collectAsState(initial = "system")
             val useDynamicColor by userPrefs.useDynamicColorStream.collectAsState(initial = true)
             val themeBrand by userPrefs.themeBrandStream.collectAsState(initial = "violet")
+            val hasSeenMarkPlayedTip by userPrefs.hasSeenMarkPlayedTip.collectAsState(initial = true)
+            val hasLoggedFirstPlay by userPrefs.hasLoggedFirstPlay.collectAsState(initial = true)
+            val playerState by playbackRepository.playerState.collectAsState()
             
             val darkTheme = when(themeConfig) {
                 "light" -> false
@@ -181,6 +185,14 @@ class MainActivity : ComponentActivity() {
             // Global Screen View Tracking
             LaunchedEffect(currentRoute) {
                 analyticsHelper.logScreenView(currentRoute)
+            }
+            
+            // Activation Tracking (first_episode_played)
+            LaunchedEffect(playerState.isPlaying, hasLoggedFirstPlay) {
+                if (playerState.isPlaying && !hasLoggedFirstPlay) {
+                    analyticsHelper.logFirstEpisodePlayed("organic")
+                    userPrefs.markFirstPlayLogged()
+                }
             }
 
             BoxCastTheme(
@@ -301,6 +313,7 @@ class MainActivity : ComponentActivity() {
                                         // Do not navigate, just play. Mini player appears.
                                     },
                                     onHeroArrowClick = { heroItem ->
+                                        analyticsHelper.logHeroCardTapped(heroItem.type.name, 0)
                                         val ep = heroItem.podcast.latestEpisode
                                         if (ep != null) {
                                             fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
@@ -358,7 +371,6 @@ class MainActivity : ComponentActivity() {
                                     onResetAnalytics = {
                                         scope.launch {
                                             try {
-                                                analyticsHelper.logEvent("reset_analytics_requested", emptyMap())
                                                 com.google.firebase.analytics.FirebaseAnalytics.getInstance(application).resetAnalyticsData()
                                                 consentManager.clearConsent()
                                                 // No need for Toast, dialog will popup? Or Toast is good.
@@ -699,7 +711,9 @@ class MainActivity : ComponentActivity() {
                                             genre = ""
                                         )
                                         queueManager.playEpisode(episode, podcast)
-                                    }
+                                    },
+                                    showMarkPlayedTip = !hasSeenMarkPlayedTip,
+                                    onMarkPlayedTipDismissed = { scope.launch { userPrefs.markMarkPlayedTipSeen() } }
                                 )
                             }
                         }
@@ -770,6 +784,8 @@ class MainActivity : ComponentActivity() {
                     cx.aswin.boxcast.feature.player.UnifiedPlayerSheet(
                         playbackRepository = playbackRepository,
                         downloadRepository = downloadRepository,
+                        analyticsHelper = analyticsHelper,
+                        userPrefs = userPrefs,
                         sheetCollapsedTargetY = collapsedTargetY,
                         containerHeight = containerHeight,
                         collapsedStateHorizontalPadding = 12.dp,
@@ -806,9 +822,18 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxSize()
                                 .background(MaterialTheme.colorScheme.surface)
                         )
+                        
+                        // Track onboarding consent funnel
+                        LaunchedEffect(Unit) {
+                            analyticsHelper.logOnboardingStep("consent_shown")
+                        }
+                        
                         cx.aswin.boxcast.core.designsystem.components.PrivacyConsentDialog(
                             onConsentDecided = { crash, usage ->
                                 scope.launch {
+                                    analyticsHelper.logOnboardingStep(
+                                        if (usage) "consent_accepted" else "consent_declined"
+                                    )
                                     consentManager.setConsent(crash, usage)
                                 }
                             }

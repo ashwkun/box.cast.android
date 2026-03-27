@@ -337,7 +337,7 @@ class PodcastInfoViewModel(
         
         // 1. Map History (Resume State)
         historyList.forEach { history ->
-            if (!history.isCompleted && history.durationMs > 0) {
+            if (!history.isCompleted && history.progressMs > 0L && history.durationMs > 0L) {
                 val progress = (history.progressMs.toFloat() / history.durationMs).coerceIn(0f, 1f)
                 val remainingSeconds = (history.durationMs - history.progressMs) / 1000
                 val timeLeft = if (remainingSeconds > 0) {

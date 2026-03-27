@@ -64,10 +64,18 @@ class PlayerViewModel(
                      // Note: We might want to trust the Repository's current episode if it matches the podcast context
                      val syncedEpisode = playerState.currentEpisode ?: currentUi.currentEpisode
                      
-                     // Deep Analytics: Log state changes
-                     if (currentUi.isPlaying != playerState.isPlaying) {
-                         val stateName = if (playerState.isPlaying) "playing" else "paused"
-                         analyticsHelper.logPlaybackState(stateName, playerState.currentPodcast?.id, playerState.currentEpisode?.id)
+                     // Analytics: Track listening session start/end
+                     if (playerState.isPlaying && !currentUi.isPlaying) {
+                         analyticsHelper.startListeningSession()
+                     } else if (!playerState.isPlaying && currentUi.isPlaying) {
+                         analyticsHelper.endListeningSession()
+                     }
+                     
+                     // Analytics: Episode progress milestones (scrub-safe)
+                     if (playerState.isPlaying && playerState.duration > 0) {
+                         val episodeKey = playerState.currentEpisode?.id ?: ""
+                         val percent = ((playerState.position.toFloat() / playerState.duration.toFloat()) * 100).toInt()
+                         analyticsHelper.logEpisodeProgress(episodeKey, percent)
                      }
                      
                      _uiState.value = currentUi.copy(
@@ -152,12 +160,12 @@ class PlayerViewModel(
                      }
                 } else {
                     _uiState.value = PlayerUiState.Error
-                    analyticsHelper.logEvent("playback_load_error", mapOf("reason" to "podcast_null", "id" to podcastId))
+                    analyticsHelper.logPlaybackError("load_failed")
                 }
             } catch (e: Exception) {
                 _uiState.value = PlayerUiState.Error
                 e.printStackTrace()
-                analyticsHelper.logEvent("playback_load_error", mapOf("reason" to "exception", "message" to (e.message ?: "unknown")))
+                analyticsHelper.logPlaybackError("load_failed")
             }
         }
     }
@@ -166,7 +174,7 @@ class PlayerViewModel(
         val currentState = _uiState.value
         if (currentState is PlayerUiState.Success) {
             viewModelScope.launch {
-                analyticsHelper.logPlayEpisode(currentState.podcast.title, episode.title)
+                analyticsHelper.logEpisodeStarted("player", false)
                 
                 // Smart Skip: Check if episode is already in the active queue
                 val currentQueue = playbackRepository.playerState.value.queue

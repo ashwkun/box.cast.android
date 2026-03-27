@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -52,6 +55,8 @@ fun SwipeableMiniPlayer(
     isPlaying: Boolean,
     onDismiss: () -> Unit,
     backgroundColor: Color,
+    showSwipeTip: Boolean = false,
+    onSwipeTipDismissed: () -> Unit = {},
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -199,6 +204,45 @@ fun SwipeableMiniPlayer(
                 }
         ) {
             content()
+        }
+        
+        // One-time swipe tip overlay
+        if (showSwipeTip && !isPlaying) {
+            var tipVisible by remember { mutableStateOf(true) }
+            
+            LaunchedEffect(Unit) {
+                delay(4000)
+                tipVisible = false
+                onSwipeTipDismissed()
+            }
+            
+            AnimatedVisibility(
+                visible = tipVisible,
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(500)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(2f)
+                    .align(Alignment.BottomCenter)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "← Swipe to dismiss →",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+            }
         }
     }
 }

@@ -25,7 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import cx.aswin.boxcast.core.data.PlaybackRepository
 import cx.aswin.boxcast.core.model.Episode
 import cx.aswin.boxcast.core.model.Podcast
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,11 +53,17 @@ import kotlinx.coroutines.launch
 fun FullPlayerContent(
     playbackRepository: PlaybackRepository,
     downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository,
+    analyticsHelper: cx.aswin.boxcast.core.data.analytics.AnalyticsHelper? = null,
     isDarkTheme: Boolean,
     colorScheme: ColorScheme,
     onCollapse: () -> Unit,
     onEpisodeInfoClick: (Episode) -> Unit = {},
-    onPodcastInfoClick: (Podcast) -> Unit = {}
+    onPodcastInfoClick: (Podcast) -> Unit = {},
+    showSwipeMinimizeTip: Boolean = false,
+    onSwipeMinimizeTipDismissed: () -> Unit = {},
+    showTitleTip: Boolean = false,
+    onTitleTipDismissed: () -> Unit = {},
+    isExpanded: Boolean = true // Added so timers only tick when visible
 ) {
     val state by playbackRepository.playerState.collectAsState()
     val episode = state.currentEpisode ?: return
@@ -111,12 +120,39 @@ fun FullPlayerContent(
             }
             
             Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = "Now Playing",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = colorScheme.onSurface.copy(alpha = 0.7f)
-            )
+            var tipVisible by remember { mutableStateOf(showSwipeMinimizeTip) }
+            LaunchedEffect(showSwipeMinimizeTip, isExpanded) {
+                if (showSwipeMinimizeTip && isExpanded) {
+                    delay(3500)
+                    tipVisible = false
+                    onSwipeMinimizeTipDismissed()
+                }
+            }
+
+            androidx.compose.animation.AnimatedContent(
+                targetState = tipVisible && isExpanded,
+                transitionSpec = {
+                    androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) togetherWith 
+                    androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300))
+                },
+                label = "Header Text Animation"
+            ) { isShowingTip ->
+                if (isShowingTip) {
+                    Text(
+                        text = "↓ Swipe down to minimize",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.primary.copy(alpha = 0.8f) // Accent color for visibility
+                    )
+                } else {
+                    Text(
+                        text = "Now Playing",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
             Spacer(modifier = Modifier.weight(1f))
         
             Box(modifier = Modifier.size(42.dp))
@@ -149,10 +185,12 @@ fun FullPlayerContent(
                 if (state.isPlaying) playbackRepository.pause() else playbackRepository.resume()
             },
             onSeek = { playbackRepository.seekTo(it) },
-            onPrevious = { playbackRepository.skipBackward() },
-            onNext = { playbackRepository.skipForward() },
-            onSetSpeed = { playbackRepository.setPlaybackSpeed(it) },
-            onSetSleepTimer = { playbackRepository.setSleepTimer(it) },
+            onPrevious = { playbackRepository.skipBackward(); analyticsHelper?.logFeatureUsed("skip_backward") },
+            onNext = { playbackRepository.skipForward(); analyticsHelper?.logFeatureUsed("skip_forward") },
+            onSkipPreviousEpisode = { playbackRepository.skipToPreviousEpisode() },
+            onSkipNextEpisode = { playbackRepository.skipToNextEpisode() },
+            onSetSpeed = { playbackRepository.setPlaybackSpeed(it); analyticsHelper?.logFeatureUsed("playback_speed") },
+            onSetSleepTimer = { playbackRepository.setSleepTimer(it); analyticsHelper?.logFeatureUsed("sleep_timer") },
             onLikeClick = { scope.launch { playbackRepository.toggleLike() } },
             onDownloadClick = { 
                 scope.launch {
@@ -160,6 +198,7 @@ fun FullPlayerContent(
                         downloadRepository.removeDownload(episode.id)
                     } else {
                         downloadRepository.addDownload(episode, podcast)
+                        analyticsHelper?.logFeatureUsed("download")
                     }
                 }
             },
@@ -174,6 +213,9 @@ fun FullPlayerContent(
                 onCollapse()
                 onPodcastInfoClick(podcast) 
             },
+            showTitleTip = showTitleTip,
+            onTitleTipDismissed = onTitleTipDismissed,
+            isExpanded = isExpanded,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)

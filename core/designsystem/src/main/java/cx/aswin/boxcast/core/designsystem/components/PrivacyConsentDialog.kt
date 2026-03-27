@@ -175,7 +175,7 @@ private fun DataCollectedExpander() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "View Technical Details",
+                text = "View Data Collected",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold
             )

@@ -20,15 +20,26 @@ class BoxCastPlaybackService : MediaLibraryService() {
             .setUsage(androidx.media3.common.C.USAGE_MEDIA)
             .build()
 
-        // Configure CacheDataSource for Offline Playback
-        val cache = cx.aswin.boxcast.core.data.DownloadRepository.getCache(this)
+        // Dual-cache architecture:
+        // - downloadCache: permanent, user-downloaded episodes (NoOpCacheEvictor)
+        // - streamCache: temporary streaming buffer for seeking (250MB LRU cap)
+        val downloadCache = cx.aswin.boxcast.core.data.DownloadRepository.getDownloadCache(this)
+        val streamCache = cx.aswin.boxcast.core.data.DownloadRepository.getStreamCache(this)
         val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
             .setUserAgent(androidx.media3.common.util.Util.getUserAgent(this, "BoxCast"))
             .setAllowCrossProtocolRedirects(true)
-            
-        val cacheDataSourceFactory = androidx.media3.datasource.cache.CacheDataSource.Factory()
-            .setCache(cache)
+
+        // Stream cache: writes streamed data here (auto-evicts at 250MB)
+        val streamCacheDataSourceFactory = androidx.media3.datasource.cache.CacheDataSource.Factory()
+            .setCache(streamCache)
             .setUpstreamDataSourceFactory(httpDataSourceFactory)
+            .setFlags(androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+        // Download cache: read-only layer that serves user-downloaded episodes without hitting network
+        val cacheDataSourceFactory = androidx.media3.datasource.cache.CacheDataSource.Factory()
+            .setCache(downloadCache)
+            .setUpstreamDataSourceFactory(streamCacheDataSourceFactory)
+            .setCacheWriteDataSinkFactory(null) // Never write streaming data into the permanent download cache
             .setFlags(androidx.media3.datasource.cache.CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
             
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this)
@@ -39,7 +50,8 @@ class BoxCastPlaybackService : MediaLibraryService() {
             .setAudioAttributes(audioAttributes, true) // Handle Audio Focus
             .setWakeMode(androidx.media3.common.C.WAKE_MODE_NETWORK) // Prevent CPU sleep during streaming
             .setHandleAudioBecomingNoisy(true) // Pause on headphone disconnect
-            .setHandleAudioBecomingNoisy(true) // Pause on headphone disconnect
+            .setSeekForwardIncrementMs(30000)
+            .setSeekBackIncrementMs(10000)
             .build()
             
         player.addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
@@ -80,7 +92,22 @@ class BoxCastPlaybackService : MediaLibraryService() {
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        mediaSession = MediaLibrarySession.Builder(this, player, LibrarySessionCallback())
+        val forwardingPlayer = object : androidx.media3.common.ForwardingPlayer(player) {
+            override fun seekToNext() {
+                seekForward()
+            }
+            override fun seekToPrevious() {
+                seekBack()
+            }
+            override fun seekToNextMediaItem() {
+                seekForward()
+            }
+            override fun seekToPreviousMediaItem() {
+                seekBack()
+            }
+        }
+
+        mediaSession = MediaLibrarySession.Builder(this, forwardingPlayer, LibrarySessionCallback())
             .setSessionActivity(pendingIntent)
             .build()
     }

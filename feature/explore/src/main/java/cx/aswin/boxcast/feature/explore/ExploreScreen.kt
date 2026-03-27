@@ -42,6 +42,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DockedSearchBar
@@ -101,7 +102,9 @@ fun ExploreScreen(
         uiState = uiState,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onCategorySelected = viewModel::onCategorySelected,
-        onPodcastClick = onPodcastClick
+        onPodcastClick = onPodcastClick,
+        onVibeSelected = viewModel::onVibeSelected,
+        onClearVibe = viewModel::clearVibe
     )
 }
 
@@ -111,7 +114,9 @@ fun ExploreContent(
     uiState: ExploreUiState,
     onSearchQueryChanged: (String) -> Unit,
     onCategorySelected: (String) -> Unit,
-    onPodcastClick: (String) -> Unit
+    onPodcastClick: (String) -> Unit,
+    onVibeSelected: (String, String) -> Unit,
+    onClearVibe: () -> Unit
 ) {
     // Handle error/loading states
     when (uiState) {
@@ -148,6 +153,9 @@ fun ExploreContent(
     }
 
     var searchActive by rememberSaveable { mutableStateOf(false) }
+    
+    val isPrompting = searchActive && state.searchQuery.isEmpty() && state.currentVibe == null
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     // Column layout to keep search bar fixed at top
     Column(
@@ -171,11 +179,34 @@ fun ExploreContent(
             DockedSearchBar(
                 query = state.searchQuery,
                 onQueryChange = onSearchQueryChanged,
-                onSearch = { searchActive = false },
+                onSearch = { 
+                    searchActive = false 
+                    focusManager.clearFocus()
+                },
                 active = false,
                 onActiveChange = { searchActive = it },
                 placeholder = { Text("Search podcasts...") },
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                leadingIcon = { 
+                    if (searchActive || state.searchQuery.isNotEmpty() || state.currentVibe != null) {
+                        IconButton(onClick = {
+                            searchActive = false
+                            onSearchQueryChanged("")
+                            onClearVibe()
+                            focusManager.clearFocus()
+                        }) {
+                            Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
+                        }
+                    } else {
+                        Icon(Icons.Rounded.Search, contentDescription = null) 
+                    }
+                },
+                trailingIcon = {
+                    if (state.searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChanged("") }) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Clear")
+                        }
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
                 colors = SearchBarDefaults.colors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -183,7 +214,7 @@ fun ExploreContent(
             ) { }
             
             // Expandable Genre Cloud
-            if (!state.isSearching) {
+            if (!state.isSearching && !isPrompting) {
                 Spacer(modifier = Modifier.height(8.dp))
                 ExploreGenreSelector(
                     selectedCategory = state.currentCategory,
@@ -208,42 +239,59 @@ fun ExploreContent(
             verticalItemSpacing = 16.dp,
             modifier = Modifier.weight(1f)
         ) {
-            // Featured Hero Row (Top 3, only when not searching and has content)
-            if (!state.isSearching && displayList.size >= 3 && !state.isLoading) {
+            if (isPrompting && state.suggestedVibes.isNotEmpty()) {
+                // Section Header
                 item(span = StaggeredGridItemSpan.FullLine) {
-                    ExploreFeaturedRow(
-                        podcasts = displayList.take(3),
-                        onPodcastClick = onPodcastClick,
-                        showGenreChip = state.currentCategory == "All"
-                    )
+                    ExploreSectionHeader(title = "Suggested for You")
                 }
-            }
-
-            // Section Header
-            item(span = StaggeredGridItemSpan.FullLine) {
-                ExploreSectionHeader(
-                    title = if (state.isSearching) "Search Results" else "Trending in ${state.currentCategory}"
-                )
-            }
-
-            // Content (skip first 3 if showing featured row)
-            if (state.isLoading || (displayList.isEmpty() && !state.isSearching)) {
-                exploreSkeletonGridItems()
-            } else if (displayList.isEmpty() && state.isSearching) {
-                item(span = StaggeredGridItemSpan.FullLine) {
-                    ExploreEmptyState()
+                items(state.suggestedVibes, key = { "vibe_${it.first}" }) { vibe ->
+                    ExploreVibeCard(vibe = vibe, onClick = { 
+                        searchActive = false
+                        onVibeSelected(vibe.first, vibe.second) 
+                    })
                 }
             } else {
-                val gridItems = if (!state.isSearching && displayList.size >= 3) displayList.drop(3) else displayList
-                val showGenreChip = state.currentCategory == "All" // Only show chips for "All" tab
-                items(gridItems, key = { "${gridItems.indexOf(it)}_${it.id}" }) { podcast ->
-                    val isTall = podcast.id.hashCode() % 3 == 0
-                    ExplorePodcastCard(
-                        podcast = podcast,
-                        isTall = isTall,
-                        showGenreChip = showGenreChip,
-                        onClick = { onPodcastClick(podcast.id) }
-                    )
+                // Featured Hero Row (Top 3, only when not searching and has content)
+                if (!state.isSearching && displayList.size >= 3 && !state.isLoading && state.currentVibe == null) {
+                    item(span = StaggeredGridItemSpan.FullLine) {
+                        ExploreFeaturedRow(
+                            podcasts = displayList.take(3),
+                            onPodcastClick = onPodcastClick,
+                            showGenreChip = state.currentCategory == "All"
+                        )
+                    }
+                }
+    
+                // Section Header
+                item(span = StaggeredGridItemSpan.FullLine) {
+                    if (state.currentVibe != null) {
+                        CuratedVibeHeader(title = state.currentVibe)
+                    } else {
+                        ExploreSectionHeader(
+                            title = if (state.isSearching) "Search Results" else "Trending in ${state.currentCategory}"
+                        )
+                    }
+                }
+    
+                // Content
+                if (state.isLoading || (displayList.isEmpty() && !state.isSearching && state.currentVibe == null)) {
+                    exploreSkeletonGridItems()
+                } else if (displayList.isEmpty() && (state.isSearching || state.currentVibe != null)) {
+                    item(span = StaggeredGridItemSpan.FullLine) {
+                        ExploreEmptyState()
+                    }
+                } else {
+                    val gridItems = if (!state.isSearching && displayList.size >= 3 && state.currentVibe == null) displayList.drop(3) else displayList
+                    val showGenreChip = state.currentCategory == "All" && state.currentVibe == null
+                    items(gridItems, key = { "${gridItems.indexOf(it)}_${it.id}" }) { podcast ->
+                        val isTall = podcast.id.hashCode() % 3 == 0
+                        ExplorePodcastCard(
+                            podcast = podcast,
+                            isTall = isTall,
+                            showGenreChip = showGenreChip,
+                            onClick = { onPodcastClick(podcast.id) }
+                        )
+                    }
                 }
             }
         }
@@ -725,6 +773,78 @@ private fun ExploreEmptyState() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+fun ExploreVibeCard(
+    vibe: Pair<String, String>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Determine dynamic colors based on string hash for variety
+    val hash = vibe.first.hashCode()
+    val containerColor = when (hash % 3) {
+        0 -> MaterialTheme.colorScheme.primaryContainer
+        1 -> MaterialTheme.colorScheme.secondaryContainer
+        else -> MaterialTheme.colorScheme.tertiaryContainer
+    }
+    val contentColor = when (hash % 3) {
+        0 -> MaterialTheme.colorScheme.onPrimaryContainer
+        1 -> MaterialTheme.colorScheme.onSecondaryContainer
+        else -> MaterialTheme.colorScheme.onTertiaryContainer
+    }
+
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = containerColor,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(100.dp)
+            .expressiveClickable(onClick = onClick)
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = vibe.second,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = contentColor,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+fun CuratedVibeHeader(title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Star,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "Curated: $title",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontFamily = SectionHeaderFontFamily
+            ),
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

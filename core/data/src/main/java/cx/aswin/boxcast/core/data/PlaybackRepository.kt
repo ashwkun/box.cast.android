@@ -816,6 +816,22 @@ class PlaybackRepository(
         }
     }
 
+    fun skipToNextEpisode() {
+        val currentEpisodeId = _playerState.value.currentEpisode?.id ?: return
+        val currentIndex = _playerState.value.queue.indexOfFirst { it.id == currentEpisodeId }
+        if (currentIndex != -1 && currentIndex < _playerState.value.queue.size - 1) {
+            skipToEpisode(currentIndex + 1)
+        }
+    }
+
+    fun skipToPreviousEpisode() {
+        val currentEpisodeId = _playerState.value.currentEpisode?.id ?: return
+        val currentIndex = _playerState.value.queue.indexOfFirst { it.id == currentEpisodeId }
+        if (currentIndex > 0) {
+            skipToEpisode(currentIndex - 1)
+        }
+    }
+
     fun setPlaybackSpeed(speed: Float) {
         mediaController?.playbackParameters = PlaybackParameters(speed)
         _playerState.value = _playerState.value.copy(playbackSpeed = speed)

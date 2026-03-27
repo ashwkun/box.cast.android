@@ -36,6 +36,14 @@ import cx.aswin.boxcast.core.model.Person
 import cx.aswin.boxcast.core.model.Podcast
 import cx.aswin.boxcast.core.designsystem.components.AdvancedPlayerControls
 import cx.aswin.boxcast.feature.player.components.SimplePlayerControls
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 
 @Composable
 fun SharedPlayerContent(
@@ -54,6 +62,8 @@ fun SharedPlayerContent(
     onSeek: (Long) -> Unit,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onSkipPreviousEpisode: () -> Unit = {},
+    onSkipNextEpisode: () -> Unit = {},
     onSetSpeed: (Float) -> Unit,
     onSetSleepTimer: (Int) -> Unit,
     onLikeClick: () -> Unit,
@@ -63,6 +73,9 @@ fun SharedPlayerContent(
     onQueueClick: () -> Unit,
     onEpisodeInfoClick: () -> Unit = {},
     onPodcastInfoClick: () -> Unit = {},
+    showTitleTip: Boolean = false,
+    onTitleTipDismissed: () -> Unit = {},
+    isExpanded: Boolean = true,
     modifier: Modifier = Modifier,
     extraContent: @Composable () -> Unit = {},
     footerContent: @Composable ColumnScope.() -> Unit = {}
@@ -79,17 +92,12 @@ fun SharedPlayerContent(
             val isCompact = maxHeight < 600.dp
             val isMedium = maxHeight in 600.dp..700.dp
             
-            // Artwork sizing: larger on big screens, smaller on small screens
-            val artworkWidth = when {
-                isCompact -> 0.55f // 55% width on small screens
-                isMedium -> 0.65f // 65% on medium
-                else -> 0.75f // 75% on large screens  
-            }
-            val artworkMaxSize = when {
-                isCompact -> 200.dp
-                isMedium -> 280.dp
-                else -> 360.dp
-            }
+            // Calculate exact safe size for artwork to maximize space without clipping
+            val controlsEstimatedHeight = if (isCompact) 320.dp else 380.dp
+            val availableHeightForArtwork = maxHeight - controlsEstimatedHeight
+            
+            // Maximize artwork up to 85% of screen width, bounded by available vertical space 
+            val optimalArtworkSize = androidx.compose.ui.unit.min(maxWidth * 0.85f, availableHeightForArtwork).coerceAtLeast(150.dp)
             
             // Control sizing for PlayerControls
             val controlRowHeight = if (isCompact) 64.dp else 80.dp
@@ -107,15 +115,31 @@ fun SharedPlayerContent(
                 
                 Surface(
                     modifier = Modifier
-                        .widthIn(max = artworkMaxSize)
-                        .fillMaxWidth(artworkWidth)
-                        .aspectRatio(1f)
-                    .shadow(
-                        12.dp, 
-                        RoundedCornerShape(28.dp), 
-                        ambientColor = controlTint.copy(alpha = 0.3f), 
-                        spotColor = controlTint.copy(alpha = 0.5f)
-                    ),
+                        .size(optimalArtworkSize)
+                        .shadow(
+                            12.dp, 
+                            RoundedCornerShape(28.dp), 
+                            ambientColor = controlTint.copy(alpha = 0.3f), 
+                            spotColor = controlTint.copy(alpha = 0.5f)
+                        )
+                        .pointerInput(isExpanded) {
+                            if (!isExpanded) return@pointerInput
+                            
+                            var totalDrag = 0f
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    if (totalDrag > 100f) {
+                                        onSkipPreviousEpisode() // Swipe Right -> Prev Episode
+                                    } else if (totalDrag < -100f) {
+                                        onSkipNextEpisode() // Swipe Left -> Next Episode
+                                    }
+                                    totalDrag = 0f
+                                }
+                            ) { change, dragAmount ->
+                                change.consume()
+                                totalDrag += dragAmount
+                            }
+                        },
                 shape = RoundedCornerShape(28.dp),
                 color = colorScheme.surfaceVariant
             ) {
@@ -161,6 +185,31 @@ fun SharedPlayerContent(
                         .clickable { onPodcastInfoClick() }
                         .basicMarquee()
                 )
+                
+                // One-time title tap tip
+                if (showTitleTip) {
+                    var tipVisible by remember { mutableStateOf(true) }
+                    
+                    LaunchedEffect(isExpanded) {
+                        if (isExpanded) {
+                            delay(3500)
+                            tipVisible = false
+                            onTitleTipDismissed()
+                        }
+                    }  
+                    AnimatedVisibility(
+                        visible = tipVisible,
+                        enter = fadeIn(tween(300)),
+                        exit = fadeOut(tween(500))
+                    ) {
+                        Text(
+                            text = "Tap title for episode details",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colorScheme.primary.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
             }
             
             Spacer(modifier = Modifier.weight(0.01f))

@@ -23,6 +23,9 @@ fun HeroCarousel(
     onDetailsClick: (Podcast) -> Unit,
     onArrowClick: (SmartHeroItem) -> Unit,
     onToggleSubscription: (String) -> Unit,
+    onTogglePlayback: () -> Unit,
+    currentPlayingPodcastId: String? = null,
+    isPlaying: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     if (heroItems.isEmpty()) return
@@ -51,6 +54,8 @@ fun HeroCarousel(
                     // Let's assume onDetailsClick passed to HeroCarousel handles this.
                     onDetailsClick(podcast)
                 },
+                currentPlayingPodcastId = currentPlayingPodcastId,
+                isPlaying = isPlaying,
                 modifier = Modifier.maskClip(MaterialTheme.shapes.extraLarge)
             )
         } else if (item.type == cx.aswin.boxcast.feature.home.HeroType.NEW_EPISODES_GRID) {
@@ -62,14 +67,24 @@ fun HeroCarousel(
                     // Same details logic
                     onDetailsClick(podcast)
                 },
+                currentPlayingPodcastId = currentPlayingPodcastId,
+                isPlaying = isPlaying,
                 modifier = Modifier.maskClip(MaterialTheme.shapes.extraLarge)
             )
         } else {
             HeroCard(
                 item = item,
-                onClick = { onPlayClick(item.podcast) }, // Primary "Play" button action
+                onClick = { 
+                    if (currentPlayingPodcastId == item.podcast.id && isPlaying) {
+                        onTogglePlayback()
+                    } else {
+                        onPlayClick(item.podcast) 
+                    }
+                }, // Primary "Play" or "Pause" button action
                 onArrowClick = { onArrowClick(item) },
                 onToggleSubscription = { onToggleSubscription(item.podcast.id) },
+                currentPlayingPodcastId = currentPlayingPodcastId,
+                isPlaying = isPlaying,
                 modifier = Modifier.maskClip(MaterialTheme.shapes.extraLarge)
             )
         }

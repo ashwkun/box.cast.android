@@ -84,11 +84,14 @@ fun HomeRoute(
         }
     )
     val uiState by viewModel.uiState.collectAsState()
+    val playerState by viewModel.playerState.collectAsState()
     val debugHistory by viewModel.debugHistory.collectAsState(initial = emptyList())
     val debugPodcasts by viewModel.debugPodcasts.collectAsState(initial = emptyList())
     
     HomeScreen(
         uiState = uiState,
+        currentPlayingPodcastId = playerState.currentPodcast?.id,
+        isPlaying = playerState.isPlaying,
         debugHistory = debugHistory,
         debugPodcasts = debugPodcasts,
         onPodcastClick = onPodcastClick,
@@ -98,6 +101,7 @@ fun HomeRoute(
         onNavigateToLibrary = onNavigateToLibrary,
         onNavigateToExplore = onNavigateToExplore,
         onToggleSubscription = viewModel::toggleSubscription,
+        onTogglePlayback = viewModel::togglePlayback,
         onSelectCategory = viewModel::selectCategory,
         onDeleteHistoryItem = viewModel::deleteHistoryItem,
         onNavigateToSettings = onNavigateToSettings,
@@ -109,6 +113,8 @@ fun HomeRoute(
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
+    currentPlayingPodcastId: String?,
+    isPlaying: Boolean,
     debugHistory: List<ListeningHistoryEntity>,
     debugPodcasts: List<PodcastEntity>,
     onPodcastClick: (Podcast) -> Unit,
@@ -118,6 +124,7 @@ fun HomeScreen(
     onNavigateToLibrary: (() -> Unit)?,
     onNavigateToExplore: ((String?) -> Unit)?,
     onToggleSubscription: (String) -> Unit,
+    onTogglePlayback: () -> Unit,
     onSelectCategory: (String?) -> Unit,
 
     onDeleteHistoryItem: (String) -> Unit,
@@ -173,6 +180,8 @@ fun HomeScreen(
                     timeBlock = uiState.timeBlock,
                     gridItems = uiState.discoverPodcasts,
                     selectedCategory = uiState.selectedCategory,
+                    currentPlayingPodcastId = currentPlayingPodcastId,
+                    isPlaying = isPlaying,
                     isFilterLoading = uiState.isFilterLoading,
                     onPodcastClick = onPodcastClick,
                     onHeroArrowClick = onHeroArrowClick,
@@ -181,6 +190,7 @@ fun HomeScreen(
                     onNavigateToLibrary = onNavigateToLibrary,
                     onNavigateToExplore = onNavigateToExplore,
                     onToggleSubscription = onToggleSubscription,
+                    onTogglePlayback = onTogglePlayback,
                     onSelectCategory = onSelectCategory,
                     gridState = gridState
                 )
@@ -198,6 +208,8 @@ private fun PodcastFeed(
     timeBlock: CuratedTimeBlock?,
     gridItems: List<Podcast>,
     selectedCategory: String?,
+    currentPlayingPodcastId: String?,
+    isPlaying: Boolean,
     isFilterLoading: Boolean,
     onPodcastClick: (Podcast) -> Unit,
     onHeroArrowClick: (SmartHeroItem) -> Unit,
@@ -206,6 +218,7 @@ private fun PodcastFeed(
     onNavigateToLibrary: (() -> Unit)?,
     onNavigateToExplore: ((String?) -> Unit)?,
     onToggleSubscription: (String) -> Unit,
+    onTogglePlayback: () -> Unit,
     onSelectCategory: (String?) -> Unit,
     gridState: androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState,
     modifier: Modifier = Modifier
@@ -224,7 +237,9 @@ private fun PodcastFeed(
             if (heroItems.isNotEmpty()) {
                 HeroCarousel(
                     heroItems = heroItems,
-                    onPlayClick = { onPlayClick?.invoke(it) },
+                    currentPlayingPodcastId = currentPlayingPodcastId,
+                    isPlaying = isPlaying,
+                    onPlayClick = { podcast -> onPlayClick?.invoke(podcast) },
                     onDetailsClick = { podcast ->
                         val ep = podcast.latestEpisode
                         if (ep != null) {
@@ -235,6 +250,7 @@ private fun PodcastFeed(
                     },
                     onArrowClick = onHeroArrowClick,
                     onToggleSubscription = onToggleSubscription,
+                    onTogglePlayback = onTogglePlayback,
                     modifier = Modifier.padding(horizontal = 8.dp) 
                 )
             } else {

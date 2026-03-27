@@ -134,7 +134,11 @@ class DownloadRepository(
         @Volatile
         private var downloadManager: DownloadManager? = null
         private var cache: Cache? = null
+        private var streamCache: Cache? = null
         private var databaseProvider: DatabaseProvider? = null
+        private var streamDatabaseProvider: DatabaseProvider? = null
+
+        private const val STREAM_CACHE_MAX_BYTES = 250L * 1024 * 1024 // 250 MB
 
         fun getDownloadManager(context: Context): DownloadManager {
             return downloadManager ?: synchronized(this) {
@@ -144,7 +148,7 @@ class DownloadRepository(
         
         private fun createDownloadManager(context: Context): DownloadManager {
             val databaseProvider = getDatabaseProvider(context)
-            val cache = getCache(context)
+            val cache = getDownloadCache(context)
             val dataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
                 .setUserAgent(androidx.media3.common.util.Util.getUserAgent(context, "BoxCast"))
                 .setAllowCrossProtocolRedirects(true)
@@ -162,13 +166,29 @@ class DownloadRepository(
              return databaseProvider ?: StandaloneDatabaseProvider(context).also { databaseProvider = it }
         }
 
+        /** Permanent cache for user-downloaded episodes. No eviction. */
         @Synchronized
-        fun getCache(context: Context): Cache {
+        fun getDownloadCache(context: Context): Cache {
             return cache ?: run {
                 val cacheDir = File(context.filesDir, "downloads")
                 val evictor = NoOpCacheEvictor()
                 val provider = getDatabaseProvider(context)
                 SimpleCache(cacheDir, evictor, provider).also { cache = it }
+            }
+        }
+
+        // Keep old name for backward compat
+        @Synchronized
+        fun getCache(context: Context): Cache = getDownloadCache(context)
+
+        /** LRU-evicted cache for streaming playback. Auto-cleans when exceeding 250 MB. */
+        @Synchronized
+        fun getStreamCache(context: Context): Cache {
+            return streamCache ?: run {
+                val cacheDir = File(context.cacheDir, "stream_cache")
+                val dbProvider = streamDatabaseProvider ?: StandaloneDatabaseProvider(context).also { streamDatabaseProvider = it }
+                val evictor = androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor(STREAM_CACHE_MAX_BYTES)
+                SimpleCache(cacheDir, evictor, dbProvider).also { streamCache = it }
             }
         }
     }

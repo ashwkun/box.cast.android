@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 sealed interface ExploreUiState {
     data object Loading : ExploreUiState
@@ -29,7 +30,9 @@ sealed interface ExploreUiState {
         val currentCategory: String = "All",
         val searchQuery: String = "",
         val isSearching: Boolean = false,
-        val isLoading: Boolean = false // For showing skeleton in grid area only
+        val isLoading: Boolean = false, // For showing skeleton in grid area only
+        val currentVibe: String? = null,
+        val suggestedVibes: List<Pair<String, String>> = emptyList()
     ) : ExploreUiState
     data class Error(val message: String) : ExploreUiState
 }
@@ -52,6 +55,10 @@ class ExploreViewModel(
     private val _searchResults = MutableStateFlow<List<Podcast>>(emptyList())
     private val _isLoading = MutableStateFlow(true) // Explicit loading state
     
+    // Vibe Prompt State
+    private val _currentVibe = MutableStateFlow<String?>(null)
+    private val _suggestedVibes = MutableStateFlow<List<Pair<String, String>>>(emptyList())
+    
     // Search Job to cancel previous searches
     private var searchJob: Job? = null
 
@@ -72,11 +79,17 @@ class ExploreViewModel(
                 val searchRes = args[3] as List<Podcast>
                 val query = args[4] as String
                 val pIsLoading = args[5] as Boolean
+                // Custom combine to pull all flows
+                Triple(subIds, category, trending) to Triple(searchRes, query, pIsLoading)
+            }.combine(
+                combine(_currentVibe, _suggestedVibes) { vibe, vibes -> vibe to vibes }
+            ) { (trip1, trip2), vibePair ->
+                val (subIds, category, trending) = trip1
+                val (searchRes, query, pIsLoading) = trip2
+                val (currentVibe, vibes) = vibePair
 
-                val isSearching = query.isNotEmpty()
+                val isSearching = query.isNotEmpty() || currentVibe != null
 
-                // Always emit Success state, but with isLoading flag
-                // This allows the screen to show the real header during initial load
                 ExploreUiState.Success(
                     trending = trending,
                     searchResults = searchRes,
@@ -84,7 +97,9 @@ class ExploreViewModel(
                     currentCategory = category,
                     searchQuery = query,
                     isSearching = isSearching,
-                    isLoading = pIsLoading && trending.isEmpty() && searchRes.isEmpty()
+                    isLoading = pIsLoading && trending.isEmpty() && searchRes.isEmpty(),
+                    currentVibe = currentVibe,
+                    suggestedVibes = vibes
                 )
             }.collect { state ->
                 _uiState.value = state
@@ -95,7 +110,27 @@ class ExploreViewModel(
         startSearchObserver()
         
         // Initial Load
+        loadAllVibes()
         loadTrending(_currentCategory.value)
+    }
+
+    private fun loadAllVibes() {
+        val vibes = listOf(
+            "morning_news" to "Top News",
+            "morning_motivation" to "Daily Motivation",
+            "business_insider" to "Business & Tech",
+            "science_explainer" to "Science & Discovery",
+            "tech_culture" to "Tech & Gadgets",
+            "creative_focus" to "Creative Focus",
+            "comedy_gold" to "Comedy Gold",
+            "tv_film_buff" to "TV & Film",
+            "sports_fan" to "Sports Highlights",
+            "true_crime_sleep" to "True Crime & Chill",
+            "history_buff" to "History",
+            "mystery_thriller" to "Mystery & Thrillers"
+        )
+        // Shuffle for variety, or keep static. Static provides a consistent layout.
+        _suggestedVibes.value = vibes
     }
 
     @OptIn(FlowPreview::class)
@@ -106,7 +141,7 @@ class ExploreViewModel(
             .onEach { query ->
                 if (query.isNotBlank()) {
                     performSearch(query)
-                } else {
+                } else if (_currentVibe.value == null) {
                     _searchResults.value = emptyList()
                 }
             }
@@ -114,16 +149,49 @@ class ExploreViewModel(
     }
 
     fun onSearchQueryChanged(query: String) {
+        if (query.isNotEmpty() && _currentVibe.value != null) {
+            _currentVibe.value = null // Stop showing vibe results if they start typing
+            _searchResults.value = emptyList()
+        }
         _searchQuery.value = query
     }
 
     fun onCategorySelected(category: String) {
         if (_currentCategory.value == category) return
         _currentCategory.value = category
+        clearVibe()
         // Clear Search when switching category to browse
         _searchQuery.value = "" 
         _trendingPodcasts.value = emptyList() // Clear to force Skeleton
         loadTrending(category)
+    }
+    
+    fun onVibeSelected(vibeId: String, vibeName: String) {
+        _searchQuery.value = "" 
+        _currentVibe.value = vibeName
+        _isLoading.value = true
+        _searchResults.value = emptyList()
+        analyticsHelper.logExploreVibeSelected(vibeName)
+        
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            try {
+                // Uses same curated endpoint as HomeScreen!
+                val results = podcastRepository.getCuratedPodcasts(vibeId)
+                _searchResults.value = results
+            } catch (e: Exception) {
+                _searchResults.value = emptyList()
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    fun clearVibe() {
+        _currentVibe.value = null
+        if (_searchQuery.value.isEmpty()) {
+            _searchResults.value = emptyList()
+        }
     }
 
     private fun loadTrending(category: String) {
@@ -150,17 +218,17 @@ class ExploreViewModel(
     }
 
     private fun performSearch(query: String) {
+        if (_currentVibe.value != null) return // Safety check
+        
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _isLoading.value = true
             _searchResults.value = emptyList() // Clear previous results to force Skeleton
             try {
-                // Log Search Event
-                analyticsHelper.logSearch(query)
-
-                // This hits the Hybrid Proxy (Turso + API)
+                // Log Search Event (privacy-safe: no query text)
                 val results = podcastRepository.searchPodcasts(query)
                 _searchResults.value = results
+                analyticsHelper.logSearchPerformed(results.isNotEmpty())
             } catch (e: Exception) {
                 // Handle error silently for search
                 _searchResults.value = emptyList()
