@@ -1,38 +1,34 @@
-name: Bug Report
-description: File a bug report to help us improve BoxCast
-title: "[Bug]: "
-labels: ["bug", "triage"]
+name: 🐛 Bug Report
+description: Something isn't working as expected
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report!
+        Thanks for taking the time to report a bug! Please fill out the details below so we can fix it quickly.
+
   - type: input
-    id: version
+    id: app-version
     attributes:
-      label: BoxCast Version
-      description: What version of BoxCast are you using? (e.g., 1.2.8)
-      placeholder: ex. 1.2.8
+      label: App Version
+      description: "Which version of BoxCast are you running? (Check Settings or About)"
+      placeholder: "e.g. v1.2.8"
     validations:
       required: true
-  - type: dropdown
-    id: os
+
+  - type: input
+    id: device
     attributes:
-      label: Operating System
-      description: What operating system are you running BoxCast on?
-      options:
-        - Android
-        - Windows
-        - macOS
-        - Linux
-        - Other
+      label: Device & OS Version
+      description: "Your device model and operating system version"
+      placeholder: "e.g. OnePlus 12, Android 15"
     validations:
       required: true
+
   - type: dropdown
-    id: component
+    id: area
     attributes:
-      label: Component / Area
-      description: What part of the app does this apply to? (e.g., Playback, Search)
+      label: Which area is affected?
       options:
         - Playback / Streams
         - Search
@@ -43,37 +39,33 @@ body:
         - Other
     validations:
       required: true
+
   - type: textarea
     id: description
     attributes:
-      label: Describe the bug
-      description: A clear and concise description of what the bug is.
-      placeholder: When I click on...
+      label: What happened?
+      description: "Describe the bug clearly. What did you expect vs what actually happened?"
+      placeholder: "When I open a stream, the video loads but there's no audio..."
     validations:
       required: true
+
   - type: textarea
-    id: reproduction
+    id: steps
     attributes:
-      label: Steps to Reproduce
-      description: How can we reproduce this bug?
+      label: Steps to reproduce
+      description: "How can we trigger this bug?"
       placeholder: |
-        1. Go to '...'
-        2. Click on '....'
-        3. Scroll down to '....'
-        4. See error
+        1. Open BoxCast
+        2. Go to ...
+        3. Select ...
+        4. ...
     validations:
-      required: true
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected behavior
-      description: A clear and concise description of what you expected to happen.
-    validations:
-      required: true
+      required: false
+
   - type: textarea
     id: screenshots
     attributes:
-      label: Screenshots / Logs
-      description: If applicable, add screenshots or logs to help explain your problem.
+      label: Screenshots / Screen Recording
+      description: "If applicable, add screenshots or a screen recording"
     validations:
       required: false

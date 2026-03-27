@@ -1,21 +1,40 @@
-title: "[Idea] "
+title: "💡 [Idea] "
 body:
   - type: markdown
     attributes:
       value: |
-        Welcome to BoxCast Discussions!
-        Please share your ideas and feature requests here.
-  - type: textarea
-    id: idea
+        Got an idea to make BoxCast even better? We'd love to hear it! 📺
+        Share it with the community here to get feedback.
+
+  - type: dropdown
+    id: area
     attributes:
-      label: What is your idea?
-      description: Describe the feature or improvement you would like to see in BoxCast.
+      label: Which area does this relate to?
+      options:
+        - Playback / Streams
+        - Search
+        - Explore
+        - Settings
+        - Network / Connectivity
+        - UI / Design
+        - New Feature
+        - Other
     validations:
       required: true
+
   - type: textarea
-    id: use-case
+    id: description
     attributes:
-      label: Why is this needed?
-      description: Explain how this feature improves the user experience.
+      label: Describe your idea
+      description: "What would you like to see? How would it work?"
+      placeholder: "I'd love to have a feature that..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why is this useful?
+      description: "How would this improve your watching experience?"
     validations:
       required: false
