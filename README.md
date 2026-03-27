@@ -15,7 +15,19 @@
 [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4.svg)](https://developer.android.com/jetpack/compose)
 [![Reddit](https://img.shields.io/badge/Connect%20on-Reddit-FF4500.svg?logo=reddit&logoColor=white)](https://www.reddit.com/user/Altruistic_Plenty696)
 
-*Because listening to stories is free and I love podcasts* 🎙️
+*Because antigravity is free and I love podcasts* 🎙️
+
+---
+
+### 100% built by
+
+<table>
+  <tr>
+    <td align="center"><img src="https://raw.githubusercontent.com/ashwkun/BOXBOXBOX-F1/master/screenshots/antigravity_logo.png" width="50" alt="Antigravity"/><br/><sub><b></b></sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/ashwkun/BOXBOXBOX-F1/master/screenshots/gemini_logo.png" width="50" alt="Gemini"/><br/><sub><b></b></sub></td>
+    <td align="center"><img src="https://raw.githubusercontent.com/ashwkun/BOXBOXBOX-F1/master/screenshots/claude_logo.png" width="50" alt="Claude"/><br/><sub><b></b></sub></td>
+  </tr>
+</table>
 
 </div>
 
