@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎙️ BoxCast
+<img src="images/boxcastlogo.png" width="250" alt="BoxCast Logo"/>
 
 ### *The Ultimate Podcast App For Android*
 
