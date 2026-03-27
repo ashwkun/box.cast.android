@@ -35,7 +35,17 @@
 
 ## 📱 About
 
-BoxCast focuses on clean design, fast discovery, and a playback experience that stays out of your way. Built entirely with Kotlin and Jetpack Compose, it embraces [Material 3 Expressive](https://m3.material.io/) guidelines with spring-based motion, dynamic color extraction, variable typography, and expressive shapes.
+BoxCast is an open-source podcast companion app designed to bring all your listening needs into a single, beautiful interface.
+
+Tired of clunky audio players, rigid grids, and missing out on trending shows? **BoxCast simplifies it all.**
+
+- **Material 3 Expressive Design System** with custom podcast theming
+- **M3 Dynamic Theming** that extracts colors from album art in real-time
+- **Spring-based motion physics** for natural UI interactions
+- **Variable typography** integration for clean, adaptable reading
+- **Expressive Shapes** for beautiful avatars and backgrounds
+- Buttery smooth gestures and edge-to-edge scaling animations
+- Responsive staggered and mosaic grids that adapt dynamically
 
 ---
 
@@ -73,9 +83,9 @@ BoxCast focuses on clean design, fast discovery, and a playback experience that 
 
 <table>
   <tr>
-    <td><img src="images/playart_01.jpg" width="200" alt="Discover Podcasts"/><br/><sub><b>Discover</b> - Trending</sub></td>
-    <td><img src="images/playart_02.jpg" width="200" alt="Beautiful Player"/><br/><sub><b>Player</b> - Dynamic Theme</sub></td>
-    <td><img src="images/playart_03.jpg" width="200" alt="Your Library"/><br/><sub><b>Library</b> - Subscriptions</sub></td>
+    <td><img src="images/playart_01.jpg" width="200" alt="Discover Podcasts"/></td>
+    <td><img src="images/playart_02.jpg" width="200" alt="Beautiful Player"/></td>
+    <td><img src="images/playart_03.jpg" width="200" alt="Your Library"/></td>
   </tr>
 </table>
 
@@ -83,8 +93,8 @@ BoxCast focuses on clean design, fast discovery, and a playback experience that 
 
 <table>
   <tr>
-    <td><img src="images/playart_04.jpg" width="200" alt="Smart Search"/><br/><sub><b>Search</b> - Hybrid Results</sub></td>
-    <td><img src="images/playart_05.jpg" width="200" alt="Material 3 Expressive"/><br/><sub><b>UI</b> - Material 3</sub></td>
+    <td><img src="images/playart_04.jpg" width="200" alt="Smart Search"/></td>
+    <td><img src="images/playart_05.jpg" width="200" alt="Material 3 Expressive"/></td>
   </tr>
 </table>
 
