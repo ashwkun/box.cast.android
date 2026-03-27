@@ -39,3 +39,4 @@ node_modules/
 *.keystore
 *.jks
 google-services.json
+bench_node.js
