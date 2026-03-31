@@ -58,7 +58,7 @@ android {
     
     lint {
         checkReleaseBuilds = true
-        abortOnError = false
+        abortOnError = true
         disable += "NullSafeMutableLiveData"
     }
 
