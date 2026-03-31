@@ -2,6 +2,8 @@ package cx.aswin.boxcast.core.model
 
 import kotlinx.serialization.Serializable
 
+enum class EpisodeStatus { UNPLAYED, IN_PROGRESS, COMPLETED }
+
 @Serializable
 data class Podcast(
     val id: String,
@@ -14,6 +16,7 @@ data class Podcast(
     val fallbackImageUrl: String? = null, // Logic: Episode Art -> Fallback Podcast Art
     val latestEpisode: Episode? = null,
     val resumeProgress: Float? = null, // 0.0 - 1.0
+    val episodeStatus: EpisodeStatus = EpisodeStatus.UNPLAYED,
     // --- Podcast 2.0 ---
     val fundingUrl: String? = null,
     val fundingMessage: String? = null,

@@ -44,6 +44,7 @@ import cx.aswin.boxcast.core.model.Podcast
 fun DownloadedEpisodesScreen(
     viewModel: LibraryViewModel,
     onBack: () -> Unit,
+    onExploreClick: () -> Unit,
     onEpisodeClick: (Episode, Podcast) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,24 +86,10 @@ fun DownloadedEpisodesScreen(
                 is LibraryUiState.Success -> {
                     val downloads = (uiState as LibraryUiState.Success).downloadedEpisodes
                     if (downloads.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "No downloads yet",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Download episodes to listen offline",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
+                        ExpressiveSolarSystemEmptyState(onExploreClick)
                     } else {
                         LazyColumn(
-                            contentPadding = PaddingValues(bottom = 120.dp)
+                            contentPadding = PaddingValues(bottom = 180.dp)
                         ) {
                             items(items = downloads, key = { it.episodeId }) { download ->
                                 val episode = Episode(

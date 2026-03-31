@@ -114,7 +114,7 @@ fun LibraryContent(
                 }
                 is LibraryUiState.Success -> {
                     LazyColumn(
-                        contentPadding = PaddingValues(bottom = 120.dp),
+                        contentPadding = PaddingValues(bottom = 180.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
