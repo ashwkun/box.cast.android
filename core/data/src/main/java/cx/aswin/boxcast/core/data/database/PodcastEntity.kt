@@ -16,8 +16,10 @@ data class PodcastEntity(
     // Subscription State
     val isSubscribed: Boolean = false,
     
-    // Genre for Smart Queue matching
     val genre: String? = null,
     
-    val lastRefreshed: Long = 0
+    val lastRefreshed: Long = 0,
+    
+    // Cached latest episode for instantaneous home screen rendering
+    val latestEpisode: cx.aswin.boxcast.core.model.Episode? = null
 )

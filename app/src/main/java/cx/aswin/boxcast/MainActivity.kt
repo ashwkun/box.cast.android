@@ -341,11 +341,14 @@ class MainActivity : ComponentActivity() {
                                         )
                                     },
                                     onNavigateToLibrary = {
-                                        navController.navigate("library") {
+                                        navController.navigate("library/subscriptions") {
                                             popUpTo("home") { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
+                                    },
+                                    onNavigateToLatestEpisodes = {
+                                        navController.navigate("library/subscriptions?tab=1")
                                     },
                                     onNavigateToExplore = { category ->
                                         val route = if (category != null) "explore?category=$category" else "explore"
@@ -508,11 +511,25 @@ class MainActivity : ComponentActivity() {
                                             "${episode.duration}/${podcast.id}/" +
                                             encode(podcast.title)
                                         )
+                                    },
+                                    onExploreClick = {
+                                        navController.navigate("explore") {
+                                            popUpTo("home")
+                                        }
                                     }
                                 )
                             }
 
-                            composable("library/subscriptions") {
+                            composable(
+                                "library/subscriptions?tab={tab}",
+                                arguments = listOf(
+                                    androidx.navigation.navArgument("tab") {
+                                        type = androidx.navigation.NavType.IntType
+                                        defaultValue = 0
+                                    }
+                                )
+                            ) { backStackEntry ->
+                                val initialTab = backStackEntry.arguments?.getInt("tab") ?: 0
                                 val podcastDao = remember { database.podcastDao() }
                                 val subscriptionRepository = remember { cx.aswin.boxcast.core.data.SubscriptionRepository(podcastDao, analyticsHelper) }
                                 val downloadRepository = remember { cx.aswin.boxcast.core.data.DownloadRepository(application, database) }
@@ -540,7 +557,22 @@ class MainActivity : ComponentActivity() {
                                         navController.navigate("explore") {
                                             popUpTo("home")
                                         }
-                                    }
+                                    },
+                                    onPlayEpisode = { episode, podcast ->
+                                        queueManager.playEpisode(episode, podcast)
+                                    },
+                                    onEpisodeClick = { episode, podcast ->
+                                        fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
+                                        navController.navigate(
+                                            "episode/${encode(episode.id)}/${encode(episode.title)}/" +
+                                            "${encode(episode.description.take(500))}/" +
+                                            "${encode(episode.imageUrl)}/" +
+                                            "${encode(episode.audioUrl)}/" +
+                                            "${episode.duration}/${encode(podcast.id)}/" +
+                                            encode(podcast.title)
+                                        )
+                                    },
+                                    initialTab = initialTab
                                 )
                             }
 
@@ -575,9 +607,15 @@ class MainActivity : ComponentActivity() {
                                             "${episode.duration}/${podcast.id}/" +
                                             encode(podcast.title)
                                         )
+                                    },
+                                    onExploreClick = {
+                                        navController.navigate("explore") {
+                                            popUpTo("home")
+                                        }
                                     }
                                 )
                             }
+
                             
                             // REMOVED PlayerRoute logic from NavGraph
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cx.aswin.boxcast.core.data.SubscriptionRepository
 import cx.aswin.boxcast.core.data.PlaybackRepository
 import cx.aswin.boxcast.core.data.database.ListeningHistoryEntity
+import cx.aswin.boxcast.core.model.EpisodeStatus
 import cx.aswin.boxcast.core.model.Podcast
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -30,14 +31,47 @@ class LibraryViewModel(
     private val downloadRepository: cx.aswin.boxcast.core.data.DownloadRepository
 ) : ViewModel() {
 
-    // Combine subscriptions, liked episodes, and downloads
+    // Combine subscriptions, liked episodes, downloads, AND listening history
+    // so we can enrich each podcast's latestEpisode with play status
     val uiState: StateFlow<LibraryUiState> = combine(
         subscriptionRepository.subscribedPodcasts,
         playbackRepository.likedEpisodes,
-        downloadRepository.downloads
-    ) { podcasts, liked, downloads ->
+        downloadRepository.downloads,
+        playbackRepository.getAllHistory()
+    ) { podcasts, liked, downloads, allHistory ->
+        // Enrich podcasts with episode status from listening history
+        val enrichedPodcasts = podcasts.map { podcast ->
+            val episode = podcast.latestEpisode ?: return@map podcast
+            val history = allHistory.find { it.episodeId == episode.id }
+
+            when {
+                // Never touched → UNPLAYED
+                history == null || (history.progressMs == 0L && !history.isCompleted) -> {
+                    podcast.copy(episodeStatus = EpisodeStatus.UNPLAYED)
+                }
+                // Started but not finished → IN_PROGRESS
+                !history.isCompleted && history.progressMs > 0L -> {
+                    val progress = if (history.durationMs > 0)
+                        (history.progressMs.toFloat() / history.durationMs).coerceIn(0f, 1f)
+                    else 0f
+                    podcast.copy(
+                        resumeProgress = progress,
+                        episodeStatus = EpisodeStatus.IN_PROGRESS
+                    )
+                }
+                // Completed
+                history.isCompleted -> {
+                    podcast.copy(
+                        resumeProgress = 1f,
+                        episodeStatus = EpisodeStatus.COMPLETED
+                    )
+                }
+                else -> podcast
+            }
+        }
+
         LibraryUiState.Success(
-            subscribedPodcasts = podcasts,
+            subscribedPodcasts = enrichedPodcasts,
             likedEpisodes = liked,
             downloadedEpisodes = downloads
         )

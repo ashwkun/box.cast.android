@@ -45,6 +45,7 @@ import cx.aswin.boxcast.core.model.Podcast
 fun LikedEpisodesScreen(
     viewModel: LibraryViewModel,
     onBack: () -> Unit,
+    onExploreClick: () -> Unit,
     onEpisodeClick: (Episode, Podcast) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -76,12 +77,10 @@ fun LikedEpisodesScreen(
                 is LibraryUiState.Success -> {
                     val liked = (uiState as LibraryUiState.Success).likedEpisodes
                     if (liked.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No liked episodes yet", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        ExpressiveSolarSystemEmptyState(onExploreClick)
                     } else {
                         LazyColumn(
-                            contentPadding = PaddingValues(bottom = 120.dp) // Nav bar padding
+                            contentPadding = PaddingValues(bottom = 180.dp) // Nav bar padding
                         ) {
                             items(liked) { historyItem ->
                                 val episode = Episode(

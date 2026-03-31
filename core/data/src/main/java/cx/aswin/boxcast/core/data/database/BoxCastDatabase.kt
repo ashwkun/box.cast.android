@@ -2,14 +2,16 @@ package cx.aswin.boxcast.core.data.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import cx.aswin.boxcast.core.data.database.entities.QueueItem
 import cx.aswin.boxcast.core.data.database.dao.QueueDao
 
 @Database(
     entities = [ListeningHistoryEntity::class, PodcastEntity::class, DownloadedEpisodeEntity::class, QueueItem::class],
-    version = 11,
+    version = 12, // Increased DB version
     exportSchema = false
 )
+@TypeConverters(Converters::class)
 abstract class BoxCastDatabase : RoomDatabase() {
     abstract fun listeningHistoryDao(): ListeningHistoryDao
     abstract fun podcastDao(): PodcastDao

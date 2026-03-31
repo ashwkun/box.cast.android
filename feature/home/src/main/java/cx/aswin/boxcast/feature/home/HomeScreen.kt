@@ -70,6 +70,7 @@ fun HomeRoute(
     onEpisodeClick: ((Episode, Podcast) -> Unit)? = null, // Navigate to EpisodeInfo
     onPlayClick: ((Podcast) -> Unit)? = null, // Navigate directly to Player (Resume)
     onNavigateToLibrary: (() -> Unit)? = null,
+    onNavigateToLatestEpisodes: (() -> Unit)? = null,
     onNavigateToExplore: ((String?) -> Unit)? = null,
     onNavigateToSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -99,6 +100,7 @@ fun HomeRoute(
         onEpisodeClick = onEpisodeClick,
         onPlayClick = onPlayClick,
         onNavigateToLibrary = onNavigateToLibrary,
+        onNavigateToLatestEpisodes = onNavigateToLatestEpisodes,
         onNavigateToExplore = onNavigateToExplore,
         onToggleSubscription = viewModel::toggleSubscription,
         onTogglePlayback = viewModel::togglePlayback,
@@ -122,6 +124,7 @@ fun HomeScreen(
     onEpisodeClick: ((Episode, Podcast) -> Unit)?,
     onPlayClick: ((Podcast) -> Unit)?,
     onNavigateToLibrary: (() -> Unit)?,
+    onNavigateToLatestEpisodes: (() -> Unit)?,
     onNavigateToExplore: ((String?) -> Unit)?,
     onToggleSubscription: (String) -> Unit,
     onTogglePlayback: () -> Unit,
@@ -176,6 +179,7 @@ fun HomeScreen(
                 PodcastFeed(
                     heroItems = uiState.heroItems,
                     latestItems = uiState.latestEpisodes,
+                    unplayedEpisodeCount = uiState.unplayedEpisodeCount,
                     subscribedItems = uiState.subscribedPodcasts,
                     timeBlock = uiState.timeBlock,
                     gridItems = uiState.discoverPodcasts,
@@ -188,6 +192,7 @@ fun HomeScreen(
                     onEpisodeClick = onEpisodeClick,
                     onPlayClick = onPlayClick,
                     onNavigateToLibrary = onNavigateToLibrary,
+                    onNavigateToLatestEpisodes = onNavigateToLatestEpisodes,
                     onNavigateToExplore = onNavigateToExplore,
                     onToggleSubscription = onToggleSubscription,
                     onTogglePlayback = onTogglePlayback,
@@ -204,6 +209,7 @@ fun HomeScreen(
 private fun PodcastFeed(
     heroItems: List<SmartHeroItem>,
     latestItems: List<Podcast>,
+    unplayedEpisodeCount: Int,
     subscribedItems: List<Podcast>,
     timeBlock: CuratedTimeBlock?,
     gridItems: List<Podcast>,
@@ -216,6 +222,7 @@ private fun PodcastFeed(
     onEpisodeClick: ((Episode, Podcast) -> Unit)?,
     onPlayClick: ((Podcast) -> Unit)?,
     onNavigateToLibrary: (() -> Unit)?,
+    onNavigateToLatestEpisodes: (() -> Unit)?,
     onNavigateToExplore: ((String?) -> Unit)?,
     onToggleSubscription: (String) -> Unit,
     onTogglePlayback: () -> Unit,
@@ -264,11 +271,13 @@ private fun PodcastFeed(
                 YourShowsSection(
                     subscribedPodcasts = subscribedItems,
                     latestEpisodes = latestItems,
+                    unplayedEpisodeCount = unplayedEpisodeCount,
                     onPodcastClick = onPodcastClick,
                     onEpisodeClick = { episode, podcast ->
                         onEpisodeClick?.invoke(episode, podcast)
                     },
-                    onViewLibrary = { onNavigateToLibrary?.invoke() }
+                    onViewLibrary = { onNavigateToLibrary?.invoke() },
+                    onViewAllLatest = onNavigateToLatestEpisodes
                 )
             }
         }

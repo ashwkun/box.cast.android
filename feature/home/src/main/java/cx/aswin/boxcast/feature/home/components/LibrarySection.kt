@@ -1,6 +1,7 @@
 package cx.aswin.boxcast.feature.home.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,16 +20,18 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.Badge
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,6 +57,7 @@ import coil.compose.SubcomposeAsyncImageContent
 import cx.aswin.boxcast.core.designsystem.theme.SectionHeaderFontFamily
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
 import cx.aswin.boxcast.core.model.Episode
+import cx.aswin.boxcast.core.model.EpisodeStatus
 import cx.aswin.boxcast.core.model.Podcast
 import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 
@@ -68,9 +74,11 @@ import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 fun YourShowsSection(
     subscribedPodcasts: List<Podcast>,
     latestEpisodes: List<Podcast>, // Podcasts with latestEpisode populated
+    unplayedEpisodeCount: Int = 0,
     onPodcastClick: (Podcast) -> Unit,
     onEpisodeClick: (Episode, Podcast) -> Unit, // Navigate to EpisodeInfo
     onViewLibrary: () -> Unit,
+    onViewAllLatest: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     if (subscribedPodcasts.isEmpty() && latestEpisodes.isEmpty()) return
@@ -200,15 +208,49 @@ fun YourShowsSection(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // --- Part B: New Episodes Rail ---
+        // --- Part B: Latest Episodes Rail ---
         if (latestEpisodes.isNotEmpty()) {
-            Text(
-                text = "New Episodes",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Latest Episodes",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (unplayedEpisodeCount > 0) {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
+                            Text("$unplayedEpisodeCount")
+                        }
+                    }
+                }
+
+                if (onViewAllLatest != null) {
+                    FilledTonalIconButton(
+                        onClick = onViewAllLatest,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ChevronRight,
+                            contentDescription = "View all latest episodes",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
             
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 0.dp),
@@ -289,7 +331,8 @@ private fun SmallPodcastCover(
 
 /**
  * New Episode Card for the scrollable rail.
- * Shows episode cover with gradient overlay and title.
+ * Smart visual states: Unplayed (dot badge), In Progress (progress strip), Completed (checkmark + dimmed).
+ * Styles reuse the same M3 Expressive patterns from PodcastInfoScreen.
  */
 @Composable
 private fun NewEpisodeCard(
@@ -297,6 +340,11 @@ private fun NewEpisodeCard(
     podcast: Podcast,
     onClick: () -> Unit
 ) {
+    val status = podcast.episodeStatus
+    val progress = podcast.resumeProgress ?: 0f
+    val isCompleted = status == EpisodeStatus.COMPLETED
+    val isInProgress = status == EpisodeStatus.IN_PROGRESS
+
     // Track image URL chain: Episode → Podcast
     var currentUrl by remember(episode.imageUrl, podcast.imageUrl) {
         mutableStateOf(
@@ -305,16 +353,20 @@ private fun NewEpisodeCard(
         )
     }
 
-    // Match PodcastCard style but smaller (140.dp width)
+    // Completed cards are slightly dimmed to de-emphasize
+    val cardAlpha = if (isCompleted) 0.72f else 1f
+
     androidx.compose.material3.OutlinedCard(
-        shape = MaterialTheme.shapes.medium, // Match PodcastCard's large shape, slightly smaller for mini card
+        shape = MaterialTheme.shapes.medium,
         colors = androidx.compose.material3.CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
         border = androidx.compose.foundation.BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .width(140.dp)
+            .graphicsLayer { alpha = cardAlpha }
             .expressiveClickable(onClick = onClick)
     ) {
         Column {
+            // Image area with overlays
             Box {
                 SubcomposeAsyncImage(
                     model = currentUrl,
@@ -322,11 +374,10 @@ private fun NewEpisodeCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(140.dp) // Square image
+                        .height(140.dp)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp)),
                     onState = { state ->
                         if (state is AsyncImagePainter.State.Error) {
-                            // Try fallback to podcast cover
                             val episodeUrl = episode.imageUrl
                             if (currentUrl == episodeUrl && podcast.imageUrl.isNotEmpty()) {
                                 currentUrl = podcast.imageUrl
@@ -343,6 +394,81 @@ private fun NewEpisodeCard(
                         SubcomposeAsyncImageContent()
                     }
                 }
+
+                // Completed: Checkmark badge at top-right (same style as PodcastInfoScreen)
+                if (isCompleted) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .size(20.dp)
+                            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                            .border(1.dp, MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = "Played",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+
+                // Unplayed: Subtle dot badge at top-right
+                if (status == EpisodeStatus.UNPLAYED) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(10.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    )
+                }
+
+                // In Progress: Thin progress strip at bottom of image (same pattern as ExpressivePlayButton)
+                if (isInProgress && progress > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                    ) {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            drawStopIndicator = {}
+                        )
+                    }
+                }
+
+                // Time left Pill overlay
+                if (isInProgress && episode.duration > 0) {
+                    val remainingSeconds = ((1f - progress) * episode.duration).toInt()
+                    val h = remainingSeconds / 3600
+                    val m = (remainingSeconds % 3600) / 60
+                    val timeLeft = if (h > 0) "${h}h ${m}m" else "${m}m"
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 6.dp, bottom = 8.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "$timeLeft left",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
             
             Column(modifier = Modifier.padding(10.dp)) {
@@ -355,7 +481,7 @@ private fun NewEpisodeCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                // Podcast name
+                // Subtitle: podcast name
                 Text(
                     text = podcast.title,
                     style = MaterialTheme.typography.bodySmall,

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import cx.aswin.boxcast.core.data.PodcastRepository
 import cx.aswin.boxcast.core.data.SubscriptionRepository
 import cx.aswin.boxcast.core.model.Podcast
+import cx.aswin.boxcast.core.model.EpisodeStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -61,7 +62,8 @@ data class CuratedSectionData(
 @Immutable
 data class HomeUiState(
     val heroItems: List<SmartHeroItem>,
-    val latestEpisodes: List<Podcast> = emptyList(), // "Latest" Section
+    val latestEpisodes: List<Podcast> = emptyList(), // "Latest" Section (Smart: Unplayed → In Progress → Completed)
+    val unplayedEpisodeCount: Int = 0, // Badge count for "New Episodes" header
     val subscribedPodcasts: List<Podcast> = emptyList(), // "Your Shows" Section
     val selectedCategory: String? = null, // Null = "For You"
     val timeBlock: CuratedTimeBlock? = null, // Unified Time Block
@@ -92,7 +94,7 @@ class HomeViewModel(
     // Let's leave SubscriptionRepository as is for now, it's less critical for playback state.
     // But `playbackRepository` MUST be injected.
 
-    private val _uiState = MutableStateFlow(HomeUiState(emptyList(), emptyList(), emptyList(), null, null, emptyList(), isLoading = true, isFilterLoading = false))
+    private val _uiState = MutableStateFlow(HomeUiState(emptyList(), emptyList(), 0, emptyList(), null, null, emptyList(), isLoading = true, isFilterLoading = false))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow<String?>(null)
@@ -116,6 +118,7 @@ class HomeViewModel(
 
     init {
         loadData()
+        startBackgroundSync()
     }
 
     private fun loadData() {
@@ -280,33 +283,75 @@ class HomeViewModel(
                             }
                         }
 
-                        // C. Latest "Catch Up" List
-                        val catchUpList = mutableListOf<Podcast>()
+                        // C. Smart "Catch Up" with Three-Tier Priority
+                        // Bucket 1: Unplayed (top priority, hero-eligible)
+                        // Bucket 2: In Progress (sorted by most recently played)
+                        // Bucket 3: Recently Completed (48h grace, max 3)
+                        val unplayedBucket = mutableListOf<Podcast>()
+                        val inProgressBucket = mutableListOf<Pair<Podcast, Long>>() // Pair(podcast, lastPlayedAt)
+                        val completedBucket = mutableListOf<Pair<Podcast, Long>>()
+                        
                         if (subs.isNotEmpty()) {
                             try {
-                                val candidates = subs.filter { !usedPodcastIds.contains(it.id) }
+                                val candidates = subs
                                 
                                 if (candidates.isNotEmpty()) {
-                                    val idsToSync = candidates.take(20).map { it.id }
-                                    val syncResults = repository.syncSubscriptions(idsToSync)
-                                    
                                     for (pod in candidates) {
-                                        val freshEpisode = syncResults[pod.id]
-                                        if (freshEpisode != null) {
-                                            val isCompletelyUnplayed = allHistory.none { it.episodeId == freshEpisode.id && (it.progressMs > 0L || it.isCompleted) }
-                                            
-                                            if (isCompletelyUnplayed) {
-                                                catchUpList.add(pod.copy(latestEpisode = freshEpisode))
+                                        val freshEpisode = pod.latestEpisode ?: continue
+                                        val history = allHistory.find { it.episodeId == freshEpisode.id }
+                                        
+                                        when {
+                                            // Never touched
+                                            history == null || (history.progressMs == 0L && !history.isCompleted) -> {
+                                                unplayedBucket.add(pod.copy(
+                                                    latestEpisode = freshEpisode,
+                                                    episodeStatus = EpisodeStatus.UNPLAYED
+                                                ))
+                                            }
+                                            // Started but not finished
+                                            !history.isCompleted && history.progressMs > 0L -> {
+                                                val progress = if (history.durationMs > 0)
+                                                    (history.progressMs.toFloat() / history.durationMs).coerceIn(0f, 1f)
+                                                else 0f
+                                                inProgressBucket.add(
+                                                    pod.copy(
+                                                        latestEpisode = freshEpisode,
+                                                        resumeProgress = progress,
+                                                        episodeStatus = EpisodeStatus.IN_PROGRESS
+                                                    ) to history.lastPlayedAt
+                                                )
+                                            }
+                                            // Completed within 48h grace period
+                                            history.isCompleted -> {
+                                                val completedAgo = System.currentTimeMillis() - history.lastPlayedAt
+                                                val gracePeriodMs = 48 * 60 * 60 * 1000L
+                                                if (completedAgo < gracePeriodMs) {
+                                                    completedBucket.add(
+                                                        pod.copy(
+                                                            latestEpisode = freshEpisode,
+                                                            resumeProgress = 1f,
+                                                            episodeStatus = EpisodeStatus.COMPLETED
+                                                        ) to history.lastPlayedAt
+                                                    )
+                                                }
                                             }
                                         }
                                     }
                                 }
                             } catch (e: Exception) { e.printStackTrace() }
                         }
-                        
-                        if (catchUpList.isNotEmpty()) {
-                             if (catchUpList.size > 2) {
-                                 val topDrop = catchUpList.first()
+
+                        // Build smart catch-up list: Unplayed first → In Progress by recency → Completed (max 3)
+                        val catchUpList = buildList {
+                            addAll(unplayedBucket)
+                            addAll(inProgressBucket.sortedByDescending { it.second }.map { it.first })
+                            addAll(completedBucket.sortedByDescending { it.second }.take(3).map { it.first })
+                        }
+
+                        // Hero carousel: Only UNPLAYED episodes get premium hero real estate
+                        if (unplayedBucket.isNotEmpty()) {
+                             if (unplayedBucket.size > 2) {
+                                 val topDrop = unplayedBucket.first()
                                  heroList.add(
                                     SmartHeroItem(
                                         type = HeroType.JUMP_BACK_IN,
@@ -317,7 +362,7 @@ class HomeViewModel(
                                  )
                                  usedPodcastIds.add(topDrop.id)
                                  
-                                 val gridDrops = catchUpList.drop(1).take(6)
+                                 val gridDrops = unplayedBucket.drop(1).take(6)
                                  if (gridDrops.isNotEmpty()) {
                                      heroList.add(
                                          SmartHeroItem(
@@ -331,7 +376,7 @@ class HomeViewModel(
                                      usedPodcastIds.addAll(gridDrops.map { it.id })
                                  }
                              } else {
-                                 val heroCandidate = catchUpList.first()
+                                 val heroCandidate = unplayedBucket.first()
                                  heroList.add(
                                      SmartHeroItem(
                                          type = HeroType.JUMP_BACK_IN,
@@ -427,6 +472,7 @@ class HomeViewModel(
                         _uiState.value = HomeUiState(
                             heroItems = heroList,
                             latestEpisodes = catchUpList,
+                            unplayedEpisodeCount = unplayedBucket.size,
                             subscribedPodcasts = subs,
                             selectedCategory = _selectedCategory.value,
                             timeBlock = timeBlock,
@@ -536,6 +582,36 @@ class HomeViewModel(
     // --- Helper Logic ---
     data class TimeBlockConfig(val title: String, val subtitle: String, val icon: ImageVector, val genres: List<GenreConfig>)
     data class GenreConfig(val id: String, val title: String)
+
+    private fun startBackgroundSync() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            // Wait slightly so the app completely loads up the UI before choking up network requests
+            kotlinx.coroutines.delay(2000L)
+            
+            try {
+                // Get all subscribed podcast IDs from repository
+                val currentSubs = subscriptionRepository.subscribedPodcastIds.first()
+                if (currentSubs.isEmpty()) return@launch
+                
+                val chunks = currentSubs.chunked(10) // Chunk by 10 per user request
+                android.util.Log.d("HomeViewModel", "Starting background sync for ${currentSubs.size} subs in ${chunks.size} chunks")
+                for (chunk in chunks) {
+                    try {
+                        val synced = repository.syncSubscriptions(chunk.toList())
+                        android.util.Log.d("HomeViewModel", "Successfully fetched chunk of ${chunk.size} subs, saving to DB...")
+                        for ((podId, episode) in synced) {
+                            subscriptionRepository.updateLatestEpisode(podId, episode)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeViewModel", "Background sync chunk failed", e)
+                    }
+                }
+                android.util.Log.d("HomeViewModel", "Finished background sync for all ${currentSubs.size} subs")
+            } catch (e: Exception) {
+                android.util.Log.e("HomeViewModel", "Background sync failed totally", e)
+            }
+        }
+    }
 
     private fun getTimeBlockConfig(): TimeBlockConfig {
         val cal = Calendar.getInstance()

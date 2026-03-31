@@ -27,7 +27,8 @@ class SubscriptionRepository(
                     artist = entity.author ?: "",
                     imageUrl = entity.imageUrl ?: "",
                     description = entity.description,
-                    genre = entity.genre ?: "Podcast" // Use stored genre
+                    genre = entity.genre ?: "Podcast", // Use stored genre
+                    latestEpisode = entity.latestEpisode
                 )
             }
         }
@@ -50,7 +51,8 @@ class SubscriptionRepository(
                 description = podcast.description,
                 isSubscribed = true,
                 genre = podcast.genre, // Persist genre for Smart Queue matching
-                lastRefreshed = System.currentTimeMillis()
+                lastRefreshed = System.currentTimeMillis(),
+                latestEpisode = podcast.latestEpisode
             )
             podcastDao.upsert(entity)
             analyticsHelper?.logSubscribeAction(true)
@@ -72,7 +74,8 @@ class SubscriptionRepository(
                 description = podcast.description,
                 isSubscribed = true,
                 genre = podcast.genre,
-                lastRefreshed = System.currentTimeMillis()
+                lastRefreshed = System.currentTimeMillis(),
+                latestEpisode = podcast.latestEpisode
             )
             podcastDao.upsert(entity)
             analyticsHelper?.logSubscribeAction(true)
@@ -80,5 +83,9 @@ class SubscriptionRepository(
             podcastDao.setSubscribed(podcast.id, true)
             analyticsHelper?.logSubscribeAction(true)
         }
+    }
+
+    suspend fun updateLatestEpisode(podcastId: String, episode: cx.aswin.boxcast.core.model.Episode?) {
+        podcastDao.updateLatestEpisode(podcastId, episode)
     }
 }
