@@ -233,7 +233,7 @@ fun ExploreContent(
                 start = 16.dp,
                 end = 16.dp,
                 top = 16.dp,
-                bottom = 100.dp
+                bottom = 180.dp
             ),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalItemSpacing = 16.dp,

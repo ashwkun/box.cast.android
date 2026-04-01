@@ -77,7 +77,12 @@ fun LikedEpisodesScreen(
                 is LibraryUiState.Success -> {
                     val liked = (uiState as LibraryUiState.Success).likedEpisodes
                     if (liked.isEmpty()) {
-                        ExpressiveSolarSystemEmptyState(onExploreClick)
+                        ExpressiveSolarSystemEmptyState(
+                            title = "No Liked Episodes",
+                            description = "Heart episodes you love to save them here.",
+                            actionText = "Find Podcasts",
+                            onExploreClick = onExploreClick
+                        )
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(bottom = 180.dp) // Nav bar padding

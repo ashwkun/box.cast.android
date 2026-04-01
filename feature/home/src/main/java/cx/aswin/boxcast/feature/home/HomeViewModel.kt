@@ -562,6 +562,19 @@ class HomeViewModel(
             
             if (podcast != null) {
                 subscriptionRepository.toggleSubscription(podcast)
+                if (subscriptionRepository.isSubscribed(podcast.id)) {
+                    // Fetch latest episodes for the newly subscribed podcast so UI updates immediately
+                    launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            val synced = repository.syncSubscriptions(listOf(podcast.id))
+                            synced[podcast.id]?.let { episode ->
+                                subscriptionRepository.updateLatestEpisode(podcast.id, episode)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
             }
         }
     }

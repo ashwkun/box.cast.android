@@ -86,7 +86,12 @@ fun DownloadedEpisodesScreen(
                 is LibraryUiState.Success -> {
                     val downloads = (uiState as LibraryUiState.Success).downloadedEpisodes
                     if (downloads.isEmpty()) {
-                        ExpressiveSolarSystemEmptyState(onExploreClick)
+                        ExpressiveSolarSystemEmptyState(
+                            title = "No Downloads Found",
+                            description = "Save episodes for offline listening.",
+                            actionText = "Find Podcasts",
+                            onExploreClick = onExploreClick
+                        )
                     } else {
                         LazyColumn(
                             contentPadding = PaddingValues(bottom = 180.dp)
