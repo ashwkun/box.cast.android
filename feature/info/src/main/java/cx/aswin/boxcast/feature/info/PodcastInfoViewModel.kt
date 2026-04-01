@@ -301,6 +301,19 @@ class PodcastInfoViewModel(
                 // Refresh state
                 val isSubscribed = subscriptionRepository.isSubscribed(currentState.podcast.id)
                 _uiState.value = currentState.copy(isSubscribed = isSubscribed)
+                
+                if (isSubscribed) {
+                    launch(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            val synced = repository.syncSubscriptions(listOf(currentState.podcast.id))
+                            synced[currentState.podcast.id]?.let { episode ->
+                                subscriptionRepository.updateLatestEpisode(currentState.podcast.id, episode)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
             }
         }
     }

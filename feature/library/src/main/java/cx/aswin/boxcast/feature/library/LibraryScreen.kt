@@ -1,5 +1,6 @@
 package cx.aswin.boxcast.feature.library
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -20,8 +21,14 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
@@ -295,86 +302,35 @@ private fun LibraryCardCollage(
 }
 
 @Composable
-fun ExpressiveSolarSystemEmptyState(onExploreClick: () -> Unit) {
-    // Randomize shapes on composition
-    val shapes = remember {
-        listOf(
-            ExpressiveShapes.Burst, ExpressiveShapes.SoftBurst, ExpressiveShapes.Boom, 
-            ExpressiveShapes.SoftBoom, ExpressiveShapes.Star, ExpressiveShapes.Sunny, 
-            ExpressiveShapes.VerySunny, ExpressiveShapes.Flower, ExpressiveShapes.Puffy,
-            ExpressiveShapes.Clover4, ExpressiveShapes.Clover8, ExpressiveShapes.Heart,
-            ExpressiveShapes.Diamond, ExpressiveShapes.Gem, ExpressiveShapes.Hexagon
-        ).shuffled().take(3)
-    }
-
+fun ExpressiveSolarSystemEmptyState(
+    title: String = "Your library is empty",
+    description: String = "It's a big universe out there.\nStart exploring.",
+    icon: ImageVector = Icons.Rounded.AutoAwesome,
+    actionText: String = "Go Explore",
+    onExploreClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 32.dp)
+            .padding(bottom = 150.dp, top = 32.dp), // Extra bottom padding to avoid mini player
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Solar System Composition (Static & Expressive)
-        Box(
-            modifier = Modifier.size(280.dp), // Large canvas
-            contentAlignment = Alignment.Center
-        ) {
-            // Layer 1: Background Shape (Random 1)
-            Box(
-                modifier = Modifier
-                    .size(180.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
-                        shape = shapes[0]
-                    )
-            )
-            
-            // Layer 2: Floating Shape (Random 2)
-            Box(
-                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-40).dp, y = 40.dp)
-                    .size(80.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
-                        shape = shapes[1]
-                    )
-            )
-            
-            // Layer 3: Foreground Shape (Random 3)
-            Box(
-                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(x = 40.dp, y = (-50).dp)
-                    .size(width = 70.dp, height = 90.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                        shape = shapes[2]
-                    )
-            )
-            
-            // Center Anchor Icon
-            Icon(
-                imageVector = Icons.Rounded.Add,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-        }
-
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Your library is empty",
-            style = MaterialTheme.typography.headlineLarge,
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         
         Text(
-            text = "It's a big universe out there.\nStart exploring.",
+            text = description,
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -390,12 +346,11 @@ fun ExpressiveSolarSystemEmptyState(onExploreClick: () -> Unit) {
                 .expressiveClickable(onClick = onExploreClick)
         ) {
             Text(
-                "Go Explore", 
+                text = actionText, 
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         }
-        Spacer(modifier = Modifier.height(64.dp))
     }
 }
 

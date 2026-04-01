@@ -250,26 +250,23 @@ fun SubscriptionsScreen(
                             it.artist.contains(searchQuery, ignoreCase = true)
                         }
                     }
-                    if (podcasts.isEmpty()) {
-                        ExpressiveSolarSystemEmptyState(onExploreClick)
-                    } else {
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.fillMaxSize()
-                        ) { page ->
-                            when (page) {
-                                0 -> ShowsTabContent(
-                                    podcasts = podcasts,
-                                    onPodcastClick = onPodcastClick,
-                                    onPlayEpisode = onPlayEpisode
-                                )
-                                1 -> LatestTabContent(
-                                    podcasts = podcasts,
-                                    onExploreClick = onExploreClick,
-                                    onEpisodeClick = onEpisodeClick,
-                                    onPlayEpisode = onPlayEpisode
-                                )
-                            }
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize()
+                    ) { page ->
+                        when (page) {
+                            0 -> ShowsTabContent(
+                                podcasts = podcasts,
+                                onExploreClick = onExploreClick,
+                                onPodcastClick = onPodcastClick,
+                                onPlayEpisode = onPlayEpisode
+                            )
+                            1 -> LatestTabContent(
+                                podcasts = podcasts,
+                                onExploreClick = onExploreClick,
+                                onEpisodeClick = onEpisodeClick,
+                                onPlayEpisode = onPlayEpisode
+                            )
                         }
                     }
                 }
@@ -374,21 +371,31 @@ private fun ExpressiveTabSwitcher(
 @Composable
 private fun ShowsTabContent(
     podcasts: List<Podcast>,
+    onExploreClick: () -> Unit,
     onPodcastClick: (String) -> Unit,
     onPlayEpisode: ((Episode, Podcast) -> Unit)?
 ) {
-    LazyColumn(
-        contentPadding = PaddingValues(bottom = 180.dp, top = 8.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(items = podcasts, key = { it.id }) { podcast ->
-            SubscriptionListRow(
-                podcast = podcast,
-                onClick = { onPodcastClick(podcast.id) },
-                onPlayLatest = if (onPlayEpisode != null && podcast.latestEpisode != null) {
-                    { onPlayEpisode(podcast.latestEpisode!!, podcast) }
-                } else null
-            )
+    if (podcasts.isEmpty()) {
+        ExpressiveSolarSystemEmptyState(
+            title = "No Subscriptions Yet",
+            description = "Follow your favorite podcasts to see them here.",
+            actionText = "Find Podcasts",
+            onExploreClick = onExploreClick
+        )
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(bottom = 180.dp, top = 8.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(items = podcasts, key = { it.id }) { podcast ->
+                SubscriptionListRow(
+                    podcast = podcast,
+                    onClick = { onPodcastClick(podcast.id) },
+                    onPlayLatest = if (onPlayEpisode != null && podcast.latestEpisode != null) {
+                        { onPlayEpisode(podcast.latestEpisode!!, podcast) }
+                    } else null
+                )
+            }
         }
     }
 }
@@ -402,10 +409,23 @@ private fun LatestTabContent(
 ) {
     val episodePodcasts = podcasts
         .filter { it.latestEpisode != null }
-        .sortedByDescending { it.latestEpisode?.publishedDate ?: 0L }
+        .sortedWith(
+            compareBy<Podcast> { podcast ->
+                when (podcast.episodeStatus) {
+                    cx.aswin.boxcast.core.model.EpisodeStatus.UNPLAYED, null -> 0
+                    cx.aswin.boxcast.core.model.EpisodeStatus.IN_PROGRESS -> 1
+                    cx.aswin.boxcast.core.model.EpisodeStatus.COMPLETED -> 2
+                }
+            }.thenByDescending { it.latestEpisode?.publishedDate ?: 0L }
+        )
 
     if (episodePodcasts.isEmpty()) {
-        ExpressiveSolarSystemEmptyState(onExploreClick)
+        ExpressiveSolarSystemEmptyState(
+            title = "No New Episodes",
+            description = "You're all caught up! Explore for more content.",
+            actionText = "Discover Shows",
+            onExploreClick = onExploreClick
+        )
     } else {
         LazyColumn(
             contentPadding = PaddingValues(bottom = 180.dp, top = 4.dp),
