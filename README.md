@@ -79,8 +79,6 @@ Tired of clunky audio players, rigid grids, and missing out on trending shows? *
 
 <div align="center">
 
-### Feed & Home
-
 <table>
   <tr>
     <td><img src="images/playart_01.jpg" width="200" alt="Discover Podcasts"/></td>
@@ -89,7 +87,6 @@ Tired of clunky audio players, rigid grids, and missing out on trending shows? *
   </tr>
 </table>
 
-### Search & UI Components
 
 <table>
   <tr>
