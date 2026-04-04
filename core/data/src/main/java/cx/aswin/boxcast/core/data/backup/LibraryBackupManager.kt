@@ -1,0 +1,118 @@
+package cx.aswin.boxcast.core.data.backup
+
+import cx.aswin.boxcast.core.data.PodcastRepository
+import cx.aswin.boxcast.core.data.SubscriptionRepository
+import cx.aswin.boxcast.core.data.PlaybackRepository
+import cx.aswin.boxcast.core.data.database.PodcastEntity
+import cx.aswin.boxcast.core.data.database.ListeningHistoryEntity
+import kotlinx.coroutines.flow.first
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import org.xmlpull.v1.XmlPullParser
+import org.xmlpull.v1.XmlPullParserFactory
+import java.io.InputStream
+import android.util.Log
+
+data class BoxCastBackup(
+    val version: Int = 1,
+    val subscriptions: List<PodcastEntity>,
+    val history: List<ListeningHistoryEntity>
+)
+
+class LibraryBackupManager(
+    private val subscriptionRepository: SubscriptionRepository,
+    private val playbackRepository: PlaybackRepository,
+    private val podcastRepository: PodcastRepository
+) {
+    private val gson: Gson = GsonBuilder()
+        .setPrettyPrinting()
+        .create()
+
+    suspend fun exportLibraryAsJson(): String {
+        val subscriptions = subscriptionRepository.getAllSubscribedPodcasts().first()
+        val likedHistory = playbackRepository.likedEpisodes.first()
+        
+        val backup = BoxCastBackup(
+            version = 1,
+            subscriptions = subscriptions,
+            history = likedHistory
+        )
+        return gson.toJson(backup)
+    }
+
+    suspend fun importLibraryFromJson(jsonString: String): Int {
+        return try {
+            val backup = gson.fromJson(jsonString, BoxCastBackup::class.java)
+            
+            // 1. Restore subscriptions
+            for (entity in backup.subscriptions) {
+                // Assuming we have a way to save entity directly or we re-map to model
+                // Since SubscriptionRepository expects a Podcast model to subscribe,
+                // let's construct a domain Podcast model and pass it.
+                val podcast = cx.aswin.boxcast.core.model.Podcast(
+                    id = entity.podcastId,
+                    title = entity.title,
+                    artist = entity.author,
+                    imageUrl = entity.imageUrl,
+                    description = entity.description,
+                    genre = entity.genre ?: "Podcast"
+                )
+                subscriptionRepository.subscribe(podcast)
+            }
+            
+            // 2. Restore playback histories (liked episodes)
+            for (entity in backup.history) {
+                playbackRepository.upsertHistoryEntity(entity)
+            }
+            
+            backup.subscriptions.size
+        } catch (e: Exception) {
+            e.printStackTrace()
+            -1
+        }
+    }
+
+    suspend fun importFromOpml(inputStream: InputStream): Int {
+        var importedCount = 0
+        try {
+            val factory = XmlPullParserFactory.newInstance()
+            factory.isNamespaceAware = true
+            val parser = factory.newPullParser()
+            parser.setInput(inputStream, null)
+
+            var eventType = parser.eventType
+            val queries = mutableListOf<String>()
+
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                if (eventType == XmlPullParser.START_TAG && parser.name == "outline") {
+                    val xmlUrl = parser.getAttributeValue(null, "xmlUrl")
+                    val title = parser.getAttributeValue(null, "text") ?: parser.getAttributeValue(null, "title")
+                    
+                    if (xmlUrl != null && title != null) {
+                        queries.add(title)
+                    }
+                }
+                eventType = parser.next()
+            }
+
+            // Fallback: search BoxCast API for each query silently to resolve
+            for (query in queries) {
+                try {
+                    // Try to search by title
+                    val results = podcastRepository.searchPodcasts(query)
+                    if (results.isNotEmpty()) {
+                        val match = results.first()
+                        subscriptionRepository.subscribe(match)
+                        importedCount++
+                    }
+                } catch (e: Exception) {
+                    Log.e("OPML_IMPORT", "Failed to resolve: $query", e)
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return -1
+        }
+        return importedCount
+    }
+}

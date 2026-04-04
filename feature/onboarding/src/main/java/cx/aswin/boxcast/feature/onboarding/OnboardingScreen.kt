@@ -75,7 +75,9 @@ val ONBOARDING_GENRES = listOf(
 @Composable
 fun OnboardingScreen(
     viewModel: OnboardingViewModel,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    onImportJson: (android.net.Uri) -> Unit = {},
+    onImportOpml: (android.net.Uri) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
@@ -95,7 +97,9 @@ fun OnboardingScreen(
                     onToggleGenre = viewModel::toggleGenre,
                     onContinue = viewModel::continueToRecommendations,
                     onSearch = viewModel::navigateToSearch,
-                    onSkip = { viewModel.skipOnboarding(onComplete) }
+                    onSkip = { viewModel.skipOnboarding(onComplete) },
+                    onImportJson = onImportJson,
+                    onImportOpml = onImportOpml
                 )
             }
             OnboardingStep.PODCASTS -> {
@@ -133,9 +137,75 @@ private fun GenrePickerScreen(
     onToggleGenre: (String) -> Unit,
     onContinue: () -> Unit,
     onSearch: () -> Unit,
-    onSkip: () -> Unit
+    onSkip: () -> Unit,
+    onImportJson: (android.net.Uri) -> Unit = {},
+    onImportOpml: (android.net.Uri) -> Unit = {}
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    val importJsonLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+        onResult = { uri -> uri?.let { onImportJson(it) } }
+    )
+    val importOpmlLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+        onResult = { uri -> uri?.let { onImportOpml(it) } }
+    )
+    
+    var showImportBottomSheet by remember { mutableStateOf(false) }
+
+    if (showImportBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showImportBottomSheet = false },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+            ) {
+                Text(
+                    text = "Import Library",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    onClick = {
+                        showImportBottomSheet = false
+                        importJsonLauncher.launch(arrayOf("application/json"))
+                    }
+                ) {
+                    ListItem(
+                        headlineContent = { Text("boxcast Backup (.json)") },
+                        supportingContent = { Text("Restore a perfect backup of subscriptions and liked episodes") },
+                        leadingContent = { Icon(Icons.Rounded.SettingsBackupRestore, null, tint = MaterialTheme.colorScheme.primary) },
+                        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                    )
+                }
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                    onClick = {
+                        showImportBottomSheet = false
+                        importOpmlLauncher.launch(arrayOf("*/*"))
+                    }
+                ) {
+                    ListItem(
+                        headlineContent = { Text("Other App Backup (.opml)") },
+                        supportingContent = { Text("Migrate subscriptions from Apple Podcasts, Spotify, etc.") },
+                        leadingContent = { Icon(Icons.Rounded.ImportExport, null, tint = MaterialTheme.colorScheme.primary) },
+                        colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                    )
+                }
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier
@@ -228,6 +298,58 @@ private fun GenrePickerScreen(
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            // Import Library Option
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                shape = MaterialTheme.shapes.large,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.large)
+                    .expressiveClickable { showImportBottomSheet = true }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Upload,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Already have a library?",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Import OPML or Backup",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        Icons.Rounded.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.height(24.dp))
             
