@@ -31,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -78,12 +77,11 @@ fun TopControlBar(
         label = "colorAnimation"
     )
     
-    // Update system status bar color to match
+    // Update system status bar icon color to match background
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = backgroundColor.toArgb()
             
             // Calculate luminance to determine icon color
             // High luminance (light bg) = dark icons, Low luminance (dark bg) = light icons

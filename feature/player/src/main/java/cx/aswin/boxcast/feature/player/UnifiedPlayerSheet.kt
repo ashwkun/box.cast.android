@@ -113,9 +113,6 @@ fun UnifiedPlayerSheet(
     SideEffect {
         window?.let { win ->
              val insetsController = androidx.core.view.WindowCompat.getInsetsController(win, win.decorView)
-             // Force transparent bars
-             win.statusBarColor = android.graphics.Color.TRANSPARENT
-             win.navigationBarColor = android.graphics.Color.TRANSPARENT
              
              // Light/Dark icons based on theme
              insetsController.isAppearanceLightStatusBars = !isDarkTheme

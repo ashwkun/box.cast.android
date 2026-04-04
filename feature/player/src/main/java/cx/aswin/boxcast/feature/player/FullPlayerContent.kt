@@ -84,8 +84,6 @@ fun FullPlayerContent(
     SideEffect {
         window?.let { win ->
              val insetsController = androidx.core.view.WindowCompat.getInsetsController(win, win.decorView)
-             win.statusBarColor = android.graphics.Color.TRANSPARENT
-             win.navigationBarColor = android.graphics.Color.TRANSPARENT
              insetsController.isAppearanceLightStatusBars = !isDarkTheme
              insetsController.isAppearanceLightNavigationBars = !isDarkTheme
         }
