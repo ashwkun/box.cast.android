@@ -49,12 +49,28 @@ fun ProfileScreen(
     currentThemeBrand: String = "violet",
     onSetThemeConfig: (String) -> Unit = {},
     onToggleDynamicColor: (Boolean) -> Unit = {},
-    onSetThemeBrand: (String) -> Unit = {}
+    onSetThemeBrand: (String) -> Unit = {},
+    onExportJson: (android.net.Uri) -> Unit = {},
+    onImportJson: (android.net.Uri) -> Unit = {},
+    onImportOpml: (android.net.Uri) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showResetDialog by remember { mutableStateOf(false) }
     var isDeletionExpanded by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
+    
+    val exportJsonLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json"),
+        onResult = { uri -> uri?.let { onExportJson(it) } }
+    )
+    val importJsonLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+        onResult = { uri -> uri?.let { onImportJson(it) } }
+    )
+    val importOpmlLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+        onResult = { uri -> uri?.let { onImportOpml(it) } }
+    )
     
     // Calculate enabled state at top level to ensure recomposition
     val isDataCollectionEnabled = isCrashReportingEnabled || isAnalyticsEnabled
@@ -296,6 +312,67 @@ fun ProfileScreen(
                                     Spacer(Modifier.height(8.dp))
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // SECTION: Data & Backup
+            item {
+                CollapsibleSection("Backup & Restore", initiallyExpanded = false) {
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Column {
+                            ListItem(
+                                headlineContent = { Text("Export Library Backup") },
+                                supportingContent = { Text("Save subscriptions & liked episodes to JSON") },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Download,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                modifier = Modifier.clickable { 
+                                    exportJsonLauncher.launch("boxcast_backup_${System.currentTimeMillis()}.json") 
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+
+                            ListItem(
+                                headlineContent = { Text("Import Library Backup") },
+                                supportingContent = { Text("Restore a previous JSON backup") },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Upload,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                modifier = Modifier.clickable { 
+                                    importJsonLauncher.launch(arrayOf("application/json"))
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
+                            
+                            ListItem(
+                                headlineContent = { Text("Import from OPML") },
+                                supportingContent = { Text("Migrate subscriptions from other apps") },
+                                leadingContent = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ImportExport,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                modifier = Modifier.clickable { 
+                                    importOpmlLauncher.launch(arrayOf("*/*"))
+                                }
+                            )
                         }
                     }
                 }

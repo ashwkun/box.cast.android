@@ -289,6 +289,38 @@ class MainActivity : ComponentActivity() {
                                         navController.navigate("home") {
                                             popUpTo("onboarding") { inclusive = true }
                                         }
+                                    },
+                                    onImportJson = { uri ->
+                                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                            try {
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Importing JSON...", android.widget.Toast.LENGTH_SHORT).show() }
+                                                val jsonStr = application.contentResolver.openInputStream(uri)?.use { it.bufferedReader().readText() } ?: return@launch
+                                                val count = cx.aswin.boxcast.core.data.backup.LibraryBackupManager(subscriptionRepository, playbackRepository, podcastRepository).importLibraryFromJson(jsonStr)
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { 
+                                                    android.widget.Toast.makeText(application, "Imported $count items", android.widget.Toast.LENGTH_SHORT).show()
+                                                    // Continue to Home after import
+                                                    navController.navigate("home") { popUpTo("onboarding") { inclusive = true } }
+                                                }
+                                            } catch(e: Exception) {
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Import Failed", android.widget.Toast.LENGTH_SHORT).show() }
+                                            }
+                                        }
+                                    },
+                                    onImportOpml = { uri ->
+                                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                            try {
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Importing OPML (This may take a minute)...", android.widget.Toast.LENGTH_SHORT).show() }
+                                                val inputStream = application.contentResolver.openInputStream(uri) ?: return@launch
+                                                val count = cx.aswin.boxcast.core.data.backup.LibraryBackupManager(subscriptionRepository, playbackRepository, podcastRepository).importFromOpml(inputStream)
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { 
+                                                    android.widget.Toast.makeText(application, "Found & Subscribed to $count podcasts", android.widget.Toast.LENGTH_LONG).show()
+                                                    // Continue to Home after import
+                                                    navController.navigate("home") { popUpTo("onboarding") { inclusive = true } }
+                                                }
+                                            } catch(e: Exception){
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "OPML Import Failed", android.widget.Toast.LENGTH_SHORT).show() }
+                                            }
+                                        }
                                     }
                                 )
                             }
@@ -404,7 +436,42 @@ class MainActivity : ComponentActivity() {
                                     currentThemeBrand = themeBrand,
                                     onSetThemeConfig = { config -> scope.launch { userPrefs.setThemeConfig(config) } },
                                     onToggleDynamicColor = { enabled -> scope.launch { userPrefs.setUseDynamicColor(enabled) } },
-                                    onSetThemeBrand = { brand -> scope.launch { userPrefs.setThemeBrand(brand) } }
+                                    onSetThemeBrand = { brand -> scope.launch { userPrefs.setThemeBrand(brand) } },
+                                    onExportJson = { uri -> 
+                                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                            try {
+                                                val backupJson = cx.aswin.boxcast.core.data.backup.LibraryBackupManager(subscriptionRepository, playbackRepository, podcastRepository).exportLibraryAsJson()
+                                                application.contentResolver.openOutputStream(uri)?.use { it.write(backupJson.toByteArray()) }
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Library Exported Successfully", android.widget.Toast.LENGTH_SHORT).show() }
+                                            } catch(e: Exception){
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Failed to export: ${e.message}", android.widget.Toast.LENGTH_SHORT).show() }
+                                            }
+                                        }
+                                    },
+                                    onImportJson = { uri ->
+                                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                            try {
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Importing JSON...", android.widget.Toast.LENGTH_SHORT).show() }
+                                                val jsonStr = application.contentResolver.openInputStream(uri)?.use { it.bufferedReader().readText() } ?: return@launch
+                                                val count = cx.aswin.boxcast.core.data.backup.LibraryBackupManager(subscriptionRepository, playbackRepository, podcastRepository).importLibraryFromJson(jsonStr)
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Imported $count items", android.widget.Toast.LENGTH_SHORT).show() }
+                                            } catch(e: Exception) {
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Import Failed", android.widget.Toast.LENGTH_SHORT).show() }
+                                            }
+                                        }
+                                    },
+                                    onImportOpml = { uri ->
+                                        scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                            try {
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Importing OPML (This may take a minute)...", android.widget.Toast.LENGTH_SHORT).show() }
+                                                val inputStream = application.contentResolver.openInputStream(uri) ?: return@launch
+                                                val count = cx.aswin.boxcast.core.data.backup.LibraryBackupManager(subscriptionRepository, playbackRepository, podcastRepository).importFromOpml(inputStream)
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Found & Subscribed to $count podcasts", android.widget.Toast.LENGTH_LONG).show() }
+                                            } catch(e: Exception){
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "OPML Import Failed", android.widget.Toast.LENGTH_SHORT).show() }
+                                            }
+                                        }
+                                    }
                                 )
                             }
                             

@@ -933,6 +933,10 @@ class PlaybackRepository(
     val completedEpisodeIds: Flow<Set<String>> = listeningHistoryDao.getCompletedEpisodeIdsFlow()
         .map { it.toSet() }
 
+    suspend fun upsertHistoryEntity(entity: cx.aswin.boxcast.core.data.database.ListeningHistoryEntity) {
+        listeningHistoryDao.upsert(entity)
+    }
+
     suspend fun toggleLike(episode: Episode, podcastId: String, podcastTitle: String, podcastImageUrl: String?) {
         val existing = listeningHistoryDao.getHistoryItem(episode.id)
         val newStatus = !(existing?.isLiked ?: false)
