@@ -4,6 +4,5 @@
    for more reference.
 -->
 <full-backup-content>
-    <!-- Exclude all shared preferences -->
-    <exclude domain="sharedpref" path="."/>
+    <!-- Back up everything by default -->
 </full-backup-content>
