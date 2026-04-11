@@ -125,9 +125,13 @@ class UserPreferencesRepository(context: Context) {
         dataStore.edit { it[TooltipKeys.HAS_SEEN_MARK_PLAYED_TIP] = true }
     }
 
-    // ANALYTICS KEYS
+    // ANALYTICS & REVIEW KEYS
     private object AnalyticsKeys {
         val HAS_LOGGED_FIRST_PLAY = androidx.datastore.preferences.core.booleanPreferencesKey("has_logged_first_play")
+        val REVIEW_LAST_PROMPT_AT = androidx.datastore.preferences.core.longPreferencesKey("review_last_prompt_at")
+        val REVIEW_PROMPT_COUNT = androidx.datastore.preferences.core.intPreferencesKey("review_prompt_count")
+        val REVIEW_HAS_REVIEWED = androidx.datastore.preferences.core.booleanPreferencesKey("review_has_reviewed")
+        val REVIEW_FIRST_LAUNCH_AT = androidx.datastore.preferences.core.longPreferencesKey("review_first_launch_at")
     }
 
     val hasLoggedFirstPlay: Flow<Boolean> = dataStore.data
@@ -137,4 +141,66 @@ class UserPreferencesRepository(context: Context) {
     suspend fun markFirstPlayLogged() {
         dataStore.edit { it[AnalyticsKeys.HAS_LOGGED_FIRST_PLAY] = true }
     }
+    
+    // --- APP REVIEW LOGIC ---
+    val reviewHasReviewed: Flow<Boolean> = dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[AnalyticsKeys.REVIEW_HAS_REVIEWED] ?: false }
+
+    suspend fun markReviewed() {
+        dataStore.edit { it[AnalyticsKeys.REVIEW_HAS_REVIEWED] = true }
+    }
+
+    suspend fun markReviewPromptShown() {
+        dataStore.edit { pref ->
+            val count = pref[AnalyticsKeys.REVIEW_PROMPT_COUNT] ?: 0
+            pref[AnalyticsKeys.REVIEW_PROMPT_COUNT] = count + 1
+            pref[AnalyticsKeys.REVIEW_LAST_PROMPT_AT] = System.currentTimeMillis()
+        }
+    }
+
+    /**
+     * Rules to show:
+     * - User has NOT reviewed yet
+     * - App installed for at least 2 days
+     * - Max 3 prompts lifetime
+     * - Minimum 30 days between prompts
+     * - They hit a milestone (5, 15, or 30 episodes completed)
+     */
+    suspend fun shouldShowReviewPrompt(completedCount: Int, isPlaying: Boolean): Boolean {
+        if (isPlaying) return false // Never interrupt playback
+        
+        // Only trigger on exact milestones so it doesn't prompt continuously
+        if (completedCount != 5 && completedCount != 15 && completedCount != 30) return false
+
+        var shouldShow = false
+        dataStore.edit { pref ->
+            val hasReviewed = pref[AnalyticsKeys.REVIEW_HAS_REVIEWED] ?: false
+            if (hasReviewed) return@edit // Early out
+
+            val promptCount = pref[AnalyticsKeys.REVIEW_PROMPT_COUNT] ?: 0
+            if (promptCount >= 3) return@edit // Lifetime cap
+
+            // Initialize first launch time if empty
+            val firstLaunchStr = pref[AnalyticsKeys.REVIEW_FIRST_LAUNCH_AT]
+            if (firstLaunchStr == null) {
+                 pref[AnalyticsKeys.REVIEW_FIRST_LAUNCH_AT] = System.currentTimeMillis()
+                 return@edit // Don't show on very first day
+            }
+            
+            val daysSinceInstall = (System.currentTimeMillis() - firstLaunchStr) / (1000 * 60 * 60 * 24)
+            if (daysSinceInstall < 2) return@edit
+
+            val lastPrompt = pref[AnalyticsKeys.REVIEW_LAST_PROMPT_AT] ?: 0L
+            val daysSinceLastPrompt = (System.currentTimeMillis() - lastPrompt) / (1000 * 60 * 60 * 24)
+            
+            if (lastPrompt == 0L || daysSinceLastPrompt >= 30) {
+                // We don't mark as shown here, we just check. The UI tier will mark it.
+                shouldShow = true
+            }
+        }
+        
+        return shouldShow
+    }
 }
+
