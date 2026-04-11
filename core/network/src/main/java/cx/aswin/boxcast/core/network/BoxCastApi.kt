@@ -8,6 +8,8 @@ import cx.aswin.boxcast.core.network.model.TrendingResponse
 import cx.aswin.boxcast.core.network.model.SyncRequest
 import cx.aswin.boxcast.core.network.model.SyncResponse
 import cx.aswin.boxcast.core.network.model.SingleEpisodeResponse
+import cx.aswin.boxcast.core.network.model.FeedbackRequest
+import cx.aswin.boxcast.core.network.model.FeedbackResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -81,6 +83,12 @@ interface BoxCastApi {
         @Header("X-App-Key") publicKey: String,
         @Body request: SyncRequest
     ): retrofit2.Call<SyncResponse>
+
+    @POST("feedback")
+    fun submitFeedback(
+        @Header("X-App-Key") publicKey: String,
+        @Body request: FeedbackRequest
+    ): retrofit2.Call<FeedbackResponse>
 
     @GET("curated/vibe")
     fun getCuratedVibe(

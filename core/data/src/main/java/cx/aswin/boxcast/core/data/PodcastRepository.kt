@@ -311,6 +311,17 @@ class PodcastRepository(
         }
     }
     
+    suspend fun submitFeedback(category: String, message: String, appVersion: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val request = cx.aswin.boxcast.core.network.model.FeedbackRequest(category, message, appVersion)
+            val response = api.submitFeedback(publicKey, request).execute()
+            response.isSuccessful && response.body()?.success == true
+        } catch (e: Exception) {
+            android.util.Log.e("BoxCastRepo", "Failed to submit feedback", e)
+            false
+        }
+    }
+    
     private fun mapToEpisode(item: cx.aswin.boxcast.core.network.model.EpisodeItem): Episode? {
         val audioUrl = item.enclosureUrl ?: return null
         android.util.Log.d("BoxCastRepo", "mapToEpisode: ${item.title} | persons=${item.persons?.size} | chaptersUrl=${item.chaptersUrl != null} | transcripts=${item.transcripts?.size}")

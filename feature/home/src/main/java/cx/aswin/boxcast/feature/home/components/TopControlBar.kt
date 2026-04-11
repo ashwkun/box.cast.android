@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.ChatBubbleOutline
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +54,8 @@ private const val TAG = "StylizedLogo"
 fun TopControlBar(
     scrollFraction: Float = 0f,
     modifier: Modifier = Modifier,
+    onFeedbackClick: () -> Unit = {},
+    onFeedbackLongClick: () -> Unit = {},
     onAvatarClick: () -> Unit = {},
     onAvatarLongClick: () -> Unit = {}
 ) {
@@ -104,9 +107,27 @@ fun TopControlBar(
         // Stylized variable logo
         cx.aswin.boxcast.core.designsystem.components.BoxCastLogo()
         
-
-
-        // Profile
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Feedback (long-press to force review prompt for testing)
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier
+                    .size(40.dp)
+                    .combinedClickable(
+                        onClick = onFeedbackClick,
+                        onLongClick = onFeedbackLongClick
+                    )
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.ChatBubbleOutline,
+                        contentDescription = "Send Feedback",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }        // Profile
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -124,6 +145,7 @@ fun TopControlBar(
                     modifier = Modifier.size(28.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
             }
         }
     }

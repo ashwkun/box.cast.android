@@ -18,3 +18,15 @@ data class SyncItem(
     val id: String,
     val latestEpisode: EpisodeItem? = null
 )
+
+@Serializable
+data class FeedbackRequest(
+    val category: String,
+    val message: String,
+    val appVersion: String
+)
+
+@Serializable
+data class FeedbackResponse(
+    val success: Boolean
+)

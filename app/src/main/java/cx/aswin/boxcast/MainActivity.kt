@@ -392,6 +392,51 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToSettings = {
                                         navController.navigate("settings")
+                                    },
+                                    onNavigateToPlayStoreReview = {
+                                        // Launch Google Play In-App Review API
+                                        val activity = this@MainActivity
+                                        val reviewManager = com.google.android.play.core.review.ReviewManagerFactory.create(activity)
+                                        reviewManager.requestReviewFlow().addOnCompleteListener { task ->
+                                            if (task.isSuccessful) {
+                                                reviewManager.launchReviewFlow(activity, task.result)
+                                            }
+                                        }
+                                    },
+                                    onSubmitFeedback = { category, message, version ->
+                                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                            try {
+                                                val feedbackUrl = "${apiBaseUrl}/feedback"
+                                                android.util.Log.d("Feedback", "Posting to: $feedbackUrl")
+                                                val url = java.net.URL(feedbackUrl)
+                                                val conn = url.openConnection() as java.net.HttpURLConnection
+                                                conn.requestMethod = "POST"
+                                                conn.setRequestProperty("Content-Type", "application/json")
+                                                conn.setRequestProperty("X-App-Key", publicKey)
+                                                conn.doOutput = true
+                                                conn.connectTimeout = 10000
+                                                conn.readTimeout = 10000
+                                                
+                                                val json = org.json.JSONObject().apply {
+                                                    put("category", category)
+                                                    put("message", message)
+                                                    put("appVersion", version)
+                                                }
+                                                
+                                                conn.outputStream.bufferedWriter().use { it.write(json.toString()) }
+                                                val code = conn.responseCode
+                                                android.util.Log.d("Feedback", "Response code: $code")
+                                                if (code !in 200..299) {
+                                                    val errBody = try { conn.errorStream?.bufferedReader()?.readText() } catch (_: Exception) { "n/a" }
+                                                    android.util.Log.e("Feedback", "Server error $code: $errBody")
+                                                }
+                                                conn.disconnect()
+                                                code in 200..299
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("Feedback", "Submit failed: ${e.javaClass.simpleName}: ${e.message}", e)
+                                                false
+                                            }
+                                        }
                                     }
                                 )
                             }

@@ -73,6 +73,8 @@ fun HomeRoute(
     onNavigateToLatestEpisodes: (() -> Unit)? = null,
     onNavigateToExplore: ((String?) -> Unit)? = null,
     onNavigateToSettings: (() -> Unit)? = null,
+    onNavigateToPlayStoreReview: () -> Unit = {},
+    onSubmitFeedback: suspend (String, String, String) -> Boolean = { _, _, _ -> false },
     modifier: Modifier = Modifier
 ) {
     val application = LocalContext.current.applicationContext as android.app.Application
@@ -88,6 +90,10 @@ fun HomeRoute(
     val playerState by viewModel.playerState.collectAsState()
     val debugHistory by viewModel.debugHistory.collectAsState(initial = emptyList())
     val debugPodcasts by viewModel.debugPodcasts.collectAsState(initial = emptyList())
+    
+    val showReviewPrompt by viewModel.showReviewPrompt.collectAsState()
+    val showPostReview by viewModel.showPostReview.collectAsState()
+    val showFeedback by viewModel.showFeedback.collectAsState()
     
     HomeScreen(
         uiState = uiState,
@@ -107,6 +113,23 @@ fun HomeRoute(
         onSelectCategory = viewModel::selectCategory,
         onDeleteHistoryItem = viewModel::deleteHistoryItem,
         onNavigateToSettings = onNavigateToSettings,
+        onFeedbackClick = viewModel::triggerFeedback,
+        onForceReviewPrompt = viewModel::forceReviewPrompt,
+        showReviewPrompt = showReviewPrompt,
+        showPostReview = showPostReview,
+        showFeedback = showFeedback,
+        onDismissReviewPrompt = {
+            viewModel.markReviewPromptShown()
+            viewModel.dismissReviewPrompt()
+        },
+        onDismissPostReview = viewModel::dismissPostReview,
+        onDismissFeedback = viewModel::dismissFeedback,
+        onNavigateToPlayStoreReview = {
+            viewModel.markReviewed()
+            viewModel.triggerPostReview()
+            onNavigateToPlayStoreReview()
+        },
+        onSubmitFeedback = onSubmitFeedback,
         modifier = modifier
     )
 }
@@ -132,6 +155,16 @@ fun HomeScreen(
 
     onDeleteHistoryItem: (String) -> Unit,
     onNavigateToSettings: (() -> Unit)? = null,
+    onFeedbackClick: () -> Unit,
+    onForceReviewPrompt: () -> Unit = {},
+    showReviewPrompt: Boolean = false,
+    showPostReview: Boolean = false,
+    showFeedback: Boolean = false,
+    onDismissReviewPrompt: () -> Unit = {},
+    onDismissPostReview: () -> Unit = {},
+    onDismissFeedback: () -> Unit = {},
+    onNavigateToPlayStoreReview: () -> Unit = {},
+    onSubmitFeedback: suspend (String, String, String) -> Boolean = { _, _, _ -> false },
     modifier: Modifier = Modifier
 ) {
     // Track scroll state for collapsing top bar
@@ -166,6 +199,8 @@ fun HomeScreen(
     Column(modifier = modifier.fillMaxSize()) {
         TopControlBar(
             scrollFraction = scrollFraction,
+            onFeedbackClick = onFeedbackClick,
+            onFeedbackLongClick = onForceReviewPrompt,
             onAvatarClick = { onNavigateToSettings?.invoke() },
             onAvatarLongClick = { showDebugDialog = true }
         )
@@ -201,6 +236,47 @@ fun HomeScreen(
                 )
             }
         }
+    }
+    
+    // --- Bottom Sheets outside the scrollable area ---
+    if (showReviewPrompt) {
+        cx.aswin.boxcast.feature.home.components.ReviewPromptSheet(
+            completedCount = uiState.completedEpisodeCount,
+            onDismissRequest = onDismissReviewPrompt,
+            onNavigateToReview = onNavigateToPlayStoreReview,
+            onNavigateToFeedback = {
+                onDismissReviewPrompt()
+                onFeedbackClick()
+            }
+        )
+    }
+
+    if (showPostReview) {
+        cx.aswin.boxcast.feature.home.components.PostReviewSheet(
+            onDismissRequest = onDismissPostReview,
+            onNavigateToFeedback = {
+                onDismissPostReview()
+                onFeedbackClick()
+            }
+        )
+    }
+
+    if (showFeedback) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        cx.aswin.boxcast.feature.home.components.FeedbackSheet(
+            appVersion = "1.3.4", // TODO: Inject from BuildConfig if needed
+            onSubmit = onSubmitFeedback,
+            onRateInstead = {
+                onDismissFeedback()
+                val pkgName = context.packageName
+                try {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=$pkgName")))
+                } catch (e: Exception) {
+                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://play.google.com/store/apps/details?id=$pkgName")))
+                }
+            },
+            onDismissRequest = onDismissFeedback
+        )
     }
 }
 

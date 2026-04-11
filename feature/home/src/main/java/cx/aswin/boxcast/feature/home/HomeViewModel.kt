@@ -64,6 +64,7 @@ data class HomeUiState(
     val heroItems: List<SmartHeroItem>,
     val latestEpisodes: List<Podcast> = emptyList(), // "Latest" Section (Smart: Unplayed → In Progress → Completed)
     val unplayedEpisodeCount: Int = 0, // Badge count for "New Episodes" header
+    val completedEpisodeCount: Int = 0, 
     val subscribedPodcasts: List<Podcast> = emptyList(), // "Your Shows" Section
     val selectedCategory: String? = null, // Null = "For You"
     val timeBlock: CuratedTimeBlock? = null, // Unified Time Block
@@ -94,8 +95,17 @@ class HomeViewModel(
     // Let's leave SubscriptionRepository as is for now, it's less critical for playback state.
     // But `playbackRepository` MUST be injected.
 
-    private val _uiState = MutableStateFlow(HomeUiState(emptyList(), emptyList(), 0, emptyList(), null, null, emptyList(), isLoading = true, isFilterLoading = false))
+    private val _uiState = MutableStateFlow(HomeUiState(emptyList(), emptyList(), 0, 0, emptyList(), null, null, emptyList(), isLoading = true, isFilterLoading = false))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private val _showReviewPrompt = MutableStateFlow(false)
+    val showReviewPrompt = _showReviewPrompt.asStateFlow()
+
+    private val _showPostReview = MutableStateFlow(false)
+    val showPostReview = _showPostReview.asStateFlow()
+
+    private val _showFeedback = MutableStateFlow(false)
+    val showFeedback = _showFeedback.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow<String?>(null)
     
@@ -146,6 +156,18 @@ class HomeViewModel(
                     val resumeList = wrapper.resume
                     val subs = wrapper.subs
                     val allHistory = wrapper.history
+                    
+                    // Compute completed count for review prompt logic
+                    val completedCount = allHistory.count { it.isCompleted }
+                    
+                    // Check if review prompt should be shown (milestone-based)
+                    if (!_showReviewPrompt.value && !_showFeedback.value && !_showPostReview.value) {
+                        val shouldPrompt = userPrefs.shouldShowReviewPrompt(completedCount, playerState.value.isPlaying)
+                        if (shouldPrompt) {
+                            _showReviewPrompt.value = true
+                        }
+                    }
+                    
                     // ... (Logic copied below) ...
                     
                     // Note: Resume/Hero logic shouldn't disappear when filtering genres...
@@ -473,6 +495,7 @@ class HomeViewModel(
                             heroItems = heroList,
                             latestEpisodes = catchUpList,
                             unplayedEpisodeCount = unplayedBucket.size,
+                            completedEpisodeCount = completedCount,
                             subscribedPodcasts = subs,
                             selectedCategory = _selectedCategory.value,
                             timeBlock = timeBlock,
@@ -586,6 +609,51 @@ class HomeViewModel(
     fun deleteHistoryItem(episodeId: String) {
         viewModelScope.launch {
             playbackRepository.deleteSession(episodeId)
+        }
+    }
+    
+    fun dismissReviewPrompt() {
+        _showReviewPrompt.value = false
+    }
+
+    fun dismissPostReview() {
+        _showPostReview.value = false
+    }
+
+    fun dismissFeedback() {
+        _showFeedback.value = false
+    }
+
+    fun triggerFeedback() {
+        _showReviewPrompt.value = false
+        _showPostReview.value = false
+        _showFeedback.value = true
+    }
+
+    /** Debug: Force-show the review prompt (long-press feedback icon) */
+    fun forceReviewPrompt() {
+        _showFeedback.value = false
+        _showPostReview.value = false
+        _showReviewPrompt.value = true
+    }
+
+    fun triggerPostReview() {
+        _showReviewPrompt.value = false
+        _showPostReview.value = true
+    }
+
+    fun markReviewPromptShown() {
+        viewModelScope.launch {
+            userPrefs.markReviewPromptShown()
+            _showReviewPrompt.value = false
+        }
+    }
+
+    fun markReviewed() {
+        viewModelScope.launch {
+            userPrefs.markReviewed()
+            _showReviewPrompt.value = false
+            _showPostReview.value = true
         }
     }
     
