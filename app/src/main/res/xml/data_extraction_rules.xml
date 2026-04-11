@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="sharedpref" path="."/>
+        <!-- Back up everything -->
     </cloud-backup>
     <device-transfer>
-        <exclude domain="sharedpref" path="."/>
+        <!-- Transfer everything -->
     </device-transfer>
 </data-extraction-rules>

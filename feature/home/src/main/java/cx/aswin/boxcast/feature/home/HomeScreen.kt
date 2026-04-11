@@ -263,8 +263,14 @@ fun HomeScreen(
 
     if (showFeedback) {
         val context = androidx.compose.ui.platform.LocalContext.current
+        val versionStr = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
+        } catch (e: Exception) {
+            "unknown"
+        }
+        
         cx.aswin.boxcast.feature.home.components.FeedbackSheet(
-            appVersion = "1.3.4", // TODO: Inject from BuildConfig if needed
+            appVersion = versionStr,
             onSubmit = onSubmitFeedback,
             onRateInstead = {
                 onDismissFeedback()
