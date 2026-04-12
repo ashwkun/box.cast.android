@@ -27,6 +27,9 @@ interface ListeningHistoryDao {
 
     @Query("DELETE FROM listening_history WHERE episodeId = :episodeId")
     suspend fun delete(episodeId: String)
+    
+    @Query("DELETE FROM listening_history")
+    suspend fun deleteAll()
 
     @Query("SELECT * FROM listening_history WHERE episodeId = :episodeId LIMIT 1")
     suspend fun getHistoryItem(episodeId: String): ListeningHistoryEntity?

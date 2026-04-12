@@ -937,6 +937,14 @@ class PlaybackRepository(
         listeningHistoryDao.upsert(entity)
     }
 
+    suspend fun removeHistoryItem(episodeId: String) {
+        listeningHistoryDao.delete(episodeId)
+    }
+
+    suspend fun clearHistory() {
+        listeningHistoryDao.deleteAll()
+    }
+
     suspend fun toggleLike(episode: Episode, podcastId: String, podcastTitle: String, podcastImageUrl: String?) {
         val existing = listeningHistoryDao.getHistoryItem(episode.id)
         val newStatus = !(existing?.isLiked ?: false)
