@@ -598,6 +598,27 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onNavigateToDownloads = {
                                         navController.navigate("library/downloads")
+                                    },
+                                    onNavigateToHistory = {
+                                        navController.navigate("library/history")
+                                    }
+                                )
+                            }
+                            composable("library/history") {
+                                val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<cx.aswin.boxcast.feature.library.HistoryViewModel>(
+                                    factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                        @Suppress("UNCHECKED_CAST")
+                                        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                            return cx.aswin.boxcast.feature.library.HistoryViewModel(playbackRepository) as T
+                                        }
+                                    }
+                                )
+                                cx.aswin.boxcast.feature.library.HistoryScreen(
+                                    viewModel = viewModel,
+                                    onBack = { navController.popBackStack() },
+                                    onPlayEpisode = { episodeId, startMs ->
+                                        // Navigate to episode detail screen to allow user to play it or see details
+                                        navController.navigate("episode/$episodeId")
                                     }
                                 )
                             }

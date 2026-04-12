@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -69,7 +70,8 @@ fun LibraryScreen(
     viewModel: LibraryViewModel,
     onNavigateToLiked: () -> Unit,
     onNavigateToSubscriptions: () -> Unit,
-    onNavigateToDownloads: () -> Unit
+    onNavigateToDownloads: () -> Unit,
+    onNavigateToHistory: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -77,7 +79,8 @@ fun LibraryScreen(
         uiState = uiState,
         onNavigateToLiked = onNavigateToLiked,
         onNavigateToSubscriptions = onNavigateToSubscriptions,
-        onNavigateToDownloads = onNavigateToDownloads
+        onNavigateToDownloads = onNavigateToDownloads,
+        onNavigateToHistory = onNavigateToHistory
     )
 }
 
@@ -86,7 +89,8 @@ fun LibraryContent(
     uiState: LibraryUiState,
     onNavigateToLiked: () -> Unit,
     onNavigateToSubscriptions: () -> Unit,
-    onNavigateToDownloads: () -> Unit
+    onNavigateToDownloads: () -> Unit,
+    onNavigateToHistory: () -> Unit
 ) {
     // Background gradient for subtle depth
     Box(
@@ -146,6 +150,21 @@ fun LibraryContent(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 images = subscriptionImages,
                                 shapes = specificSubShapes
+                            )
+                        }
+                        item {
+                            val historyShapes = listOf(
+                                ExpressiveShapes.Circle,
+                                ExpressiveShapes.Burst,
+                                ExpressiveShapes.Sunny
+                            )
+                            LibraryMenuCard(
+                                title = "Listening History",
+                                icon = Icons.Rounded.History,
+                                onClick = onNavigateToHistory,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                images = emptyList(), // History typically doesn't need a collage on the card, or we could pass some images
+                                shapes = historyShapes
                             )
                         }
                         item {
