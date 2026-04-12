@@ -283,6 +283,14 @@ class MainActivity : ComponentActivity() {
                             ) {
                             // Onboarding
                             composable("onboarding") {
+                                val subs by subscriptionRepository.subscribedPodcastIds.collectAsState(initial = emptySet())
+                                androidx.compose.runtime.LaunchedEffect(subs) {
+                                    if (subs.isNotEmpty() && !onboardingViewModel.isOnboardingCompleted()) {
+                                        onboardingViewModel.skipOnboarding {
+                                            navController.navigate("home") { popUpTo("onboarding") { inclusive = true } }
+                                        }
+                                    }
+                                }
                                 cx.aswin.boxcast.feature.onboarding.OnboardingScreen(
                                     viewModel = onboardingViewModel,
                                     onComplete = {
@@ -298,8 +306,9 @@ class MainActivity : ComponentActivity() {
                                                 val count = cx.aswin.boxcast.core.data.backup.LibraryBackupManager(subscriptionRepository, playbackRepository, podcastRepository).importLibraryFromJson(jsonStr)
                                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { 
                                                     android.widget.Toast.makeText(application, "Imported $count items", android.widget.Toast.LENGTH_SHORT).show()
-                                                    // Continue to Home after import
-                                                    navController.navigate("home") { popUpTo("onboarding") { inclusive = true } }
+                                                    onboardingViewModel.skipOnboarding {
+                                                        navController.navigate("home") { popUpTo("onboarding") { inclusive = true } }
+                                                    }
                                                 }
                                             } catch(e: Exception) {
                                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "Import Failed", android.widget.Toast.LENGTH_SHORT).show() }
@@ -314,8 +323,9 @@ class MainActivity : ComponentActivity() {
                                                 val count = cx.aswin.boxcast.core.data.backup.LibraryBackupManager(subscriptionRepository, playbackRepository, podcastRepository).importFromOpml(inputStream)
                                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { 
                                                     android.widget.Toast.makeText(application, "Found & Subscribed to $count podcasts", android.widget.Toast.LENGTH_LONG).show()
-                                                    // Continue to Home after import
-                                                    navController.navigate("home") { popUpTo("onboarding") { inclusive = true } }
+                                                    onboardingViewModel.skipOnboarding {
+                                                        navController.navigate("home") { popUpTo("onboarding") { inclusive = true } }
+                                                    }
                                                 }
                                             } catch(e: Exception){
                                                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { android.widget.Toast.makeText(application, "OPML Import Failed", android.widget.Toast.LENGTH_SHORT).show() }
