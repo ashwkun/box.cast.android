@@ -616,9 +616,17 @@ class MainActivity : ComponentActivity() {
                                 cx.aswin.boxcast.feature.library.HistoryScreen(
                                     viewModel = viewModel,
                                     onBack = { navController.popBackStack() },
-                                    onPlayEpisode = { episodeId, startMs ->
-                                        // Navigate to episode detail screen to allow user to play it or see details
-                                        navController.navigate("episode/$episodeId")
+                                    onEpisodeClick = { entity ->
+                                        fun encode(s: String?) = android.net.Uri.encode(s?.ifEmpty { "_" } ?: "_")
+                                        val desc = "Resuming from History"
+                                        navController.navigate(
+                                            "episode/${entity.episodeId}/${encode(entity.episodeTitle)}/" +
+                                            "${encode(desc)}/" +
+                                            "${encode(entity.episodeImageUrl ?: entity.podcastImageUrl)}/" +
+                                            "${encode(entity.episodeAudioUrl)}/" +
+                                            "${entity.durationMs}/${entity.podcastId}/" +
+                                            encode(entity.podcastName)
+                                        )
                                     }
                                 )
                             }

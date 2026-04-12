@@ -19,14 +19,18 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -157,14 +161,19 @@ fun ExploreContent(
     val isPrompting = searchActive && state.searchQuery.isEmpty() && state.currentVibe == null
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
-    // Column layout to keep search bar fixed at top
-    Column(
+    // Box layout to hold everything
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surface)
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .nestedScroll(nestedScrollConnection)
     ) {
+        // Column layout to keep search bar fixed at top
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .nestedScroll(nestedScrollConnection)
+        ) {
         // FIXED HEADER: Search + Genre Chips
         Column(
             modifier = Modifier
@@ -251,24 +260,29 @@ fun ExploreContent(
                     })
                 }
             } else {
-                // Featured Hero Row (Top 3, only when not searching and has content)
-                if (!state.isSearching && displayList.size >= 3 && !state.isLoading && state.currentVibe == null) {
-                    item(span = StaggeredGridItemSpan.FullLine) {
-                        ExploreFeaturedRow(
-                            podcasts = displayList.take(3),
-                            onPodcastClick = onPodcastClick,
-                            showGenreChip = state.currentCategory == "All"
-                        )
-                    }
-                }
-    
-                // Section Header
+                // Unified Section Header
                 item(span = StaggeredGridItemSpan.FullLine) {
                     if (state.currentVibe != null) {
                         CuratedVibeHeader(title = state.currentVibe)
                     } else {
-                        ExploreSectionHeader(
-                            title = if (state.isSearching) "Search Results" else "Trending in ${state.currentCategory}"
+                        val headerTitle = if (state.isSearching) {
+                            "Search Results"
+                        } else if (state.currentCategory == "All") {
+                            "Featured Podcasts"
+                        } else {
+                            "Trending in ${state.currentCategory}"
+                        }
+                        ExploreSectionHeader(title = headerTitle)
+                    }
+                }
+
+                // Featured Hero Card (P1 only, when not searching and has content)
+                if (!state.isSearching && displayList.isNotEmpty() && !state.isLoading && state.currentVibe == null) {
+                    item(span = StaggeredGridItemSpan.FullLine) {
+                        ExploreHeroCard(
+                            podcast = displayList[0],
+                            onClick = { onPodcastClick(displayList[0].id) },
+                            showGenreChip = state.currentCategory == "All"
                         )
                     }
                 }
@@ -281,13 +295,19 @@ fun ExploreContent(
                         ExploreEmptyState()
                     }
                 } else {
-                    val gridItems = if (!state.isSearching && displayList.size >= 3 && state.currentVibe == null) displayList.drop(3) else displayList
+                    val gridItems = if (!state.isSearching && displayList.isNotEmpty() && state.currentVibe == null) displayList.drop(1) else displayList
                     val showGenreChip = state.currentCategory == "All" && state.currentVibe == null
                     items(gridItems, key = { "${gridItems.indexOf(it)}_${it.id}" }) { podcast ->
-                        val isTall = podcast.id.hashCode() % 3 == 0
+                        val heightVariant = podcast.id.hashCode() % 3
+                        val cardHeight = when (heightVariant) {
+                            0 -> 260.dp
+                            1 -> 210.dp
+                            else -> 160.dp
+                        }
+                        
                         ExplorePodcastCard(
                             podcast = podcast,
-                            isTall = isTall,
+                            cardHeight = cardHeight,
                             showGenreChip = showGenreChip,
                             onClick = { onPodcastClick(podcast.id) }
                         )
@@ -296,6 +316,7 @@ fun ExploreContent(
             }
         }
     }
+}
 }
 
 // ============================================================================
@@ -348,48 +369,37 @@ private fun ExploreGenreSelector(
                 onClick = { onCategorySelected("All") },
                 label = { Text("All", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
-                border = FilterChipDefaults.filterChipBorder(
-                     enabled = true,
-                     selected = selectedCategory == "All",
-                     borderColor = Color.Transparent
-                )
+                border = FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == "All")
             )
         }
 
-        // 2. Dynamic List
-        items(displayGenres) { genre ->
-            val isSelected = selectedCategory == genre.value
+        // 2. Dynamic Subset
+        items(displayGenres, key = { it.value }) { genre ->
             FilterChip(
-                selected = isSelected,
+                selected = selectedCategory == genre.value,
                 onClick = { onCategorySelected(genre.value) },
                 label = { Text(genre.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
-                border = FilterChipDefaults.filterChipBorder(
-                     enabled = true,
-                     selected = isSelected,
-                     borderColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
-                )
+                border = FilterChipDefaults.filterChipBorder(enabled = true, selected = selectedCategory == genre.value)
             )
         }
 
-        // 3. "More" Button
+        // 3. Expand Button
         item {
             FilterChip(
-                selected = false,
+                selected = showSheet,
                 onClick = { showSheet = true },
-                label = { Text("More") },
+                label = { Text("More Genres") },
                 trailingIcon = {
                     Icon(
                         imageVector = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = null,
+                        contentDescription = "Expand",
                         modifier = Modifier.size(18.dp)
                     )
                 },
@@ -402,8 +412,7 @@ private fun ExploreGenreSelector(
                     borderColor = Color.Transparent
                 )
             )
-        }
-    }
+        }    }
 
     // Full Genre Sheet
     if (showSheet) {
@@ -479,69 +488,10 @@ private fun ExploreGenreSelector(
 
 
 /**
- * Featured hero row - horizontal scrolling spotlight of top 3 podcasts
+ * M3 Horizontal Hero Card — image left, text right on surface
  */
 @Composable
-private fun ExploreFeaturedRow(
-    podcasts: List<Podcast>,
-    onPodcastClick: (String) -> Unit,
-    showGenreChip: Boolean = false
-) {
-    Column {
-        // Section header for featured
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Star,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Featured",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    fontFamily = SectionHeaderFontFamily
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        // Horizontal carousel of featured cards (matching Home hero style)
-        val carouselState = rememberCarouselState { podcasts.size }
-        HorizontalMultiBrowseCarousel(
-            state = carouselState,
-            preferredItemWidth = 320.dp,
-            itemSpacing = 16.dp,
-            contentPadding = PaddingValues(0.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-        ) { index ->
-            val podcast = podcasts[index]
-            ExploreFeaturedCard(
-                podcast = podcast,
-                showGenreChip = showGenreChip,
-                onClick = { onPodcastClick(podcast.id) },
-                modifier = Modifier.maskClip(MaterialTheme.shapes.extraLarge)
-            )
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-    }
-}
-
-/**
- * Featured podcast card - compact hero style with gradient overlay
- */
-@Composable
-private fun ExploreFeaturedCard(
+private fun ExploreHeroCard(
     podcast: Podcast,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -549,88 +499,95 @@ private fun ExploreFeaturedCard(
 ) {
     OutlinedCard(
         shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
-            .width(320.dp)
-            .height(200.dp)
+            .fillMaxWidth()
             .expressiveClickable(onClick = onClick)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Background Image
-            SubcomposeAsyncImage(
-                model = podcast.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                val state = painter.state
-                if (state is AsyncImagePainter.State.Loading ||
-                    state is AsyncImagePainter.State.Error ||
-                    podcast.imageUrl.isEmpty()) {
-                    AnimatedShapesFallback()
-                } else {
-                    SubcomposeAsyncImageContent()
-                }
-            }
-
-            // Gradient Overlay
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+        ) {
+            // Left: Square artwork
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.5f),
-                                Color.Black.copy(alpha = 0.85f)
-                            )
-                        )
-                    )
-            )
-
-            // Genre Badge (Top Left) - only if showGenreChip is true
-            if (showGenreChip && podcast.genre.isNotEmpty()) {
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .align(Alignment.TopStart)
+                    .width(160.dp)
+                    .fillMaxHeight()
+            ) {
+                SubcomposeAsyncImage(
+                    model = podcast.imageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        text = podcast.genre.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    val state = painter.state
+                    if (state is AsyncImagePainter.State.Loading ||
+                        state is AsyncImagePainter.State.Error ||
+                        podcast.imageUrl.isEmpty()) {
+                        AnimatedShapesFallback()
+                    } else {
+                        SubcomposeAsyncImageContent()
+                    }
+                }
+
+                // Genre Badge overlay on image
+                if (showGenreChip && podcast.genre.isNotEmpty()) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .align(Alignment.TopStart)
+                    ) {
+                        Text(
+                            text = podcast.genre.uppercase(),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
 
-            // Content (Bottom)
+            // Right: Text content on surface
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(14.dp)
+                    .weight(1f)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = podcast.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = podcast.artist,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.8f),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (!podcast.description.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = podcast.description ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 18.sp
+                    )
+                }
             }
         }
     }
@@ -673,7 +630,7 @@ private fun ExploreSectionHeader(title: String) {
 @Composable
 fun ExplorePodcastCard(
     podcast: Podcast,
-    isTall: Boolean,
+    cardHeight: androidx.compose.ui.unit.Dp,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showGenreChip: Boolean = false
@@ -689,7 +646,7 @@ fun ExplorePodcastCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (isTall) 280.dp else 220.dp)
+                    .height(cardHeight)
             ) {
                 SubcomposeAsyncImage(
                     model = podcast.imageUrl,

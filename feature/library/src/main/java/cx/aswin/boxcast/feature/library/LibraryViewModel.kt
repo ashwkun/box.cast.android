@@ -20,7 +20,8 @@ sealed interface LibraryUiState {
     data class Success(
         val subscribedPodcasts: List<Podcast> = emptyList(),
         val likedEpisodes: List<ListeningHistoryEntity> = emptyList(),
-        val downloadedEpisodes: List<cx.aswin.boxcast.core.data.database.DownloadedEpisodeEntity> = emptyList()
+        val downloadedEpisodes: List<cx.aswin.boxcast.core.data.database.DownloadedEpisodeEntity> = emptyList(),
+        val recentHistory: List<ListeningHistoryEntity> = emptyList()
     ) : LibraryUiState
     data class Error(val message: String) : LibraryUiState
 }
@@ -73,7 +74,8 @@ class LibraryViewModel(
         LibraryUiState.Success(
             subscribedPodcasts = enrichedPodcasts,
             likedEpisodes = liked,
-            downloadedEpisodes = downloads
+            downloadedEpisodes = downloads,
+            recentHistory = allHistory.take(3)
         )
     }
         .stateIn(

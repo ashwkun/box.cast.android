@@ -1,31 +1,35 @@
 package cx.aswin.boxcast.feature.home.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.AsyncImagePainter
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
-import cx.aswin.boxcast.core.model.Podcast
 import cx.aswin.boxcast.core.designsystem.components.AnimatedShapesFallback
 import cx.aswin.boxcast.core.model.Episode
-import androidx.compose.ui.Alignment
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.PlayCircle
-import androidx.compose.material3.Icon
+import cx.aswin.boxcast.core.model.Podcast
 
 @Composable
 fun CuratedEpisodeCard(
@@ -34,21 +38,19 @@ fun CuratedEpisodeCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.material3.ElevatedCard(
+    Surface(
         shape = MaterialTheme.shapes.large,
-        colors = androidx.compose.material3.CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
-        ),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier
-            .width(200.dp) // Wider for episode titles
+            .width(148.dp)
             .expressiveClickable(onClick = onClick)
     ) {
-        Column {
-            // Image + Duration Overlay
-            androidx.compose.foundation.layout.Box(
+        Box {
+            // Square podcast artwork
+            Box(
                 modifier = Modifier
-                    .height(112.dp) // 16:9 aspect ratio-ish
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
+                    .size(148.dp)
+                    .clip(MaterialTheme.shapes.large)
             ) {
                 SubcomposeAsyncImage(
                     model = (episode.imageUrl ?: "").ifEmpty { podcast.imageUrl },
@@ -57,47 +59,63 @@ fun CuratedEpisodeCard(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     val state = painter.state
-                    if (state is coil.compose.AsyncImagePainter.State.Loading || 
-                        state is coil.compose.AsyncImagePainter.State.Error) {
+                    if (state is AsyncImagePainter.State.Loading ||
+                        state is AsyncImagePainter.State.Error) {
                         AnimatedShapesFallback()
                     } else {
                         SubcomposeAsyncImageContent()
                     }
                 }
-                
-                // Duration Label (Bottom Right)
-                androidx.compose.material3.Surface(
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f),
+
+                // Bottom gradient scrim for text legibility
+                Box(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp)
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.55f),
+                                    Color.Black.copy(alpha = 0.85f),
+                                    Color.Black.copy(alpha = 0.95f)
+                                )
+                            )
+                        )
+                )
+
+                // Duration pill (top right)
+                if (episode.duration > 0) {
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = Color.Black.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = formatDuration(episode.duration),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                // Episode title overlay at the bottom
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(10.dp)
                 ) {
                     Text(
-                        text = formatDuration(episode.duration),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
-            }
-            
-            // Text Content
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = episode.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    minLines = 2
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = podcast.title,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        text = episode.title,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -107,7 +125,7 @@ fun CuratedEpisodeCard(
 }
 
 private fun formatDuration(seconds: Int): String {
-    if (seconds <= 0) return "Unknown"
+    if (seconds <= 0) return ""
     val m = seconds / 60
     return "${m}m"
 }
