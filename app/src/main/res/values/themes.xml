@@ -3,9 +3,7 @@
     <!-- Simple launch theme -->
     <!-- Base application theme -->
     <style name="Theme.BoxCast" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <!-- Edge-to-edge is handled by enableEdgeToEdge() in MainActivity -->
     </style>
 
     <!-- Splash Screen Theme -->

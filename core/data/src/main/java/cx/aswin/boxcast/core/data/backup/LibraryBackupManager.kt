@@ -30,12 +30,12 @@ class LibraryBackupManager(
 
     suspend fun exportLibraryAsJson(): String {
         val subscriptions = subscriptionRepository.getAllSubscribedPodcasts().first()
-        val likedHistory = playbackRepository.likedEpisodes.first()
+        val allHistory = playbackRepository.getAllHistory().first()
         
         val backup = BoxCastBackup(
             version = 1,
             subscriptions = subscriptions,
-            history = likedHistory
+            history = allHistory
         )
         return gson.toJson(backup)
     }

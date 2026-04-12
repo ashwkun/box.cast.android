@@ -152,21 +152,7 @@ fun LibraryContent(
                                 shapes = specificSubShapes
                             )
                         }
-                        item {
-                            val historyShapes = listOf(
-                                ExpressiveShapes.Circle,
-                                ExpressiveShapes.Burst,
-                                ExpressiveShapes.Sunny
-                            )
-                            LibraryMenuCard(
-                                title = "Listening History",
-                                icon = Icons.Rounded.History,
-                                onClick = onNavigateToHistory,
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                images = emptyList(), // History typically doesn't need a collage on the card, or we could pass some images
-                                shapes = historyShapes
-                            )
-                        }
+
                         item {
                             val likedImages = (uiState as LibraryUiState.Success).likedEpisodes.take(3).map { it.episodeImageUrl ?: it.podcastImageUrl ?: "" }
                             val likedShapes = listOf(
@@ -200,6 +186,22 @@ fun LibraryContent(
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 images = downloadImages,
                                 shapes = downloadShapes
+                            )
+                        }
+                        item {
+                            val historyImages = (uiState as LibraryUiState.Success).recentHistory.take(3).map { it.episodeImageUrl ?: it.podcastImageUrl ?: "" }
+                            val historyShapes = listOf(
+                                ExpressiveShapes.Circle,
+                                ExpressiveShapes.Burst,
+                                ExpressiveShapes.Sunny
+                            )
+                            LibraryMenuCard(
+                                title = "Listening History",
+                                icon = Icons.Rounded.History,
+                                onClick = onNavigateToHistory,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                images = historyImages,
+                                shapes = historyShapes
                             )
                         }
                     }
