@@ -23,6 +23,9 @@ on:
       route:
         description: 'Deep Link Route (Optional - e.g. podcast/123 or https://link)'
         required: false
+      image:
+        description: 'Image URL (Optional)'
+        required: false
 
 jobs:
   send-notification:
@@ -49,4 +52,5 @@ jobs:
             --title "${{ inputs.title }}" \
             --body "${{ inputs.body }}" \
             --type "${{ inputs.type }}" \
-            --route "${{ inputs.route }}"
+            --route "${{ inputs.route }}" \
+            --image "${{ inputs.image }}"
