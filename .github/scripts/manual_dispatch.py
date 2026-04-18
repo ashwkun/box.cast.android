@@ -25,6 +25,9 @@ def send_notification(args):
     if args.route:
         data_payload['route'] = args.route
         
+    if getattr(args, 'image', None):
+        data_payload['image'] = args.image
+        
     message = messaging.Message(
         data=data_payload,
         topic='all_users'
@@ -43,6 +46,7 @@ if __name__ == "__main__":
     parser.add_argument('--body', required=True, help='Notification Body')
     parser.add_argument('--type', required=True, help='Where to show (push/in-app/both)')
     parser.add_argument('--route', required=False, default="", help='Optional Deep Link Route')
+    parser.add_argument('--image', required=False, default="", help='Optional Big Image URL')
     
     args = parser.parse_args()
     send_notification(args)
