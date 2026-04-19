@@ -21,7 +21,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 MODELS = [
     {"id": "gpt-4o", "name": "GPT-4o", "tier": "high"},
     {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "tier": "low"},
-    {"id": "o4-mini", "name": "O4 Mini", "tier": "reasoning"},
+    {"id": "o3-mini", "name": "o3-mini", "tier": "reasoning"},
     {"id": "DeepSeek-R1", "name": "DeepSeek R1", "tier": "reasoning"},
 ]
 
