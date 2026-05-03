@@ -1,5 +1,7 @@
 package cx.aswin.boxcast.feature.home.components
 
+import cx.aswin.boxcast.core.designsystem.components.optimizedImageUrl
+
 import cx.aswin.boxcast.core.designsystem.theme.expressiveClickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.BorderStroke
@@ -52,7 +54,7 @@ fun PodcastCard(
                     .height(if (isTall) 280.dp else 220.dp)
             ) {
                 SubcomposeAsyncImage(
-                    model = podcast.imageUrl,
+                    model = podcast.imageUrl.optimizedImageUrl(400),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

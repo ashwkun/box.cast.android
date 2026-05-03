@@ -1,5 +1,7 @@
 package cx.aswin.boxcast.feature.home.components
 
+import cx.aswin.boxcast.core.designsystem.components.optimizedImageUrl
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -46,7 +48,7 @@ fun RisingCard(
                     .clip(androidx.compose.foundation.shape.RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
             ) {
                 SubcomposeAsyncImage(
-                    model = podcast.imageUrl,
+                    model = podcast.imageUrl.optimizedImageUrl(400),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(160.dp)

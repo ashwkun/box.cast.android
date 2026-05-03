@@ -1,5 +1,7 @@
 package cx.aswin.boxcast.feature.library
 
+import cx.aswin.boxcast.core.designsystem.components.optimizedImageUrl
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -463,7 +465,7 @@ private fun SubscriptionListRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
-            model = podcast.imageUrl.takeIf { it.isNotEmpty() } ?: podcast.fallbackImageUrl,
+            model = (podcast.imageUrl.takeIf { it.isNotEmpty() } ?: podcast.fallbackImageUrl)?.optimizedImageUrl(400),
             contentDescription = podcast.title,
             modifier = Modifier
                 .size(72.dp)
@@ -600,9 +602,9 @@ private fun LatestEpisodeRow(
         // Episode artwork with status overlay
         Box(modifier = Modifier.size(64.dp)) {
             AsyncImage(
-                model = episode.imageUrl?.takeIf { it.isNotEmpty() }
+                model = (episode.imageUrl?.takeIf { it.isNotEmpty() }
                     ?: podcast.imageUrl.takeIf { it.isNotEmpty() }
-                    ?: podcast.fallbackImageUrl,
+                    ?: podcast.fallbackImageUrl)?.optimizedImageUrl(400),
                 contentDescription = episode.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

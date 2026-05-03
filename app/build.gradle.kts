@@ -23,8 +23,8 @@ android {
         applicationId = "cx.aswin.boxcast"
         minSdk = 31
         targetSdk = 36
-        versionCode = 27
-        versionName = "1.3.9"
+        versionCode = 28
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -137,6 +137,8 @@ dependencies {
     // Play Core
     implementation("com.google.android.play:review:2.0.2")
     implementation("com.google.android.play:review-ktx:2.0.2")
+    implementation("com.google.android.play:app-update:2.1.0")
+    implementation("com.google.android.play:app-update-ktx:2.1.0")
 
     // Tests
     testImplementation(libs.junit)
