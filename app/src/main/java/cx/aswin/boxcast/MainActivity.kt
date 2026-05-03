@@ -11,6 +11,14 @@ import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.core.content.ContextCompat
+import coil.Coil
+import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
+import coil.request.CachePolicy
+import okhttp3.OkHttp
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 import com.google.firebase.messaging.FirebaseMessaging
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -89,6 +97,16 @@ class MainActivity : ComponentActivity() {
     // First-party health analytics (privacy-respecting, no PII)
     private lateinit var healthReporter: cx.aswin.boxcast.core.data.analytics.AppHealthReporter
 
+    // Google Play In-App Updates
+    private val appUpdateManager by lazy { com.google.android.play.core.appupdate.AppUpdateManagerFactory.create(this) }
+    private val updateLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) {
+            android.util.Log.e("AppUpdate", "Update flow failed or cancelled. Result code: ${result.resultCode}")
+        }
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -110,6 +128,28 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (::healthReporter.isInitialized) healthReporter.onAppForeground()
+        
+        // Check for in-progress updates
+        try {
+            appUpdateManager.appUpdateInfo.addOnSuccessListener { appUpdateInfo ->
+                // For FLEXIBLE updates, check if downloaded and ready to install
+                if (appUpdateInfo.installStatus() == com.google.android.play.core.install.model.InstallStatus.DOWNLOADED) {
+                    // Optional: If you want to force install when it finishes downloading while the app is in background
+                    // appUpdateManager.completeUpdate()
+                }
+                
+                // For IMMEDIATE updates, resume if stalled/interrupted
+                if (appUpdateInfo.updateAvailability() == com.google.android.play.core.install.model.UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) {
+                    appUpdateManager.startUpdateFlowForResult(
+                        appUpdateInfo,
+                        updateLauncher,
+                        com.google.android.play.core.appupdate.AppUpdateOptions.newBuilder(com.google.android.play.core.install.model.AppUpdateType.IMMEDIATE).build()
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AppUpdate", "Error checking update status", e)
+        }
     }
     
     override fun onPause() {
@@ -127,6 +167,34 @@ class MainActivity : ComponentActivity() {
         
         // Handle initial launch intent
         handlePlayerIntent(intent)
+        
+        // Check for App Updates on launch
+        checkForUpdates()
+        
+        // Configure global Coil ImageLoader for better performance and reliability
+        val imageLoader = ImageLoader.Builder(applicationContext)
+            .memoryCache {
+                MemoryCache.Builder(applicationContext)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(applicationContext.cacheDir.resolve("image_cache"))
+                    .maxSizePercent(0.02)
+                    .build()
+            }
+            .okHttpClient {
+                OkHttpClient.Builder()
+                    .connectTimeout(15, TimeUnit.SECONDS)
+                    .readTimeout(20, TimeUnit.SECONDS)
+                    .build()
+            }
+            .crossfade(true)
+            .respectCacheHeaders(false) // Force caching even if servers say no
+            .build()
+            
+        Coil.setImageLoader(imageLoader)
         
         setContent {
             val navController = rememberNavController()
@@ -1336,6 +1404,46 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun checkForUpdates() {
+        try {
+            val appUpdateInfoTask = appUpdateManager.appUpdateInfo
+            appUpdateInfoTask.addOnSuccessListener { appUpdateInfo ->
+                val isUpdateAvailable = appUpdateInfo.updateAvailability() == com.google.android.play.core.install.model.UpdateAvailability.UPDATE_AVAILABLE
+                
+                // Determine if we should use IMMEDIATE (mandatory) or FLEXIBLE (optional)
+                // Priority >= 4 is usually considered a critical/mandatory update.
+                // Fallback: If the update has been available for 7+ days, force IMMEDIATE.
+                val updatePriority = appUpdateInfo.updatePriority()
+                val daysStale = appUpdateInfo.clientVersionStalenessDays() ?: 0
+                val isHighPriority = updatePriority >= 4 || daysStale >= 7
+                
+                val updateType = if (isHighPriority && appUpdateInfo.isUpdateTypeAllowed(com.google.android.play.core.install.model.AppUpdateType.IMMEDIATE)) {
+                    com.google.android.play.core.install.model.AppUpdateType.IMMEDIATE
+                } else if (appUpdateInfo.isUpdateTypeAllowed(com.google.android.play.core.install.model.AppUpdateType.FLEXIBLE)) {
+                    com.google.android.play.core.install.model.AppUpdateType.FLEXIBLE
+                } else {
+                    null
+                }
+
+                if (isUpdateAvailable && updateType != null) {
+                    try {
+                        appUpdateManager.startUpdateFlowForResult(
+                            appUpdateInfo,
+                            updateLauncher,
+                            com.google.android.play.core.appupdate.AppUpdateOptions.newBuilder(updateType).build()
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("AppUpdate", "Failed to start update flow", e)
+                    }
+                }
+            }.addOnFailureListener {
+                android.util.Log.e("AppUpdate", "Failed to check for updates", it)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AppUpdate", "App update initialization failed", e)
         }
     }
 }

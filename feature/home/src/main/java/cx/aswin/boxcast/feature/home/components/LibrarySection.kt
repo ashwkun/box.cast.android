@@ -1,5 +1,7 @@
 package cx.aswin.boxcast.feature.home.components
 
+import cx.aswin.boxcast.core.designsystem.components.optimizedImageUrl
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -280,7 +282,7 @@ private fun ResponsivePodcastCover(
     onClick: () -> Unit
 ) {
     SubcomposeAsyncImage(
-        model = podcast.imageUrl,
+        model = podcast.imageUrl.optimizedImageUrl(400),
         contentDescription = podcast.title,
         contentScale = ContentScale.Crop,
         modifier = Modifier
@@ -309,7 +311,7 @@ private fun SmallPodcastCover(
     onClick: () -> Unit
 ) {
     SubcomposeAsyncImage(
-        model = podcast.imageUrl,
+        model = podcast.imageUrl.optimizedImageUrl(400),
         contentDescription = podcast.title,
         contentScale = ContentScale.Crop,
         modifier = Modifier
@@ -369,7 +371,7 @@ private fun NewEpisodeCard(
             // Image area with overlays
             Box {
                 SubcomposeAsyncImage(
-                    model = currentUrl,
+                    model = currentUrl?.optimizedImageUrl(400) ?: currentUrl,
                     contentDescription = episode.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

@@ -1,5 +1,7 @@
 package cx.aswin.boxcast.feature.home.components
 
+import cx.aswin.boxcast.core.designsystem.components.optimizedImageUrl
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +53,7 @@ fun CuratedEpisodeCard(
                 .clip(MaterialTheme.shapes.large)
         ) {
             SubcomposeAsyncImage(
-                model = (episode.imageUrl ?: "").ifEmpty { podcast.imageUrl },
+                model = ((episode.imageUrl ?: "").ifEmpty { podcast.imageUrl }).optimizedImageUrl(400),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
