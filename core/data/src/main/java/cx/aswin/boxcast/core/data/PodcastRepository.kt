@@ -369,9 +369,9 @@ class PodcastRepository(
         }
     }
 
-    suspend fun getPopularRadioStations(country: String? = null, limit: Int = 50): List<cx.aswin.boxcast.core.network.model.RadioStationItem> = withContext(Dispatchers.IO) {
+    suspend fun getPopularRadioStations(country: String? = null, limit: Int = 50, offset: Int = 0): List<cx.aswin.boxcast.core.network.model.RadioStationItem> = withContext(Dispatchers.IO) {
         try {
-            val response = api.getPopularStations(publicKey, country, limit).execute()
+            val response = api.getPopularStations(publicKey, country, limit, offset).execute()
             if (response.isSuccessful) response.body()?.stations ?: emptyList() else emptyList()
         } catch (e: Exception) {
             android.util.Log.e("RadioDebug", "getPopularRadioStations error", e)

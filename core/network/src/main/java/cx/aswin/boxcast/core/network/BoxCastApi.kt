@@ -113,7 +113,8 @@ interface BoxCastApi {
     fun getPopularStations(
         @Header("X-App-Key") publicKey: String,
         @Query("countrycode") countryCode: String? = null,
-        @Query("limit") limit: Int = 50
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0
     ): retrofit2.Call<cx.aswin.boxcast.core.network.model.RadioStationResponse>
 
     @GET("radio/trending")
