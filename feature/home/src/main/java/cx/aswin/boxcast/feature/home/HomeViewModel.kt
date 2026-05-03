@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import java.io.IOException
 import cx.aswin.boxcast.core.model.Episode
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.onStart
@@ -162,15 +163,34 @@ class HomeViewModel(
     private val _showRadioPlayerModal = MutableStateFlow(false)
     val showRadioPlayerModal: StateFlow<Boolean> = _showRadioPlayerModal.asStateFlow()
 
-    private val _showRadioStoryModal = MutableStateFlow(false)
-    val showRadioStoryModal: StateFlow<Boolean> = _showRadioStoryModal.asStateFlow()
-
-    private val _radioStoryStations = MutableStateFlow<List<cx.aswin.boxcast.feature.home.components.RadioStation>>(emptyList())
-    val radioStoryStations: StateFlow<List<cx.aswin.boxcast.feature.home.components.RadioStation>> = _radioStoryStations.asStateFlow()
-
-    private val _radioStoryIndex = MutableStateFlow(0)
-    val radioStoryIndex: StateFlow<Int> = _radioStoryIndex.asStateFlow()
+    // --- RADIO FOLLOW SYSTEM (separate database) ---
+    private val radioDb = cx.aswin.boxcast.core.data.database.radio.RadioDatabase.getDatabase(application)
+    private val followedStationDao = radioDb.followedStationDao()
     
+    val followedStationIds: StateFlow<Set<String>> = followedStationDao.getFollowedIds()
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    fun toggleFollowStation(station: cx.aswin.boxcast.feature.home.components.RadioStation) {
+        viewModelScope.launch {
+            val isCurrentlyFollowed = followedStationDao.isFollowed(station.id)
+            if (isCurrentlyFollowed) {
+                followedStationDao.delete(station.id)
+            } else {
+                followedStationDao.insert(
+                    cx.aswin.boxcast.core.data.database.radio.FollowedStationEntity(
+                        id = station.id,
+                        name = station.name,
+                        genre = station.genre,
+                        imageUrl = station.imageUrl,
+                        streamUrl = station.streamUrl,
+                        country = station.country,
+                        language = station.language
+                    )
+                )
+            }
+        }
+    }    
     
     fun startModeSwitching() {
         _isModeSwitching.value = true
@@ -205,14 +225,7 @@ class HomeViewModel(
                 _isRadioLoading.value = playbackState == androidx.media3.common.Player.STATE_BUFFERING
             }
             override fun onMediaItemTransition(mediaItem: androidx.media3.common.MediaItem?, reason: Int) {
-                if (mediaItem != null) {
-                    val index = radioPlayer.currentMediaItemIndex
-                    val stations = _radioStoryStations.value
-                    if (stations.isNotEmpty() && index in stations.indices) {
-                        _activeRadioStation.value = stations[index]
-                        _radioStoryIndex.value = index
-                    }
-                }
+                // Currently unused — will be needed for floating radio player
             }
         })
         
@@ -254,46 +267,7 @@ class HomeViewModel(
         _showRadioPlayerModal.value = false
     }
 
-    fun openRadioStory(stations: List<cx.aswin.boxcast.feature.home.components.RadioStation>, startIndex: Int) {
-        playbackRepository.pause()
-        radioPlayer.stop()
-        radioPlayer.clearMediaItems()
-        
-        _radioStoryStations.value = stations
-        _radioStoryIndex.value = startIndex
-        _activeRadioStation.value = stations[startIndex]
-        _showRadioStoryModal.value = true
-        
-        val mediaItems = stations.map { androidx.media3.common.MediaItem.fromUri(it.streamUrl) }
-        radioPlayer.setMediaItems(mediaItems)
-        radioPlayer.seekTo(startIndex, androidx.media3.common.C.TIME_UNSET)
-        radioPlayer.prepare()
-        radioPlayer.play()
-    }
 
-    fun closeRadioStory() {
-        _showRadioStoryModal.value = false
-        radioPlayer.pause()
-        radioPlayer.clearMediaItems()
-        _radioStoryStations.value = emptyList()
-    }
-
-    fun tuneInFromStory() {
-        _showRadioStoryModal.value = false
-        _showRadioPlayerModal.value = true
-    }
-    
-    fun nextStory() {
-        if (radioPlayer.hasNextMediaItem()) {
-            radioPlayer.seekToNextMediaItem()
-        }
-    }
-    
-    fun previousStory() {
-        if (radioPlayer.hasPreviousMediaItem()) {
-            radioPlayer.seekToPreviousMediaItem()
-        }
-    }
 
     private fun loadData() {
         viewModelScope.launch {
