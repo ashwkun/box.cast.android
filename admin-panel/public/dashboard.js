@@ -174,17 +174,70 @@ async function loadAnalytics(){
     renderBarChart('c-ret', labels7, retArr, { colorClass: 'bg-blue-500', shadowColor: 'rgba(59,130,246,0.3)', textColor: 'text-blue-400' });
 
     // ═══ 3. CONTENT ═══
-    const podPlays={},podTime={};
+    const podPlays={},podTime={},epTime={};
     pi.forEach(r=>{
         const rk=r.k.replace(/^(prod_|debug_)/,'');
         if(isProd()&&r.k.startsWith('debug_'))return;
         if(rk==='podcast_plays')podPlays[r.p]=(podPlays[r.p]||0)+r.v;
-        if(rk.startsWith('play_time_sec'))podTime[r.p]=(podTime[r.p]||0)+r.v;
+        if(rk.startsWith('play_time_sec')){
+            podTime[r.p]=(podTime[r.p]||0)+r.v;
+            // Extract episode name from key: play_time_sec|Episode Title
+            const parts=rk.split('|');
+            if(parts.length>1){
+                const epName=parts[1];
+                const epKey=r.p+'|||'+epName;
+                epTime[epKey]=(epTime[epKey]||0)+r.v;
+            }
+        }
     });
-    const topPlays=Object.entries(podPlays).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([p,v])=>({label:p,v,display:v+' plays'}));
-    const topTime=Object.entries(podTime).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([p,v])=>({label:p,v,display:Math.round(v/60)+'m'}));
-    document.getElementById('ct-plays').innerHTML=rankBarRow(topPlays,'bg-brand-600/25');
-    document.getElementById('ct-time').innerHTML=rankBarRow(topTime,'bg-cyan-600/25');
+    
+    // Combined podcast list: plays + time
+    const allPods=new Set([...Object.keys(podPlays),...Object.keys(podTime)]);
+    const podList=[...allPods].map(p=>({
+        label:p, 
+        plays:podPlays[p]||0, 
+        time:podTime[p]||0,
+        v:(podPlays[p]||0)
+    })).sort((a,b)=>b.plays-a.plays||b.time-a.time).slice(0,8);
+    
+    if(podList.length){
+        document.getElementById('ct-pods').innerHTML=podList.map((r,i)=>{
+            const timeStr=r.time>=3600?(r.time/3600).toFixed(1)+'h':Math.round(r.time/60)+'m';
+            return`<div class="flex items-center gap-2 mb-1.5">
+                <span class="text-[10px] text-slate-600 w-4 text-right font-mono">${i+1}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[12px] text-slate-200 truncate">${r.label}</div>
+                    <div class="flex gap-3 text-[10px] text-slate-500 mt-0.5">
+                        <span><i class="fa-solid fa-play text-brand-500 mr-1"></i>${r.plays} plays</span>
+                        <span><i class="fa-solid fa-clock text-cyan-500 mr-1"></i>${timeStr}</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } else {
+        document.getElementById('ct-pods').innerHTML='<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';
+    }
+
+    // Episode-level breakdown
+    const epList=Object.entries(epTime).map(([key,sec])=>{
+        const [pod,ep]=key.split('|||');
+        return {pod,ep,sec};
+    }).sort((a,b)=>b.sec-a.sec).slice(0,8);
+    
+    if(epList.length){
+        document.getElementById('ct-eps').innerHTML=epList.map((r,i)=>{
+            const timeStr=r.sec>=3600?(r.sec/3600).toFixed(1)+'h':Math.round(r.sec/60)+'m';
+            return`<div class="flex items-center gap-2 mb-1.5">
+                <span class="text-[10px] text-slate-600 w-4 text-right font-mono">${i+1}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-[12px] text-slate-200 truncate">${r.ep}</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5 truncate"><i class="fa-solid fa-podcast text-brand-500/50 mr-1"></i>${r.pod} · <i class="fa-solid fa-clock text-cyan-500 ml-1 mr-1"></i>${timeStr}</div>
+                </div>
+            </div>`;
+        }).join('');
+    } else {
+        document.getElementById('ct-eps').innerHTML='<div class="text-[11px] text-slate-600 text-center py-3">No episode data yet</div>';
+    }
 
     // ═══ 4. CURATED ═══
     const cm={};cur.forEach(r=>{const rk=r.k.replace(/^(prod_|debug_)/,'');if(isProd()&&r.k.startsWith('debug_'))return;cm[rk]=(cm[rk]||0)+r.v});
@@ -200,7 +253,20 @@ async function loadAnalytics(){
         if(m=k.match(/^curated_play_vibe_(.+)$/))vibeIdSet.add(m[1]);
     });
     const vibes=[...vibeIdSet].map(id=>({id,imp:cm[`curated_vibe_impression_${id}`]||0,taps:cm[`curated_tap_vibe_${id}`]||0,plays:cm[`curated_play_vibe_${id}`]||0})).sort((a,b)=>(b.taps+b.plays)-(a.taps+a.plays));
-    if(vibes.length){const mx=Math.max(...vibes.map(v=>v.taps+v.plays))||1;document.getElementById('cur-vibes').innerHTML=vibes.map(v=>{const w=Math.max(8,(v.taps+v.plays)/mx*100);const rate=v.imp>0?(v.taps/v.imp*100).toFixed(1):'-';return`<div class="glass-sm p-3"><div class="flex items-center justify-between mb-1.5"><span class="text-xs font-medium capitalize">${v.id.replace(/_/g,' ')}</span><span class="text-[10px] text-slate-600">${rate}%</span></div><div class="w-full bg-slate-800/40 rounded-full h-2 mb-1.5"><div class="bar-fill h-full bg-gradient-to-r from-brand-600 to-indigo-500 rounded-full" style="width:${w}%"></div></div><div class="flex gap-3 text-[10px] text-slate-500"><span><i class="fa-solid fa-eye mr-0.5 text-slate-700"></i>${v.imp}</span><span><i class="fa-solid fa-hand-pointer mr-0.5 text-blue-600"></i>${v.taps}</span><span><i class="fa-solid fa-play mr-0.5 text-emerald-600"></i>${v.plays}</span></div></div>`}).join('')}else{document.getElementById('cur-vibes').innerHTML='<div class="text-[11px] text-slate-600 text-center py-3">No curated data yet</div>'}
+    if(vibes.length){
+        document.getElementById('cur-vibes').innerHTML=vibes.map(v=>{
+            return`<div class="flex items-center justify-between py-2.5 border-b border-slate-800/50 last:border-0">
+                <span class="text-[12px] text-slate-200 capitalize font-medium">${v.id.replace(/_/g,' ')}</span>
+                <div class="flex gap-3 text-[10px]">
+                    <span class="text-slate-500"><i class="fa-solid fa-eye mr-1 text-indigo-500/60"></i>${v.imp} seen</span>
+                    <span class="text-blue-400"><i class="fa-solid fa-hand-pointer mr-1"></i>${v.taps} taps</span>
+                    <span class="text-emerald-400"><i class="fa-solid fa-play mr-1"></i>${v.plays} plays</span>
+                </div>
+            </div>`;
+        }).join('');
+    } else {
+        document.getElementById('cur-vibes').innerHTML='<div class="text-[11px] text-slate-600 text-center py-3">No curated data yet</div>';
+    }
 
     document.getElementById('cur-pos').innerHTML=[mc('Pos 0-2',cm['curated_tap_pos_0_2']||0,'text-emerald-400',''),mc('Pos 3-5',cm['curated_tap_pos_3_5']||0,'text-yellow-400',''),mc('Pos 6+',cm['curated_tap_pos_6_plus']||0,'text-red-400','')].join('');
 
