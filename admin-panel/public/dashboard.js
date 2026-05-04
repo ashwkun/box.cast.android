@@ -201,16 +201,16 @@ async function loadAnalytics(){
     })).sort((a,b)=>b.plays-a.plays||b.time-a.time).slice(0,8);
     
     if(podList.length){
+        const mx=Math.max(...podList.map(r=>r.plays))||1;
         document.getElementById('ct-pods').innerHTML=podList.map((r,i)=>{
-            const timeStr=r.time>=3600?(r.time/3600).toFixed(1)+'h':Math.round(r.time/60)+'m';
+            const w=Math.max(8,r.plays/mx*100);
+            const t=r.time>=3600?(r.time/3600).toFixed(1)+'h':r.time>=60?Math.round(r.time/60)+'m':r.time+'s';
             return`<div class="flex items-center gap-2 mb-1.5">
                 <span class="text-[10px] text-slate-600 w-4 text-right font-mono">${i+1}</span>
-                <div class="flex-1 min-w-0">
-                    <div class="text-[12px] text-slate-200 truncate">${r.label}</div>
-                    <div class="flex gap-3 text-[10px] text-slate-500 mt-0.5">
-                        <span><i class="fa-solid fa-play text-brand-500 mr-1"></i>${r.plays} plays</span>
-                        <span><i class="fa-solid fa-clock text-cyan-500 mr-1"></i>${timeStr}</span>
-                    </div>
+                <div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-8 flex items-center relative">
+                    <div class="h-full bg-brand-600/20 rounded-lg transition-all" style="width:${w}%"></div>
+                    <span class="absolute left-2.5 text-[11px] text-slate-300 truncate max-w-[55%]">${r.label}</span>
+                    <span class="absolute right-2.5 text-[10px] text-slate-500 whitespace-nowrap"><span class="text-brand-400 font-semibold">${r.plays}</span>▶ · <span class="text-cyan-400">${t}</span></span>
                 </div>
             </div>`;
         }).join('');
@@ -225,14 +225,20 @@ async function loadAnalytics(){
     }).sort((a,b)=>b.sec-a.sec).slice(0,8);
     
     if(epList.length){
+        const emx=Math.max(...epList.map(r=>r.sec))||1;
         document.getElementById('ct-eps').innerHTML=epList.map((r,i)=>{
-            const timeStr=r.sec>=3600?(r.sec/3600).toFixed(1)+'h':Math.round(r.sec/60)+'m';
-            return`<div class="flex items-center gap-2 mb-1.5">
-                <span class="text-[10px] text-slate-600 w-4 text-right font-mono">${i+1}</span>
-                <div class="flex-1 min-w-0">
-                    <div class="text-[12px] text-slate-200 truncate">${r.ep}</div>
-                    <div class="text-[10px] text-slate-500 mt-0.5 truncate"><i class="fa-solid fa-podcast text-brand-500/50 mr-1"></i>${r.pod} · <i class="fa-solid fa-clock text-cyan-500 ml-1 mr-1"></i>${timeStr}</div>
+            const w=Math.max(8,r.sec/emx*100);
+            const t=r.sec>=3600?(r.sec/3600).toFixed(1)+'h':r.sec>=60?Math.round(r.sec/60)+'m':r.sec+'s';
+            return`<div class="mb-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] text-slate-600 w-4 text-right font-mono">${i+1}</span>
+                    <div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-8 flex items-center relative">
+                        <div class="h-full bg-cyan-600/20 rounded-lg transition-all" style="width:${w}%"></div>
+                        <span class="absolute left-2.5 right-14 text-[11px] text-slate-300 truncate">${r.ep}</span>
+                        <span class="absolute right-2.5 text-[10px] text-cyan-400 font-semibold">${t}</span>
+                    </div>
                 </div>
+                <div class="text-[9px] text-slate-600 ml-6 mt-0.5 truncate">${r.pod}</div>
             </div>`;
         }).join('');
     } else {
