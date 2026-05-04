@@ -21,7 +21,7 @@ async function loadAnalytics(){
         q(`SELECT date_partition as d, metric_key as k, SUM(metric_value) as v FROM daily_aggregates WHERE date_partition>=date('now','-7 days') GROUP BY d,k ORDER BY d ASC`),
         q(`SELECT podcast_id as p, metric_key as k, SUM(metric_value) as v FROM podcast_intelligence WHERE date_partition>=date('now','-7 days') GROUP BY p,k ORDER BY v DESC`),
         q(`SELECT metric_key as k, SUM(metric_value) as v FROM daily_aggregates WHERE date_partition>=date('now','-7 days') AND k LIKE '%curated_%' GROUP BY k`),
-        q(`SELECT metric_key as k, SUM(metric_value) as v FROM daily_aggregates WHERE k LIKE '%funnel_%' OR k LIKE '%play_milestone_%' GROUP BY k`)
+        q(`SELECT metric_key as k, SUM(metric_value) as v FROM daily_aggregates WHERE k LIKE '%funnel_%' OR k LIKE '%play_milestone_%' OR k LIKE 'notification_%' GROUP BY k`)
     ]);
 
     const today=new Date().toISOString().split('T')[0];
@@ -187,6 +187,12 @@ async function loadAnalytics(){
     const fm={};fnl.forEach(r=>{const rk=r.k.replace(/^(prod_|debug_)/,'');if(isProd()&&r.k.startsWith('debug_'))return;fm[rk]=(fm[rk]||0)+r.v});
     document.getElementById('fn-onboard').innerHTML=[mc('Genres',fm['funnel_onboarding_genres_picked']||0,'text-blue-400',''),mc('Completed',fm['funnel_onboarding_completed']||0,'text-emerald-400',''),mc('Skipped',fm['funnel_onboarding_skipped']||0,'text-red-400','')].join('');
     document.getElementById('fn-activ').innerHTML=[mc('First Plays',fm['funnel_first_play']||0,'',''),mc('< 1min',fm['funnel_first_play_under_1m']||0,'text-emerald-400',''),mc('1-5min',fm['funnel_first_play_1_5m']||0,'text-yellow-400',''),mc('5min+',fm['funnel_first_play_over_5m']||0,'text-red-400','')].join('');
+
+    // ═══ 8.5 NOTIFICATIONS ═══
+    const pGrant=fm['notification_permission_granted']||0,pDeny=fm['notification_permission_denied']||0;
+    const pRate=(pGrant+pDeny)>0?Math.round((pGrant/(pGrant+pDeny))*100)+'%':'-';
+    document.getElementById('fn-push').innerHTML=[mc('Granted',pGrant,'text-emerald-400','check'),mc('Denied',pDeny,'text-red-400','xmark'),mc('Push Taps',fm['notification_push_tapped']||0,'text-blue-400','hand-pointer')].join('');
+    document.getElementById('fn-inapp').innerHTML=[mc('Seen',fm['notification_inapp_seen']||0,'text-purple-400','eye'),mc('Tapped',fm['notification_inapp_tapped']||0,'text-amber-400','hand-pointer')].join('');
 
     // ═══ 9. FRICTION ═══
     document.getElementById('fric-grid').innerHTML=`
