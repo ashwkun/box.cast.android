@@ -1,5 +1,5 @@
 const W='https://boxcast-telemetry.boxboxcric.workers.dev/query',AK='boxcast_secure_telemetry_key_2026';
-let charts={},dashPwd='',globalM7={},globalFnl=[];
+let charts={},dashPwd='',globalAgg=[],globalFnl=[],globalPi=[];
 
 async function q(sql){try{const r=await fetch(W,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${AK}`},body:JSON.stringify({query:sql})});const j=await r.json();return j.success?j.data:[];}catch(e){console.error(e);return[];}}
 function isProd(){return document.getElementById('toggleProd').checked}
@@ -49,6 +49,7 @@ async function loadAnalytics(){
         q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date<date('now','-7 days') ${pf} AND device_id NOT IN (SELECT DISTINCT device_id FROM daily_heartbeats WHERE last_seen_date>=date('now','-7 days') ${pf})`),
         q(`SELECT metric_key as k, SUM(metric_value) as v FROM daily_aggregates GROUP BY k`)
     ]);
+    globalAgg = agg; globalFnl = fnl; globalPi = pi;
 
     const today=new Date().toISOString().split('T')[0];
 
@@ -415,8 +416,6 @@ async function loadAnalytics(){
         <div class="glass p-4 border border-red-500/10"><div class="text-[10px] text-red-400 uppercase font-bold mb-1"><i class="fa-solid fa-hand-pointer mr-1"></i>Rage Taps</div><div class="text-2xl font-bold">${m7['rage_tap']||0}</div></div>
         <div class="glass p-4 border border-orange-500/10"><div class="text-[10px] text-orange-400 uppercase font-bold mb-1"><i class="fa-solid fa-magnifying-glass mr-1"></i>Failed Searches</div><div class="text-2xl font-bold">${(m7['failed_search']||0)+(m7['friction_search_empty']||0)}</div></div>
         <div class="glass p-4 border border-yellow-500/10"><div class="text-[10px] text-yellow-400 uppercase font-bold mb-1"><i class="fa-solid fa-bug mr-1"></i>Playback Errors</div><div class="text-2xl font-bold">${(m7['crash_report']||0)+(m7['friction_playback_error']||0)}</div></div>`;
-    globalM7 = m7;
-    globalFnl = fnl;
 }
 
 // ═══ NOTIFICATIONS ═══
@@ -507,21 +506,35 @@ async function sendAiQuery() {
         const model = document.getElementById('ai-model-select').value;
         const incDebug = document.getElementById('ai-debug-toggle').checked;
 
-        let ctxM7 = {...globalM7};
-        let ctxFnl = [...globalFnl];
-        
-        if (!incDebug) {
-            Object.keys(ctxM7).forEach(k => { if(k.startsWith('debug_')) delete ctxM7[k]; });
-            ctxFnl = ctxFnl.filter(f => !f.k.startsWith('debug_'));
-        }
+        let ctxM7 = {};
+        globalAgg.forEach(r => {
+            if (!incDebug && r.k.startsWith('debug_')) return;
+            const key = r.k.replace(/^(prod_|debug_)/, '');
+            ctxM7[key] = (ctxM7[key] || 0) + r.v;
+        });
+
+        let ctxFnl = [];
+        globalFnl.forEach(r => {
+            if (!incDebug && r.k.startsWith('debug_')) return;
+            ctxFnl.push(r);
+        });
+
+        let ctxPi = {};
+        globalPi.forEach(r => {
+            if (!incDebug && r.k.startsWith('debug_')) return;
+            const pId = r.p.substring(0, 15) + '...';
+            ctxPi[pId] = (ctxPi[pId] || 0) + r.v;
+        });
 
         // Format nicely so the AI understands
         const m7Fmt = Object.keys(ctxM7).length > 0 ? JSON.stringify(ctxM7, null, 2) : 'No metrics recorded today yet.';
         const fnlFmt = ctxFnl.length > 0 ? JSON.stringify(ctxFnl, null, 2) : 'No funnel events recorded today yet.';
+        const piFmt = Object.keys(ctxPi).length > 0 ? JSON.stringify(ctxPi, null, 2) : 'No podcast intelligence data today.';
 
         const context = `You are BoxCast analytics AI. Here is the LIVE telemetry data (last 7 days window):\n\n` + 
             `=== OVERALL AGGREGATES ===\n${m7Fmt}\n\n` + 
             `=== FUNNEL & DISCOVERY ===\n${fnlFmt}\n\n` +
+            `=== CONTENT PERFORMANCE (Top Podcasts) ===\n${piFmt}\n\n` +
             `The user asked: "${msg}". Analyze the provided data and answer concisely in markdown. If data is sparse, acknowledge it and analyze what IS available. Do not complain about missing data unnecessarily. Be professional.`;
 
         const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
