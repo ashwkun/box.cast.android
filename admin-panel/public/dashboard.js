@@ -282,8 +282,13 @@ async function loadAnalytics(){
     document.getElementById('cur-pods').innerHTML=rankBarRow(cpList,'bg-emerald-600/20');
 
     // ═══ 5. FEATURES ═══
+    // Episode count from podcast_intelligence (reliable source, not affected by consent race)
+    const totalEpPlays=Object.values(podPlays).reduce((s,v)=>s+v,0);
+    const totalListenTime7d=Object.values(podTime).reduce((s,v)=>s+v,0);
+    const lt7=totalListenTime7d>=3600?(totalListenTime7d/3600).toFixed(1)+'h':Math.round(totalListenTime7d/60)+'m';
     document.getElementById('feat-grid').innerHTML=[
-        mc('Episodes',m7['play_episode_started']||0,'','play'),
+        mc('Episodes',totalEpPlays||m7['play_episode_started']||0,'','play'),
+        mc('Listen',lt7,'text-cyan-400','headphones'),
         mc('Subscribes',m7['action_subscribe']||0,'text-emerald-400','plus'),
         mc('Unsubs',m7['action_unsubscribe']||0,'text-red-400','minus'),
         mc('Searches',m7['discovery_search']||0,'text-blue-400','magnifying-glass'),
