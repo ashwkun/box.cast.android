@@ -86,17 +86,41 @@ async function loadAnalytics(){
 
     // ═══ 2. CHARTS ═══
     const shortL=labels7.map(d=>d.slice(5));
-    chart('c-dau','line',shortL,[{label:'DAU',data:dauV,borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.06)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#8b5cf6'}]);
+    
+    // Create gradients for lines/bars
+    const ctxDau = document.getElementById('c-dau')?.getContext('2d');
+    const gradDau = ctxDau?.createLinearGradient(0, 0, 0, 300);
+    if(gradDau){ gradDau.addColorStop(0, 'rgba(139,92,246,0.25)'); gradDau.addColorStop(1, 'rgba(139,92,246,0.0)'); }
+
+    const defaultChartOpts = {
+        plugins: {
+            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10, family: 'Inter' }, usePointStyle: true, padding: 15 } },
+            tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#f8fafc', bodyColor: '#cbd5e1', padding: 10, cornerRadius: 8, displayColors: true }
+        },
+        scales: {
+            x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10, family: 'Inter' } } },
+            y: { border: { display: false }, grid: { color: 'rgba(255,255,255,0.03)', drawTicks: false }, ticks: { color: '#64748b', font: { size: 10, family: 'Inter' }, padding: 10 }, beginAtZero: true }
+        },
+        interaction: { mode: 'index', intersect: false }
+    };
+
+    chart('c-dau','line',shortL,[{label:'DAU',data:dauV,borderColor:'#8b5cf6',backgroundColor:gradDau||'rgba(139,92,246,0.1)',fill:true,tension:0.4,borderWidth:2,pointRadius:0,pointHoverRadius:6,pointBackgroundColor:'#8b5cf6'}], defaultChartOpts);
 
     const engArr=labels7.map(d=>(dayMetrics[d]?.['total_engagement_sec']||0)/3600);
     const playArr=labels7.map(d=>(dayMetrics[d]?.['total_playback_sec']||0)/3600);
-    chart('c-listen','bar',shortL,[{label:'Foreground',data:engArr,backgroundColor:'rgba(139,92,246,0.5)',borderRadius:3},{label:'Playback (incl bg)',data:playArr,backgroundColor:'rgba(34,211,238,0.5)',borderRadius:3}]);
+    chart('c-listen','bar',shortL,[
+        {label:'Foreground',data:engArr,backgroundColor:'#8b5cf6',borderRadius:4, borderSkipped: false},
+        {label:'Background',data:playArr,backgroundColor:'#38bdf8',borderRadius:4, borderSkipped: false}
+    ], {...defaultChartOpts, scales: { ...defaultChartOpts.scales, x: { ...defaultChartOpts.scales.x, stacked: true }, y: { ...defaultChartOpts.scales.y, stacked: true } }});
 
     const newArr=labels7.map(d=>newMap[d]||0);
     const retArr=labels7.map((d,i)=>Math.max(0,(dauV[i]||0)-(newArr[i]||0)));
-    chart('c-newret','bar',shortL,[{label:'New',data:newArr,backgroundColor:'rgba(52,211,153,0.6)',borderRadius:3},{label:'Returning',data:retArr,backgroundColor:'rgba(96,165,250,0.5)',borderRadius:3}],{plugins:{legend:{labels:{color:'#64748b',font:{size:10}}}}});
+    chart('c-newret','bar',shortL,[
+        {label:'Returning',data:retArr,backgroundColor:'#3b82f6',borderRadius:4, borderSkipped: false},
+        {label:'New',data:newArr,backgroundColor:'#10b981',borderRadius:4, borderSkipped: false}
+    ], {...defaultChartOpts, scales: { ...defaultChartOpts.scales, x: { ...defaultChartOpts.scales.x, stacked: true }, y: { ...defaultChartOpts.scales.y, stacked: true } }});
 
-    chart('c-churn','bar',shortL,[{label:'Churned',data:churnByDay,backgroundColor:'rgba(239,68,68,0.4)',borderRadius:3}]);
+    chart('c-churn','bar',shortL,[{label:'Devices Lost',data:churnByDay,backgroundColor:'#ef4444',borderRadius:4, borderSkipped: false}], defaultChartOpts);
 
     // ═══ 3. CONTENT ═══
     const podPlays={},podTime={};
