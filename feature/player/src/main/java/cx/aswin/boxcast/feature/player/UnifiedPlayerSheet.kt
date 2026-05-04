@@ -170,6 +170,13 @@ fun UnifiedPlayerSheet(
     val initialY = if (currentSheetContentState == PlayerSheetState.COLLAPSED) sheetCollapsedTargetY else sheetExpandedTargetY
     val currentSheetTranslationY = remember { Animatable(initialY) }
     
+    // Update translation when bounds change
+    LaunchedEffect(sheetCollapsedTargetY) {
+        if (currentSheetContentState == PlayerSheetState.COLLAPSED && !currentSheetTranslationY.isRunning) {
+            currentSheetTranslationY.snapTo(sheetCollapsedTargetY)
+        }
+    }
+    
     // Derived values using lerp
     val playerContentAreaHeightDp by remember {
         derivedStateOf {
