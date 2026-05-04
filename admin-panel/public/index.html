@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>boxcast admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{brand:{500:'#8b5cf6',600:'#7c3aed'}}}}}</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+    <script>
+        firebase.initializeApp({apiKey:"AIzaSyDyoatNJhMIMWNCCrnNocRo0LJXdmRo-nc",authDomain:"boxcasts.firebaseapp.com",databaseURL:"https://boxcasts-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"boxcasts",storageBucket:"boxcasts.firebasestorage.app",messagingSenderId:"74591511411",appId:"1:74591511411:web:84d3c9cf8cae35431b1b06"});
+        firebase.auth().onAuthStateChanged(u=>{if(!u||u.email!=='aswinanand9020@gmail.com')window.location.href='/login.html';else{document.getElementById('app').classList.remove('hidden');initApp();}});
+    </script>
+    <style>
+        *{font-family:'Inter',sans-serif}
+        body{background:#06080f;color:#f1f5f9;overflow-x:hidden}
+        .glass{background:rgba(15,23,42,0.7);backdrop-filter:blur(16px);border:1px solid rgba(51,65,85,0.25);border-radius:16px}
+        .glass-sm{background:rgba(15,23,42,0.5);border:1px solid rgba(51,65,85,0.2);border-radius:12px}
+        .metric-glow:hover{box-shadow:0 0 30px rgba(139,92,246,0.08)}
+        .bar-fill{transition:width 0.8s cubic-bezier(.4,0,.2,1)}
+        .nav-pill{padding:8px 18px;border-radius:10px;font-size:13px;font-weight:500;color:#475569;transition:all .2s;white-space:nowrap}
+        .nav-pill:hover{color:#e2e8f0;background:rgba(255,255,255,0.04)}
+        .nav-pill.active{color:#a78bfa;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.15)}
+        .sec{display:none}.sec.active{display:block;animation:fadeUp .25s ease}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        .section-hdr{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#475569;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+        .section-hdr i{font-size:13px}
+        ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
+
+        .phone-frame{width:260px;height:520px;background:#000;border-radius:30px;border:7px solid #1e293b;position:relative;overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,.5);flex-shrink:0}
+        .phone-bg{position:absolute;inset:0;background:linear-gradient(135deg,#4c1d95,#1e1b4b)}
+        .phone-status{height:18px;display:flex;justify-content:space-between;padding:0 12px;align-items:center;font-size:9px;color:white;position:relative;z-index:5}
+        .phone-notif{position:absolute;top:26px;left:7px;right:7px;background:#1e293b;border-radius:12px;padding:9px;z-index:10;display:flex;flex-direction:column;gap:5px;opacity:0;transform:translateY(-14px);transition:all .3s cubic-bezier(.4,0,.2,1)}
+        .phone-notif.show{opacity:1;transform:translateY(0)}
+        .phone-notif-hdr{display:flex;align-items:center;gap:5px;font-size:9px;color:#94a3b8}
+        .phone-notif-icon{width:12px;height:12px;background:#8b5cf6;border-radius:2px;display:flex;align-items:center;justify-content:center;color:white;font-size:7px}
+        .phone-notif-title{font-size:12px;font-weight:600;color:#f8fafc}
+        .phone-notif-body{font-size:11px;color:#cbd5e1;line-height:1.3}
+        .phone-notif-img{width:100%;height:100px;border-radius:6px;overflow:hidden;margin-top:3px;display:none}
+        .phone-notif-img.show{display:block}
+        .phone-notif-img img{width:100%;height:100%;object-fit:cover}
+        .phone-inapp{position:absolute;inset:0;background:rgba(0,0,0,.6);z-index:20;display:none;align-items:center;justify-content:center;padding:14px}
+        .phone-inapp.show{display:flex}
+        .phone-inapp-card{background:#1e293b;border:1px solid #334155;width:100%;border-radius:14px;overflow:hidden}
+        .phone-inapp-img{display:none;width:100%;height:80px}.phone-inapp-img.show{display:block}.phone-inapp-img img{width:100%;height:100%;object-fit:cover}
+        @media(max-width:768px){.phone-frame{display:none}}
+    </style>
+</head>
+<body>
+<div id="app" class="hidden min-h-screen flex flex-col">
+    <!-- Top Bar -->
+    <nav class="sticky top-0 z-50 border-b border-slate-800/40" style="background:rgba(6,8,15,0.88);backdrop-filter:blur(12px)">
+        <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <span class="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center text-[11px] text-white font-bold">B</span>
+                <span class="text-sm font-bold tracking-tight">boxcast <span class="text-slate-600 font-normal">admin</span></span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex gap-1">
+                    <button class="nav-pill active" onclick="switchSec('analytics',this)"><i class="fa-solid fa-chart-line mr-1"></i><span class="hidden sm:inline">Analytics</span></button>
+                    <button class="nav-pill" onclick="switchSec('notify',this)"><i class="fa-solid fa-bell mr-1"></i><span class="hidden sm:inline">Notify</span></button>
+                </div>
+                <label class="flex items-center gap-1 cursor-pointer text-[11px] text-slate-500 bg-slate-800/40 px-2 py-1 rounded-lg border border-slate-800/60">
+                    <input type="checkbox" id="toggleProd" checked onchange="loadAnalytics()" class="rounded bg-slate-900 border-slate-700 text-brand-500 w-3 h-3">Prod
+                </label>
+                <button onclick="firebase.auth().signOut()" class="text-slate-600 hover:text-white transition text-xs"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-5">
+        <!-- ═══ ANALYTICS (single scrollable page) ═══ -->
+        <div id="sec-analytics" class="sec active space-y-6">
+
+            <!-- 1. PULSE -->
+            <div id="pulse"></div>
+
+            <!-- 2. 7-DAY TRENDS -->
+            <div>
+                <div class="section-hdr"><i class="fa-solid fa-chart-line text-indigo-400"></i>7-Day Trends</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div class="glass p-4 h-56 sm:h-64"><h4 class="text-[11px] text-slate-500 font-medium mb-2">Daily Active Users</h4><canvas id="c-dau"></canvas></div>
+                    <div class="glass p-4 h-56 sm:h-64"><h4 class="text-[11px] text-slate-500 font-medium mb-2">Listening Hours</h4><canvas id="c-listen"></canvas></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="glass p-4 h-56 sm:h-64"><h4 class="text-[11px] text-slate-500 font-medium mb-2">New vs Returning Users</h4><canvas id="c-newret"></canvas></div>
+                    <div class="glass p-4 h-56 sm:h-64"><h4 class="text-[11px] text-slate-500 font-medium mb-2">Churn (Devices Gone Silent)</h4><canvas id="c-churn"></canvas></div>
+                </div>
+            </div>
+
+            <!-- 3. CONTENT INTELLIGENCE -->
+            <div>
+                <div class="section-hdr"><i class="fa-solid fa-headphones text-purple-400"></i>Content Intelligence</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3">Top by Plays (7d)</h4><div id="ct-plays" class="space-y-2"></div></div>
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3">Top by Listen Time (7d)</h4><div id="ct-time" class="space-y-2"></div></div>
+                </div>
+            </div>
+
+            <!-- 4. CURATED PERFORMANCE -->
+            <div>
+                <div class="section-hdr"><i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>Curated Section</div>
+                <div id="cur-metrics" class="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3"></div>
+                <div class="glass p-4 mb-3"><h4 class="text-[11px] text-slate-500 font-medium mb-3">Vibe Breakdown</h4><div id="cur-vibes" class="space-y-2"></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3">Scroll Depth</h4><div id="cur-pos" class="grid grid-cols-3 gap-2"></div></div>
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3">Top Curated Podcasts</h4><div id="cur-pods" class="space-y-2"></div></div>
+                </div>
+            </div>
+
+            <!-- 5. FEATURE ADOPTION -->
+            <div>
+                <div class="section-hdr"><i class="fa-solid fa-puzzle-piece text-cyan-400"></i>Feature Adoption <span class="text-slate-700 font-normal">(7d)</span></div>
+                <div id="feat-grid" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+            </div>
+
+            <!-- 6. SESSION HEALTH -->
+            <div>
+                <div class="section-hdr"><i class="fa-solid fa-heart-pulse text-emerald-400"></i>Session Health <span class="text-slate-700 font-normal">(7d)</span></div>
+                <div id="sess-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2"></div>
+            </div>
+
+            <!-- 7. NAVIGATION -->
+            <div>
+                <div class="section-hdr"><i class="fa-solid fa-map text-blue-400"></i>Screen Visits <span class="text-slate-700 font-normal">(7d)</span></div>
+                <div id="nav-heat" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+            </div>
+
+            <!-- 8. ONBOARDING FUNNEL -->
+            <div>
+                <div class="section-hdr"><i class="fa-solid fa-route text-orange-400"></i>Onboarding & Activation</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3">Onboarding (All-time)</h4><div id="fn-onboard" class="grid grid-cols-3 gap-2"></div></div>
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3">First Play Speed</h4><div id="fn-activ" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div></div>
+                </div>
+            </div>
+
+            <!-- 9. FRICTION -->
+            <div>
+                <div class="section-hdr"><i class="fa-solid fa-triangle-exclamation text-red-400"></i>Friction <span class="text-slate-700 font-normal">(7d)</span></div>
+                <div id="fric-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-2"></div>
+            </div>
+
+            <div class="h-8"></div>
+        </div>
+
+        <!-- ═══ NOTIFICATIONS ═══ -->
+        <div id="sec-notify" class="sec">
+            <div class="flex flex-col lg:flex-row gap-6">
+                <div class="flex-1">
+                    <div class="glass p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xs font-semibold text-slate-400"><i class="fa-solid fa-tower-broadcast text-brand-500 mr-1.5"></i>Push Notification</h2>
+                            <button id="authBtn" onclick="openAuth()" class="text-[11px] bg-slate-800 text-slate-500 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-1"><i class="fa-solid fa-key"></i><span id="authTxt">Set Key</span></button>
+                        </div>
+                        <form id="notifyForm" onsubmit="handleSend(event)" class="flex flex-col gap-3">
+                            <div><label class="block text-[11px] text-slate-500 mb-1">Title</label><input type="text" id="inputTitle" value="BoxCast Update" class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" required></div>
+                            <div><label class="block text-[11px] text-slate-500 mb-1">Body</label><textarea id="inputBody" rows="3" class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none" required>Check out the latest features!</textarea></div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><label class="block text-[11px] text-slate-500 mb-1">Target</label><select id="inputTarget" class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm"><option value="all_users">All</option><option value="prod_users">Prod</option><option value="debug_users">Debug</option></select></div>
+                                <div><label class="block text-[11px] text-slate-500 mb-1">Method</label><select id="inputType" class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm"><option value="both">Push & In-App</option><option value="push">Push</option><option value="in-app">In-App</option></select></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div><label class="block text-[11px] text-slate-500 mb-1">Deep Link</label><input type="text" id="inputRoute" placeholder="podcast/123" class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></div>
+                                <div><label class="block text-[11px] text-slate-500 mb-1">Image URL</label><input type="url" id="inputImage" placeholder="https://..." class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></div>
+                            </div>
+                            <div class="flex items-center justify-between pt-1">
+                                <p id="statusText" class="text-[11px] text-emerald-400 opacity-0 transition-opacity"><i class="fa-solid fa-check-circle"></i> Sent!</p>
+                                <button type="submit" id="sendBtn" class="bg-brand-600 hover:bg-brand-500 text-white px-5 py-2 rounded-xl text-sm font-medium transition flex items-center gap-1.5"><i class="fa-regular fa-paper-plane"></i> Send</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div class="flex items-start justify-center pt-2">
+                    <div class="phone-frame"><div class="phone-bg"></div><div class="phone-status"><span>12:00</span><div class="flex gap-1"><i class="fa-solid fa-signal"></i><i class="fa-solid fa-wifi"></i><i class="fa-solid fa-battery-full"></i></div></div>
+                        <div id="phoneNotif" class="phone-notif show"><div class="phone-notif-hdr"><div class="phone-notif-icon">B</div><span class="font-medium">BoxCast</span><span class="text-slate-600">•</span><span>now</span></div><div class="phone-notif-title" id="pvTitle">BoxCast Update</div><div class="phone-notif-body" id="pvBody">Check out the latest features!</div><div class="phone-notif-img" id="pvImgW"><img id="pvImg" src=""></div></div>
+                        <div id="phoneInApp" class="phone-inapp"><div class="phone-inapp-card"><div class="phone-inapp-img" id="iaImgW"><img id="iaImg" src=""></div><div class="p-3"><h3 class="text-xs font-bold text-white mb-1" id="iaTitle">BoxCast Update</h3><p class="text-[11px] text-slate-300 mb-3" id="iaBody">Check out the latest features!</p><div class="flex justify-end gap-1.5"><button class="px-2.5 py-1 rounded-full text-[10px] bg-slate-700 text-white">Dismiss</button><button class="px-2.5 py-1 rounded-full text-[10px] bg-brand-600 text-white" id="iaAction">View</button></div></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="glass p-5 w-full max-w-xs"><div class="flex justify-between items-center mb-3"><h2 class="text-xs font-bold text-white">Dispatch Key</h2><button onclick="closeAuth()" class="text-slate-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
+        <input type="password" id="inputToken" placeholder="••••••••" class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-brand-500">
+        <button onclick="saveAuth()" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-xl text-sm font-medium">Unlock</button></div>
+    </div>
+</div>
+<script src="dashboard.js"></script>
+</body>
+</html>
