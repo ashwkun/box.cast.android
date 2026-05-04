@@ -277,7 +277,7 @@ async function loadAnalytics(){
     document.getElementById('cur-pos').innerHTML=[mc('Pos 0-2',cm['curated_tap_pos_0_2']||0,'text-emerald-400',''),mc('Pos 3-5',cm['curated_tap_pos_3_5']||0,'text-yellow-400',''),mc('Pos 6+',cm['curated_tap_pos_6_plus']||0,'text-red-400','')].join('');
 
     // Curated pods
-    const cpMap={};pi.forEach(r=>{const rk=r.k.replace(/^(prod_|debug_)/,'');if(rk==='curated_taps'||rk==='curated_plays'){if(!cpMap[r.p])cpMap[r.p]={t:0,p:0};if(rk==='curated_taps')cpMap[r.p].t+=r.v;if(rk==='curated_plays')cpMap[r.p].p+=r.v}});
+    const cpMap={};pi.forEach(r=>{const rk=r.k.replace(/^(prod_|debug_)/,'');if(isProd()&&r.k.startsWith('debug_'))return;if(rk==='curated_taps'||rk==='curated_plays'){if(!cpMap[r.p])cpMap[r.p]={t:0,p:0};if(rk==='curated_taps')cpMap[r.p].t+=r.v;if(rk==='curated_plays')cpMap[r.p].p+=r.v}});
     const cpList=Object.entries(cpMap).sort((a,b)=>(b[1].t+b[1].p)-(a[1].t+a[1].p)).slice(0,6).map(([p,v])=>({label:p.substring(0,28),v:v.t+v.p,display:`${v.t}t/${v.p}p`}));
     document.getElementById('cur-pods').innerHTML=rankBarRow(cpList,'bg-emerald-600/20');
 
