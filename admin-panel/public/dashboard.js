@@ -5,8 +5,9 @@ async function q(sql){try{const r=await fetch(W,{method:'POST',headers:{'Content
 function isProd(){return document.getElementById('toggleProd').checked}
 function ck(k,t){return isProd()?(k===`prod_${t}`||k===t):(k===`prod_${t}`||k===`debug_${t}`||k===t)}
 function mc(label,val,color,icon){return`<div class="glass-sm p-3 text-center metric-glow transition"><div class="text-xl sm:text-2xl font-bold ${color||''}">${val}</div><div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">${icon?`<i class="fa-solid fa-${icon} mr-1"></i>`:''}${label}</div></div>`}
-function barRow(items,colorClass){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v))||1;return items.map((r,i)=>{const w=Math.max(6,r.v/mx*100);return`<div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 w-12 truncate font-mono">${r.label}</span><div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-7 flex items-center"><div class="bar-fill h-full ${colorClass||'bg-brand-600/30'} rounded-lg flex items-center px-2.5" style="width:${w}%"></div></div><span class="text-[11px] font-semibold text-slate-400 w-12 text-right">${r.display}</span></div>`}).join('')}
-function doubleBarRow(items,c1,c2){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v1+i.v2))||1;return items.map((r,i)=>{const w1=(r.v1/mx*100);const w2=(r.v2/mx*100);return`<div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 w-12 truncate font-mono">${r.label}</span><div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-7 flex items-center"><div class="h-full ${c1} transition-all" style="width:${w1}%"></div><div class="h-full ${c2} transition-all" style="width:${w2}%"></div></div><span class="text-[11px] font-semibold text-slate-400 w-12 text-right">${r.display}</span></div>`}).join('')}
+function trendBarRow(items,colorClass){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v))||1;return`<div class="flex items-end justify-between h-32 w-full pt-4 px-1 pb-1">`+items.map((r,i)=>{const h=Math.max(2,(r.v/mx)*100);return`<div class="flex flex-col items-center flex-1 h-full justify-end"><span class="text-[9px] sm:text-[10px] text-slate-300 font-bold mb-1.5">${r.display}</span><div class="w-[80%] max-w-[28px] ${colorClass||'bg-brand-500'} rounded-t-sm transition-all" style="height:${h}%"></div><span class="text-[8px] sm:text-[9px] text-slate-500 mt-2 whitespace-nowrap font-mono">${r.label}</span></div>`}).join('')+`</div>`}
+function rankBarRow(items,colorClass){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v))||1;return items.map((r,i)=>{const w=Math.max(2,r.v/mx*100);return`<div class="flex items-center gap-2 mb-1.5"><span class="text-[10px] text-slate-600 w-4 text-right font-mono">${i+1}</span><div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-7 flex items-center relative"><div class="h-full ${colorClass||'bg-brand-600/30'} rounded-lg transition-all" style="width:${w}%"></div><span class="absolute left-3 right-3 text-[11px] text-slate-300 truncate">${r.label}</span></div><span class="text-[11px] font-semibold text-slate-500 w-14 text-right">${r.display}</span></div>`}).join('')}
+function doubleBarRow(items,c1,c2){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v1+i.v2))||1;return`<div class="flex items-end justify-between h-32 w-full pt-4 px-1 pb-1">`+items.map((r,i)=>{const h1=(r.v1/mx)*100;const h2=(r.v2/mx)*100;return`<div class="flex flex-col items-center flex-1 h-full justify-end"><span class="text-[9px] sm:text-[10px] text-slate-300 font-bold mb-1.5">${r.display}</span><div class="w-[80%] max-w-[28px] flex flex-col justify-end" style="height:100%"><div class="w-full ${c2} rounded-t-sm transition-all" style="height:${h2}%"></div><div class="w-full ${c1} transition-all" style="height:${h1}%"></div></div><span class="text-[8px] sm:text-[9px] text-slate-500 mt-2 whitespace-nowrap font-mono">${r.label}</span></div>`}).join('')+`</div>`}
 
 function switchSec(id,btn){document.querySelectorAll('.nav-pill').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));btn.classList.add('active');document.getElementById(`sec-${id}`).classList.add('active');if(id==='analytics')loadAnalytics()}
 
@@ -59,10 +60,16 @@ async function loadAnalytics(){
 
     // Per-day churn approximation (devices seen on day X but not seen after)
     const churnByDay=[];
+    const now = new Date();
     for(let i=0;i<7;i++){
         const d=labels7[i];if(!d)continue;
-        const cr=await q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date='${d}' ${pf} AND device_id NOT IN (SELECT DISTINCT device_id FROM daily_heartbeats WHERE last_seen_date>'${d}' ${pf})`);
-        churnByDay.push(cr[0]?.c||0);
+        const daysSince = Math.floor((now - new Date(d)) / (1000 * 60 * 60 * 24));
+        if (daysSince < 3) {
+            churnByDay.push(0); // Too recent to be considered churned
+        } else {
+            const cr=await q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date='${d}' ${pf} AND device_id NOT IN (SELECT DISTINCT device_id FROM daily_heartbeats WHERE last_seen_date>'${d}' ${pf})`);
+            churnByDay.push(cr[0]?.c||0);
+        }
     }
 
     // Playback/engagement
@@ -87,7 +94,7 @@ async function loadAnalytics(){
     const shortL=labels7.map(d=>d.slice(5));
     
     const dauItems = shortL.map((l, i) => ({ label: l, v: dauV[i]||0, display: dauV[i]||0 }));
-    document.getElementById('c-dau').innerHTML = barRow(dauItems, 'bg-brand-500/50');
+    document.getElementById('c-dau').innerHTML = trendBarRow(dauItems, 'bg-brand-500/50');
 
     const engArr=labels7.map(d=>(dayMetrics[d]?.['total_engagement_sec']||0)/3600);
     const playArr=labels7.map(d=>(dayMetrics[d]?.['total_playback_sec']||0)/3600);
@@ -100,7 +107,7 @@ async function loadAnalytics(){
     document.getElementById('c-newret').innerHTML = doubleBarRow(retItems, 'bg-emerald-500/80', 'bg-blue-500/50');
 
     const churnItems = shortL.map((l, i) => ({ label: l, v: churnByDay[i]||0, display: churnByDay[i]||0 }));
-    document.getElementById('c-churn').innerHTML = barRow(churnItems, 'bg-red-500/50');
+    document.getElementById('c-churn').innerHTML = trendBarRow(churnItems, 'bg-red-500/50');
 
     // ═══ 3. CONTENT ═══
     const podPlays={},podTime={};
@@ -110,10 +117,10 @@ async function loadAnalytics(){
         if(rk==='podcast_plays')podPlays[r.p]=(podPlays[r.p]||0)+r.v;
         if(rk.startsWith('play_time_sec'))podTime[r.p]=(podTime[r.p]||0)+r.v;
     });
-    const topPlays=Object.entries(podPlays).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([p,v])=>({label:p.substring(0,30),v,display:v+' plays'}));
-    const topTime=Object.entries(podTime).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([p,v])=>({label:p.substring(0,30),v,display:Math.round(v/60)+'m'}));
-    document.getElementById('ct-plays').innerHTML=barRow(topPlays,'bg-brand-600/25');
-    document.getElementById('ct-time').innerHTML=barRow(topTime,'bg-cyan-600/25');
+    const topPlays=Object.entries(podPlays).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([p,v])=>({label:p,v,display:v+' plays'}));
+    const topTime=Object.entries(podTime).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([p,v])=>({label:p,v,display:Math.round(v/60)+'m'}));
+    document.getElementById('ct-plays').innerHTML=rankBarRow(topPlays,'bg-brand-600/25');
+    document.getElementById('ct-time').innerHTML=rankBarRow(topTime,'bg-cyan-600/25');
 
     // ═══ 4. CURATED ═══
     const cm={};cur.forEach(r=>{const rk=r.k.replace(/^(prod_|debug_)/,'');if(isProd()&&r.k.startsWith('debug_'))return;cm[rk]=(cm[rk]||0)+r.v});
