@@ -9,6 +9,29 @@ function trendBarRow(items,colorClass){if(!items.length)return'<div class="text-
 function rankBarRow(items,colorClass){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v))||1;return items.map((r,i)=>{const w=Math.max(2,r.v/mx*100);return`<div class="flex items-center gap-2 mb-1.5"><span class="text-[10px] text-slate-600 w-4 text-right font-mono">${i+1}</span><div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-7 flex items-center relative"><div class="h-full ${colorClass||'bg-brand-600/30'} rounded-lg transition-all" style="width:${w}%"></div><span class="absolute left-3 right-3 text-[11px] text-slate-300 truncate">${r.label}</span></div><span class="text-[11px] font-semibold text-slate-500 w-14 text-right">${r.display}</span></div>`}).join('')}
 function doubleBarRow(items,c1,c2){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v1+i.v2))||1;return`<div class="flex items-end justify-between h-32 w-full pt-4 px-1 pb-1">`+items.map((r,i)=>{const h1=(r.v1/mx)*100;const h2=(r.v2/mx)*100;return`<div class="flex flex-col items-center flex-1 h-full justify-end"><span class="text-[9px] sm:text-[10px] text-slate-300 font-bold mb-1.5">${r.display}</span><div class="w-[80%] max-w-[28px] flex flex-col justify-end" style="height:100%"><div class="w-full ${c2} rounded-t-sm transition-all" style="height:${h2}%"></div><div class="w-full ${c1} transition-all" style="height:${h1}%"></div></div><span class="text-[8px] sm:text-[9px] text-slate-500 mt-2 whitespace-nowrap font-mono">${r.label}</span></div>`}).join('')+`</div>`}
 
+function renderBarChart(id, labels, data, opts={}) {
+    const { valSuffix='', colorClass='bg-brand-500', shadowColor='rgba(139,92,246,0.3)', textColor='text-brand-400' } = opts;
+    const mx = Math.max(...data) || 1;
+    let html = `<div class="flex items-end justify-between h-40 w-full pt-4 px-2">`;
+    labels.forEach((lbl, i) => {
+        const val = data[i];
+        const h = Math.max(2, (val / mx) * 100);
+        const d = new Date(lbl);
+        const dayStr = d.toLocaleDateString('en-US', { weekday: 'short' });
+        let displayVal = val;
+        if (val > 0 && val % 1 !== 0) displayVal = val.toFixed(1);
+        html += `<div class="flex flex-col items-center flex-1 h-full justify-end group">
+            <span class="text-[14px] sm:text-[16px] ${textColor} font-bold mb-2 transition-all group-hover:-translate-y-1 ${val===0?'opacity-30':''}">${displayVal}${valSuffix}</span>
+            <div class="w-full max-w-[40px] bg-slate-800/30 group-hover:bg-slate-800/50 rounded-t-md transition-all relative flex flex-col justify-end" style="height:${h}%">
+                <div class="w-full ${colorClass} rounded-t-md transition-all shadow-[0_0_15px_${shadowColor}] ${val===0?'opacity-10':'opacity-90 group-hover:opacity-100'}" style="height:100%"></div>
+            </div>
+            <span class="text-[10px] text-slate-500 mt-3 uppercase tracking-widest font-semibold">${dayStr}</span>
+        </div>`;
+    });
+    html += `</div>`;
+    document.getElementById(id).innerHTML = html;
+}
+
 function switchSec(id,btn){document.querySelectorAll('.nav-pill').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));btn.classList.add('active');document.getElementById(`sec-${id}`).classList.add('active');if(id==='analytics')loadAnalytics()}
 
 // ═══════════════════════════════════════════
@@ -40,9 +63,15 @@ async function loadAnalytics(){
     // ── Process heartbeats for user breakdown ──
     const dauMap={};
     hb.forEach(r=>{dauMap[r.d]=r.c});
-    const labels7=Object.keys(dauMap).slice(-7);
+    
+    const labels7 = [];
+    for(let i=6; i>=0; i--) {
+        const d = new Date(new Date().setDate(new Date().getDate() - i));
+        labels7.push(d.toISOString().split('T')[0]);
+    }
+    
     const dauV=labels7.map(d=>dauMap[d]||0);
-    const todayDAU=dauMap[today]||dauV[dauV.length-1]||0;
+    const todayDAU=dauMap[today]||0;
 
     // New installs per day
     const newMap={};
@@ -93,13 +122,13 @@ async function loadAnalytics(){
     // ═══ 2. CHARTS (HTML BARS) ═══
     const shortL=labels7.map(d=>d.slice(5));
     
-    const dauItems = shortL.map((l, i) => ({ label: l, v: dauV[i]||0, display: dauV[i]||0 }));
-    document.getElementById('c-dau').innerHTML = trendBarRow(dauItems, 'bg-brand-500/50');
+    renderBarChart('c-dau', labels7, dauV, { colorClass: 'bg-brand-500', shadowColor: 'rgba(139,92,246,0.3)', textColor: 'text-brand-400' });
 
     const engArr=labels7.map(d=>(dayMetrics[d]?.['total_engagement_sec']||0)/3600);
     const playArr=labels7.map(d=>(dayMetrics[d]?.['total_playback_sec']||0)/3600);
-    const listItems = shortL.map((l, i) => ({ label: l, v1: engArr[i]||0, v2: playArr[i]||0, display: ((engArr[i]||0)+(playArr[i]||0)).toFixed(1)+'h' }));
-    document.getElementById('c-listen').innerHTML = doubleBarRow(listItems, 'bg-cyan-500/80', 'bg-cyan-900/50');
+    
+    renderBarChart('c-listen-fg', labels7, engArr, { valSuffix: 'h', colorClass: 'bg-purple-500', shadowColor: 'rgba(168,85,247,0.3)', textColor: 'text-purple-400' });
+    renderBarChart('c-listen-bg', labels7, playArr, { valSuffix: 'h', colorClass: 'bg-blue-500', shadowColor: 'rgba(59,130,246,0.3)', textColor: 'text-blue-400' });
 
     const newArr=labels7.map(d=>newMap[d]||0);
     const retArr=labels7.map((d,i)=>Math.max(0,(dauV[i]||0)-(newArr[i]||0)));
