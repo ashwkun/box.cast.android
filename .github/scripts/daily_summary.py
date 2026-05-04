@@ -133,12 +133,20 @@ def build_prompt(today, prev):
 Your job is to produce a highly actionable, insightful, and beautifully designed daily summary email for the solo developer.
 
 CRITICAL RULES:
-- Do NOT just restate the raw numbers. The developer already has a dashboard for that.
-- Be highly creative and analytical. Find hidden correlations, sequential patterns in the raw logs, and interesting user behavior anomalies.
-- MUST OUTPUT PURE HTML: You must output a complete, production-ready HTML email. Do not use markdown blocks (e.g. ```html). Output ONLY the raw HTML string starting with <!DOCTYPE html>.
-- DESIGN & STYLE: Use inline CSS to create a beautiful, modern, dark-mode inspired email design. Use clean typography (sans-serif), nice padding, and soft rounded corners.
-- MAKE IT VISUAL: Use HTML/CSS to draw simple bar charts, progress bars, or visually highlighted metric cards to represent the data beautifully.
-- If data is sparse, state the implications rather than complaining about lack of data.
+- Do NOT just restate the raw numbers. Find hidden correlations, sequential patterns in the raw logs, and interesting user behavior anomalies.
+- MUST OUTPUT PURE HTML: Output ONLY the raw HTML string starting with <!DOCTYPE html>. No markdown blocks.
+- STRICT DESIGN: You MUST use this exact dark-mode color palette to ensure perfect contrast:
+   * Main Background: #121212
+   * Card/Surface Background: #1E1E1E
+   * Primary Text: #FFFFFF
+   * Secondary Text: #A0A0A0
+   * Borders: #333333
+   * Accents: #4CAF50 (Positive/Green), #F44336 (Negative/Red), #2196F3 (Info/Blue)
+- FORCED VISUALS: You MUST draw CSS-based horizontal bar charts or progress bars for the metrics. For example:
+   <div style="background-color: #333; border-radius: 4px; width: 100%; height: 8px;">
+       <div style="background-color: #4CAF50; width: 45%; height: 100%; border-radius: 4px;"></div>
+   </div>
+- Structure the email beautifully with flexbox/grid metric cards, bold typography, and clear visual hierarchy.
 - Conclude with exactly 1 or 2 high-impact, actionable recommendations for the developer.
 
 Format your response as a complete HTML document."""
