@@ -87,19 +87,7 @@ async function loadAnalytics(){
     const churnData=await q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date>=date('now','-14 days') AND last_seen_date<date('now','-7 days') ${pf} AND device_id NOT IN (SELECT DISTINCT device_id FROM daily_heartbeats WHERE last_seen_date>=date('now','-7 days') ${pf})`);
     const churned=churnData[0]?.c||0;
 
-    // Per-day churn approximation (devices seen on day X but not seen after)
-    const churnByDay=[];
-    const now = new Date();
-    for(let i=0;i<7;i++){
-        const d=labels7[i];if(!d)continue;
-        const daysSince = Math.floor((now - new Date(d)) / (1000 * 60 * 60 * 24));
-        if (daysSince < 3) {
-            churnByDay.push(0); // Too recent to be considered churned
-        } else {
-            const cr=await q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date='${d}' ${pf} AND device_id NOT IN (SELECT DISTINCT device_id FROM daily_heartbeats WHERE last_seen_date>'${d}' ${pf})`);
-            churnByDay.push(cr[0]?.c||0);
-        }
-    }
+
 
     // Playback/engagement
     const todayPlay=(dayMetrics[today]?.['total_playback_sec']||0)/3600;
@@ -108,15 +96,13 @@ async function loadAnalytics(){
 
     // ═══ 1. PULSE ═══
     document.getElementById('pulse').innerHTML=`
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-2">
+        <div class="grid grid-cols-3 lg:grid-cols-6 gap-2">
             ${mc('Today Users',todayDAU,'text-white','users')}
             ${mc('New',todayNew,'text-emerald-400','user-plus')}
             ${mc('Returning',todayReturn,'text-blue-400','rotate-left')}
             ${mc('Listening',todayPlay.toFixed(1)+'h','text-purple-400','headphones')}
             ${mc('7d Active',totalActive7d,'text-amber-400','calendar-week')}
-        </div>
-        <div class="flex items-center gap-3 mt-2 text-[11px]">
-            <span class="text-slate-600"><i class="fa-solid fa-skull-crossbones text-red-500/60 mr-1"></i>${churned} devices churned (last 7d)</span>
+            ${mc('Churned',churned,'text-red-400','skull-crossbones')}
         </div>`;
 
     // ═══ 2. CHARTS (HTML BARS) ═══
@@ -132,11 +118,9 @@ async function loadAnalytics(){
 
     const newArr=labels7.map(d=>newMap[d]||0);
     const retArr=labels7.map((d,i)=>Math.max(0,(dauV[i]||0)-(newArr[i]||0)));
-    const retItems = shortL.map((l, i) => ({ label: l, v1: newArr[i]||0, v2: retArr[i]||0, display: (newArr[i]||0) + '/' + (retArr[i]||0) }));
-    document.getElementById('c-newret').innerHTML = doubleBarRow(retItems, 'bg-emerald-500/80', 'bg-blue-500/50');
-
-    const churnItems = shortL.map((l, i) => ({ label: l, v: churnByDay[i]||0, display: churnByDay[i]||0 }));
-    document.getElementById('c-churn').innerHTML = trendBarRow(churnItems, 'bg-red-500/50');
+    
+    renderBarChart('c-new', labels7, newArr, { colorClass: 'bg-emerald-500', shadowColor: 'rgba(16,185,129,0.3)', textColor: 'text-emerald-400' });
+    renderBarChart('c-ret', labels7, retArr, { colorClass: 'bg-blue-500', shadowColor: 'rgba(59,130,246,0.3)', textColor: 'text-blue-400' });
 
     // ═══ 3. CONTENT ═══
     const podPlays={},podTime={};
