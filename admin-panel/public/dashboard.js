@@ -201,7 +201,7 @@ async function loadAnalytics(){
     // Curated pods
     const cpMap={};pi.forEach(r=>{const rk=r.k.replace(/^(prod_|debug_)/,'');if(rk==='curated_taps'||rk==='curated_plays'){if(!cpMap[r.p])cpMap[r.p]={t:0,p:0};if(rk==='curated_taps')cpMap[r.p].t+=r.v;if(rk==='curated_plays')cpMap[r.p].p+=r.v}});
     const cpList=Object.entries(cpMap).sort((a,b)=>(b[1].t+b[1].p)-(a[1].t+a[1].p)).slice(0,6).map(([p,v])=>({label:p.substring(0,28),v:v.t+v.p,display:`${v.t}t/${v.p}p`}));
-    document.getElementById('cur-pods').innerHTML=barRow(cpList,'bg-emerald-600/20');
+    document.getElementById('cur-pods').innerHTML=rankBarRow(cpList,'bg-emerald-600/20');
 
     // ═══ 5. FEATURES ═══
     document.getElementById('feat-grid').innerHTML=[
