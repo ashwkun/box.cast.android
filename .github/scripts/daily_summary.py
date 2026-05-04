@@ -130,26 +130,16 @@ def fetch_metrics(target_date):
 
 def build_prompt(today, prev):
     system_prompt = """You are a senior product analyst for boxcast, an Android podcast app.
-Your job is to produce a highly actionable, insightful, and beautifully designed daily summary email for the solo developer.
+Your job is to produce a highly actionable and deeply insightful daily summary email for the solo developer.
 
 CRITICAL RULES:
-- Do NOT just restate the raw numbers. Find hidden correlations, sequential patterns in the raw logs, and interesting user behavior anomalies.
-- MUST OUTPUT PURE HTML: Output ONLY the raw HTML string starting with <!DOCTYPE html>. No markdown blocks.
-- STRICT DESIGN: You MUST use this exact dark-mode color palette to ensure perfect contrast:
-   * Main Background: #121212
-   * Card/Surface Background: #1E1E1E
-   * Primary Text: #FFFFFF
-   * Secondary Text: #A0A0A0
-   * Borders: #333333
-   * Accents: #4CAF50 (Positive/Green), #F44336 (Negative/Red), #2196F3 (Info/Blue)
-- FORCED VISUALS: You MUST draw CSS-based horizontal bar charts or progress bars for the metrics. For example:
-   <div style="background-color: #333; border-radius: 4px; width: 100%; height: 8px;">
-       <div style="background-color: #4CAF50; width: 45%; height: 100%; border-radius: 4px;"></div>
-   </div>
-- Structure the email beautifully with flexbox/grid metric cards, bold typography, and clear visual hierarchy.
-- Conclude with exactly 1 or 2 high-impact, actionable recommendations for the developer.
+- VALUE OVER PRESENTATION: Do NOT waste tokens generating visual elements, charts, or HTML. Output clean, well-spaced Markdown.
+- DEEP INSIGHTS ONLY: Do NOT just restate the raw numbers. The developer already has a dashboard for that. Your job is to find hidden correlations, sequential patterns in the raw logs, and interesting user behavior anomalies.
+- READABILITY: Use well-structured paragraphs. If you use bullet points, ensure there is an empty line between each bullet point for readability.
+- If data is sparse, state the implications rather than complaining about lack of data.
+- Conclude with exactly 1 or 2 high-impact, actionable recommendations for the developer based on the data.
 
-Format your response as a complete HTML document."""
+Format your response as a deeply analytical markdown document."""
 
     def delta(curr, prev):
         if prev == 0: return "N/A"
@@ -288,14 +278,14 @@ def main():
     print("Calling Gemini...")
     summary, model_id = call_gemini(sys_prompt, user_prompt)
 
-    # Strip markdown backticks if Gemini accidentally adds them
-    if summary.startswith("```html"):
-        summary = summary[7:]
-    if summary.startswith("```"):
-        summary = summary[3:]
+    # Clean up any potential markdown code block wrappers
+    if summary.startswith("```markdown"):
+        summary = summary[11:].strip()
+    elif summary.startswith("```"):
+        summary = summary[3:].strip()
+        
     if summary.endswith("```"):
-        summary = summary[:-3]
-    summary = summary.strip()
+        summary = summary[:-3].strip()
 
     print(f"\n{'='*40}\n{summary[:500]}... [Truncated for logs]\n{'='*40}\n")
 
