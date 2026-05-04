@@ -479,6 +479,11 @@ async function loadAiSummary() {
     }
 }
 
+function setAiInput(text) {
+    document.getElementById('ai-chat-input').value = text;
+    sendAiQuery();
+}
+
 async function sendAiQuery() {
     const inputEl = document.getElementById('ai-chat-input');
     const msg = inputEl.value.trim();
@@ -487,11 +492,11 @@ async function sendAiQuery() {
     if (!dashPwd) { openAuth(); return; }
 
     const histEl = document.getElementById('ai-chat-history');
-    histEl.innerHTML += `<div class="bg-indigo-600/20 p-3 rounded-xl rounded-tr-sm text-indigo-100 border border-indigo-500/30 self-end ml-10 mb-3">${msg}</div>`;
+    histEl.innerHTML += `<div class="bg-indigo-600/20 p-4 rounded-2xl rounded-tr-sm text-indigo-100 border border-indigo-500/30 self-end ml-10 mb-3">${msg}</div>`;
     inputEl.value = '';
     
     const loadId = 'ai-load-' + Date.now();
-    histEl.innerHTML += `<div id="${loadId}" class="bg-slate-800/50 p-3 rounded-xl rounded-tl-sm text-slate-400 border border-slate-700/50 mr-10 mb-3"><i class="fa-solid fa-circle-notch fa-spin"></i> Analyzing telemetry...</div>`;
+    histEl.innerHTML += `<div id="${loadId}" class="bg-slate-800/50 p-4 rounded-2xl rounded-tl-sm text-slate-400 border border-slate-700/50 mr-10 mb-3"><i class="fa-solid fa-circle-notch fa-spin"></i> Analyzing telemetry...</div>`;
     histEl.scrollTop = histEl.scrollHeight;
 
     try {
@@ -510,10 +515,14 @@ async function sendAiQuery() {
             ctxFnl = ctxFnl.filter(f => !f.k.startsWith('debug_'));
         }
 
-        const context = `You are BoxCast analytics AI. Here is the LIVE telemetry data:\n` + 
-            `Daily Aggregates: ${JSON.stringify(ctxM7).substring(0, 1500)}...\n` + 
-            `Funnel Data: ${JSON.stringify(ctxFnl).substring(0, 1000)}...\n` +
-            `The user asked: "${msg}". Analyze the provided data JSON and answer concisely in markdown. Be specific.`;
+        // Format nicely so the AI understands
+        const m7Fmt = Object.keys(ctxM7).length > 0 ? JSON.stringify(ctxM7, null, 2) : 'No metrics recorded today yet.';
+        const fnlFmt = ctxFnl.length > 0 ? JSON.stringify(ctxFnl, null, 2) : 'No funnel events recorded today yet.';
+
+        const context = `You are BoxCast analytics AI. Here is the LIVE telemetry data (last 7 days window):\n\n` + 
+            `=== OVERALL AGGREGATES ===\n${m7Fmt}\n\n` + 
+            `=== FUNNEL & DISCOVERY ===\n${fnlFmt}\n\n` +
+            `The user asked: "${msg}". Analyze the provided data and answer concisely in markdown. If data is sparse, acknowledge it and analyze what IS available. Do not complain about missing data unnecessarily. Be professional.`;
 
         const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
             method: 'POST',
