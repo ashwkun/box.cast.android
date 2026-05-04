@@ -39,12 +39,15 @@ function switchSec(id,btn){document.querySelectorAll('.nav-pill').forEach(b=>b.c
 // ═══════════════════════════════════════════
 async function loadAnalytics(){
     const pf=isProd()?`AND app_version NOT LIKE '%-debug'`:'';
-    const [hb,agg,pi,cur,fnl]=await Promise.all([
+    const [hb,agg,pi,cur,fnl,ltUsers,ltSilent,ltAgg]=await Promise.all([
         q(`SELECT last_seen_date as d, COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date>=date('now','-14 days') ${pf} GROUP BY d ORDER BY d ASC`),
         q(`SELECT date_partition as d, metric_key as k, SUM(metric_value) as v FROM daily_aggregates WHERE date_partition>=date('now','-7 days') GROUP BY d,k ORDER BY d ASC`),
         q(`SELECT podcast_id as p, metric_key as k, SUM(metric_value) as v FROM podcast_intelligence WHERE date_partition>=date('now','-7 days') GROUP BY p,k ORDER BY v DESC`),
         q(`SELECT metric_key as k, SUM(metric_value) as v FROM daily_aggregates WHERE date_partition>=date('now','-7 days') AND k LIKE '%curated_%' GROUP BY k`),
-        q(`SELECT metric_key as k, SUM(metric_value) as v FROM daily_aggregates WHERE k LIKE '%funnel_%' OR k LIKE '%play_milestone_%' OR k LIKE 'notification_%' GROUP BY k`)
+        q(`SELECT metric_key as k, SUM(metric_value) as v FROM daily_aggregates WHERE k LIKE '%funnel_%' OR k LIKE '%play_milestone_%' OR k LIKE 'notification_%' GROUP BY k`),
+        q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats ${pf?'WHERE '+pf.replace('AND ',''):''}`),
+        q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date<date('now','-7 days') ${pf} AND device_id NOT IN (SELECT DISTINCT device_id FROM daily_heartbeats WHERE last_seen_date>=date('now','-7 days') ${pf})`),
+        q(`SELECT metric_key as k, SUM(metric_value) as v FROM daily_aggregates GROUP BY k`)
     ]);
 
     const today=new Date().toISOString().split('T')[0];
@@ -83,26 +86,67 @@ async function loadAnalytics(){
     const wau=await q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date>=date('now','-7 days') ${pf}`);
     const totalActive7d=wau[0]?.c||0;
 
-    // Churn: devices seen 8-14 days ago but NOT in last 7 days
-    const churnData=await q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date>=date('now','-14 days') AND last_seen_date<date('now','-7 days') ${pf} AND device_id NOT IN (SELECT DISTINCT device_id FROM daily_heartbeats WHERE last_seen_date>=date('now','-7 days') ${pf})`);
-    const churned=churnData[0]?.c||0;
-
-
-
     // Playback/engagement
     const todayPlay=(dayMetrics[today]?.['total_playback_sec']||0)/3600;
     const todayEng=(dayMetrics[today]?.['total_engagement_sec']||0)/3600;
+    const todayListenTotal=todayPlay+todayEng;
     const todayEps=m7['play_episode_started']||0;
 
-    // ═══ 1. PULSE ═══
-    document.getElementById('pulse').innerHTML=`
-        <div class="grid grid-cols-3 lg:grid-cols-6 gap-2">
+    // ═══ LIFETIME METRICS ═══
+    const totalLifetimeUsers=ltUsers[0]?.c||0;
+    const goneSilent=ltSilent[0]?.c||0;
+    const netActive=Math.max(0,totalLifetimeUsers-goneSilent);
+
+    // Lifetime aggregates
+    const ltMap={};
+    ltAgg.forEach(r=>{
+        const rk=r.k.replace(/^(prod_|debug_)/,'');
+        if(isProd()&&r.k.startsWith('debug_'))return;
+        ltMap[rk]=(ltMap[rk]||0)+r.v;
+    });
+    const totalInstalls=ltMap['new_install']||0;
+    const totalSessions=ltMap['session_started']||ltMap['app_open']||0;
+    const totalListenSec=(ltMap['total_playback_sec']||0)+(ltMap['total_engagement_sec']||0);
+    const totalListenHrs=totalListenSec/3600;
+
+    // Averages (anchored to May 4, 2026)
+    const launchDate=new Date('2026-05-04');
+    const nowDate=new Date();
+    const daysElapsed=Math.max(1,Math.floor((nowDate-launchDate)/(1000*60*60*24))+1);
+    const instD=(totalInstalls/daysElapsed).toFixed(1);
+    const instW=(totalInstalls/daysElapsed*7).toFixed(1);
+    const instM=(totalInstalls/daysElapsed*30).toFixed(0);
+    const listenD=(totalListenHrs/daysElapsed).toFixed(1);
+    const listenW=(totalListenHrs/daysElapsed*7).toFixed(1);
+    const listenM=(totalListenHrs/daysElapsed*30).toFixed(0);
+
+    // ═══ 1a. DAILY VELOCITY ═══
+    document.getElementById('pulse-daily').innerHTML=`
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
             ${mc('Today Users',todayDAU,'text-white','users')}
-            ${mc('New',todayNew,'text-emerald-400','user-plus')}
+            ${mc('New Installs',todayNew,'text-emerald-400','user-plus')}
             ${mc('Returning',todayReturn,'text-blue-400','rotate-left')}
-            ${mc('Listening',todayPlay.toFixed(1)+'h','text-purple-400','headphones')}
+            ${mc('Listening',todayListenTotal.toFixed(1)+'h','text-purple-400','headphones')}
+        </div>`;
+
+    // ═══ 1b. OVERALL HEALTH ═══
+    document.getElementById('pulse-lifetime').innerHTML=`
+        <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 mb-2">
+            ${mc('Lifetime Users',totalLifetimeUsers,'text-white','users-rectangle')}
+            ${mc('Net Active',netActive,'text-emerald-400','user-check')}
+            ${mc('Gone Silent',goneSilent,'text-red-400','skull-crossbones')}
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
             ${mc('7d Active',totalActive7d,'text-amber-400','calendar-week')}
-            ${mc('Churned',churned,'text-red-400','skull-crossbones')}
+            ${mc('Total Sessions',totalSessions,'text-cyan-400','arrow-pointer')}
+            <div class="glass-sm p-3 text-center metric-glow transition">
+                <div class="text-sm sm:text-base font-bold text-indigo-400">${instD}/d &bull; ${instW}/w &bull; ${instM}/m</div>
+                <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider"><i class="fa-solid fa-download mr-1"></i>Avg Installs</div>
+            </div>
+            <div class="glass-sm p-3 text-center metric-glow transition">
+                <div class="text-sm sm:text-base font-bold text-purple-400">${listenD}h/d &bull; ${listenW}h/w &bull; ${listenM}h/m</div>
+                <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider"><i class="fa-solid fa-headphones mr-1"></i>Avg Listening</div>
+            </div>
         </div>`;
 
     // ═══ 2. CHARTS (HTML BARS) ═══
