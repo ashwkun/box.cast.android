@@ -9,11 +9,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
     <script>
         firebase.initializeApp({apiKey:"AIzaSyDyoatNJhMIMWNCCrnNocRo0LJXdmRo-nc",authDomain:"boxcasts.firebaseapp.com",databaseURL:"https://boxcasts-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"boxcasts",storageBucket:"boxcasts.firebasestorage.app",messagingSenderId:"74591511411",appId:"1:74591511411:web:84d3c9cf8cae35431b1b06"});
-        firebase.auth().onAuthStateChanged(u=>{if(!u||u.email!=='aswinanand9020@gmail.com')window.location.href='/login.html';else{document.getElementById('app').classList.remove('hidden');initApp();}});
+        document.addEventListener('DOMContentLoaded',()=>{document.getElementById('app').classList.remove('hidden');initApp();});
     </script>
     <style>
         *{font-family:'Inter',sans-serif}
@@ -205,6 +204,6 @@
         <button onclick="saveAuth()" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-xl text-sm font-medium">Unlock</button></div>
     </div>
 </div>
-<script src="dashboard.js?v=20260504e"></script>
+<script src="dashboard.js?v=20260504f"></script>
 </body>
 </html>
