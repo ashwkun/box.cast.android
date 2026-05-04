@@ -1,5 +1,5 @@
 const W='https://boxcast-telemetry.boxboxcric.workers.dev/query',AK='boxcast_secure_telemetry_key_2026';
-let charts={},dashPwd='';
+let charts={},dashPwd='',globalM7={},globalFnl=[];
 
 async function q(sql){try{const r=await fetch(W,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${AK}`},body:JSON.stringify({query:sql})});const j=await r.json();return j.success?j.data:[];}catch(e){console.error(e);return[];}}
 function isProd(){return document.getElementById('toggleProd').checked}
@@ -415,6 +415,8 @@ async function loadAnalytics(){
         <div class="glass p-4 border border-red-500/10"><div class="text-[10px] text-red-400 uppercase font-bold mb-1"><i class="fa-solid fa-hand-pointer mr-1"></i>Rage Taps</div><div class="text-2xl font-bold">${m7['rage_tap']||0}</div></div>
         <div class="glass p-4 border border-orange-500/10"><div class="text-[10px] text-orange-400 uppercase font-bold mb-1"><i class="fa-solid fa-magnifying-glass mr-1"></i>Failed Searches</div><div class="text-2xl font-bold">${(m7['failed_search']||0)+(m7['friction_search_empty']||0)}</div></div>
         <div class="glass p-4 border border-yellow-500/10"><div class="text-[10px] text-yellow-400 uppercase font-bold mb-1"><i class="fa-solid fa-bug mr-1"></i>Playback Errors</div><div class="text-2xl font-bold">${(m7['crash_report']||0)+(m7['friction_playback_error']||0)}</div></div>`;
+    globalM7 = m7;
+    globalFnl = fnl;
 }
 
 // ═══ NOTIFICATIONS ═══
@@ -500,8 +502,8 @@ async function sendAiQuery() {
         const model = document.getElementById('ai-model-select').value;
         const incDebug = document.getElementById('ai-debug-toggle').checked;
 
-        let ctxM7 = {...m7};
-        let ctxFnl = [...fnl];
+        let ctxM7 = {...globalM7};
+        let ctxFnl = [...globalFnl];
         
         if (!incDebug) {
             Object.keys(ctxM7).forEach(k => { if(k.startsWith('debug_')) delete ctxM7[k]; });
