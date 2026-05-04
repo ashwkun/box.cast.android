@@ -114,7 +114,7 @@ async function loadAnalytics(){
     const weekScreenSec=m7['total_engagement_sec']||0;
 
     // ═══ 1a. DAILY VELOCITY ═══
-    function fmtDur(s){if(s>=3600)return(s/3600).toFixed(1)+'h';if(s>=60)return Math.round(s/60)+'m';return s+'s';}
+    function fmtDur(s){if(s>=3600)return(s/3600).toFixed(1)+'h';if(s>=60)return Math.round(s/60)+'m';return Math.round(s)+'s';}
     document.getElementById('pulse-daily').innerHTML=`
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
             ${mc('Today Users',todayDAU,'text-white','users')}
