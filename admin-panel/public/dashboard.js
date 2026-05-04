@@ -302,6 +302,83 @@ async function loadAnalytics(){
         mc('Mark Done',m7['action_mark_complete']||0,'','check'),
     ].join('');
 
+    // ═══ 5.5 ENGAGEMENT DEPTH ═══
+    const totalSess7d=m7['total_sessions']||m7['session_started']||m7['app_open']||1;
+    const totalListen7dSec=(m7['total_playback_sec']||0)+(m7['total_engagement_sec']||0);
+    const uniquePods7d=Object.keys(podPlays).length;
+    
+    // Per-user averages (normalized by DAU to reduce power-user skew)
+    const avgDau7=labels7.reduce((s,d)=>(s+(dauMap[d]||0)),0)/7||1;
+    const listenPerUser=totalListen7dSec/avgDau7;
+    const epsPerUser=totalEpPlays/avgDau7;
+    const sessPerUser=totalSess7d/avgDau7;
+    
+    const fmtSec=s=>s>=3600?(s/3600).toFixed(1)+'h':Math.round(s/60)+'m';
+    
+    document.getElementById('engage-per-user').innerHTML=[
+        mc('Listen/User',fmtSec(listenPerUser),'text-cyan-400','headphones'),
+        mc('Eps/User',(epsPerUser).toFixed(1),'text-brand-400','play'),
+        mc('Sess/User',(sessPerUser).toFixed(1),'text-blue-400','arrows-rotate'),
+    ].join('');
+    
+    // Session quality
+    const listenPerSess=totalListen7dSec/totalSess7d;
+    const epsPerSess=totalEpPlays/totalSess7d;
+    const fgSec=m7['total_playback_sec']||0;
+    const bgSec=m7['total_engagement_sec']||0;
+    const fgPct=(fgSec+bgSec)>0?Math.round(fgSec/(fgSec+bgSec)*100):0;
+    
+    document.getElementById('engage-session').innerHTML=[
+        mc('Time/Sess',fmtSec(listenPerSess),'text-emerald-400','clock'),
+        mc('Eps/Sess',(epsPerSess).toFixed(1),'text-amber-400','list-ol'),
+        mc('FG/BG',fgPct+'%/'+( 100-fgPct)+'%','text-indigo-400','display'),
+    ].join('');
+
+    // Content concentration
+    const sortedPods=Object.entries(podPlays).sort((a,b)=>b[1]-a[1]);
+    if(sortedPods.length){
+        const topPod=sortedPods[0];
+        const topShare=Math.round(topPod[1]/totalEpPlays*100);
+        const concMx=sortedPods[0][1]||1;
+        document.getElementById('engage-content').innerHTML=`
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-[10px] text-slate-500">Diversity:</span>
+                <span class="text-[12px] font-semibold">${uniquePods7d} podcasts</span>
+                <span class="text-[10px] text-slate-600">across ${totalEpPlays} plays</span>
+            </div>
+            ${sortedPods.slice(0,5).map(([p,v])=>{
+                const share=Math.round(v/totalEpPlays*100);
+                const w=Math.max(8,v/concMx*100);
+                return`<div class="flex items-center gap-2 mb-1.5">
+                    <div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-7 flex items-center relative">
+                        <div class="h-full rounded-lg transition-all ${share>=50?'bg-red-600/25':share>=30?'bg-amber-600/20':'bg-emerald-600/20'}" style="width:${w}%"></div>
+                        <span class="absolute left-2.5 text-[11px] text-slate-300 truncate max-w-[60%]">${p}</span>
+                        <span class="absolute right-2.5 text-[10px] font-semibold ${share>=50?'text-red-400':share>=30?'text-amber-400':'text-emerald-400'}">${share}% <span class="text-slate-600 font-normal">(${v})</span></span>
+                    </div>
+                </div>`;
+            }).join('')}`;
+    } else {
+        document.getElementById('engage-content').innerHTML='<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';
+    }
+    
+    // Skew warning
+    const warnEl=document.getElementById('engage-warn');
+    if(listenPerUser>7200){
+        warnEl.classList.remove('hidden');
+        warnEl.innerHTML=`<div class="glass p-3 border border-red-500/20 flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-red-400"></i>
+            <span class="text-[11px] text-red-300"><b>Skew warning:</b> ${fmtSec(listenPerUser)}/user avg suggests a power user is inflating metrics. Data may not represent typical behavior.</span>
+        </div>`;
+    } else if(listenPerUser>3600){
+        warnEl.classList.remove('hidden');
+        warnEl.innerHTML=`<div class="glass p-3 border border-amber-500/20 flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-amber-400"></i>
+            <span class="text-[11px] text-amber-300"><b>Note:</b> ${fmtSec(listenPerUser)}/user is high — with a small user base, individual behavior heavily impacts aggregates.</span>
+        </div>`;
+    } else {
+        warnEl.classList.add('hidden');
+    }
+
     // ═══ 6. SESSION ═══
     document.getElementById('sess-grid').innerHTML=[
         mc('Transitions',m7['play_episodes_this_session']||0,'','shuffle'),
