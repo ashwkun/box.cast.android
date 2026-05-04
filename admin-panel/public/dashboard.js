@@ -5,11 +5,10 @@ async function q(sql){try{const r=await fetch(W,{method:'POST',headers:{'Content
 function isProd(){return document.getElementById('toggleProd').checked}
 function ck(k,t){return isProd()?(k===`prod_${t}`||k===t):(k===`prod_${t}`||k===`debug_${t}`||k===t)}
 function mc(label,val,color,icon){return`<div class="glass-sm p-3 text-center metric-glow transition"><div class="text-xl sm:text-2xl font-bold ${color||''}">${val}</div><div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">${icon?`<i class="fa-solid fa-${icon} mr-1"></i>`:''}${label}</div></div>`}
-function barRow(items,colorClass){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=items[0].v||1;return items.map((r,i)=>{const w=Math.max(6,r.v/mx*100);return`<div class="flex items-center gap-2"><span class="text-[10px] text-slate-600 w-4 text-right font-mono">${i+1}</span><div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-7 flex items-center"><div class="bar-fill h-full ${colorClass||'bg-brand-600/30'} rounded-lg flex items-center px-2.5" style="width:${w}%"><span class="text-[11px] text-slate-300 truncate">${r.label}</span></div></div><span class="text-[11px] font-semibold text-slate-500 w-16 text-right">${r.display}</span></div>`}).join('')}
+function barRow(items,colorClass){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v))||1;return items.map((r,i)=>{const w=Math.max(6,r.v/mx*100);return`<div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 w-12 truncate font-mono">${r.label}</span><div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-7 flex items-center"><div class="bar-fill h-full ${colorClass||'bg-brand-600/30'} rounded-lg flex items-center px-2.5" style="width:${w}%"></div></div><span class="text-[11px] font-semibold text-slate-400 w-12 text-right">${r.display}</span></div>`}).join('')}
+function doubleBarRow(items,c1,c2){if(!items.length)return'<div class="text-[11px] text-slate-600 text-center py-3">No data yet</div>';const mx=Math.max(...items.map(i=>i.v1+i.v2))||1;return items.map((r,i)=>{const w1=(r.v1/mx*100);const w2=(r.v2/mx*100);return`<div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 w-12 truncate font-mono">${r.label}</span><div class="flex-1 bg-slate-800/40 rounded-lg overflow-hidden h-7 flex items-center"><div class="h-full ${c1} transition-all" style="width:${w1}%"></div><div class="h-full ${c2} transition-all" style="width:${w2}%"></div></div><span class="text-[11px] font-semibold text-slate-400 w-12 text-right">${r.display}</span></div>`}).join('')}
 
 function switchSec(id,btn){document.querySelectorAll('.nav-pill').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));btn.classList.add('active');document.getElementById(`sec-${id}`).classList.add('active');if(id==='analytics')loadAnalytics()}
-
-function chart(id,type,labels,datasets,opts){if(charts[id])charts[id].destroy();const ctx=document.getElementById(id)?.getContext('2d');if(!ctx)return;charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#64748b',font:{size:10}}}},scales:{x:{ticks:{color:'#334155',font:{size:9}},grid:{color:'rgba(255,255,255,0.02)'}},y:{ticks:{color:'#334155',font:{size:9}},grid:{color:'rgba(255,255,255,0.02)'},beginAtZero:true}},...opts}})}
 
 // ═══════════════════════════════════════════
 //  LOAD ALL ANALYTICS (single page)
@@ -84,43 +83,24 @@ async function loadAnalytics(){
             <span class="text-slate-600"><i class="fa-solid fa-skull-crossbones text-red-500/60 mr-1"></i>${churned} devices churned (last 7d)</span>
         </div>`;
 
-    // ═══ 2. CHARTS ═══
+    // ═══ 2. CHARTS (HTML BARS) ═══
     const shortL=labels7.map(d=>d.slice(5));
     
-    // Create gradients for lines/bars
-    const ctxDau = document.getElementById('c-dau')?.getContext('2d');
-    const gradDau = ctxDau?.createLinearGradient(0, 0, 0, 300);
-    if(gradDau){ gradDau.addColorStop(0, 'rgba(139,92,246,0.25)'); gradDau.addColorStop(1, 'rgba(139,92,246,0.0)'); }
-
-    const defaultChartOpts = {
-        plugins: {
-            legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10, family: 'Inter' }, usePointStyle: true, padding: 15 } },
-            tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#f8fafc', bodyColor: '#cbd5e1', padding: 10, cornerRadius: 8, displayColors: true }
-        },
-        scales: {
-            x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10, family: 'Inter' } } },
-            y: { border: { display: false }, grid: { color: 'rgba(255,255,255,0.03)', drawTicks: false }, ticks: { color: '#64748b', font: { size: 10, family: 'Inter' }, padding: 10 }, beginAtZero: true }
-        },
-        interaction: { mode: 'index', intersect: false }
-    };
-
-    chart('c-dau','line',shortL,[{label:'DAU',data:dauV,borderColor:'#8b5cf6',backgroundColor:gradDau||'rgba(139,92,246,0.1)',fill:true,tension:0.4,borderWidth:2,pointRadius:0,pointHoverRadius:6,pointBackgroundColor:'#8b5cf6'}], defaultChartOpts);
+    const dauItems = shortL.map((l, i) => ({ label: l, v: dauV[i]||0, display: dauV[i]||0 }));
+    document.getElementById('c-dau').innerHTML = barRow(dauItems, 'bg-brand-500/50');
 
     const engArr=labels7.map(d=>(dayMetrics[d]?.['total_engagement_sec']||0)/3600);
     const playArr=labels7.map(d=>(dayMetrics[d]?.['total_playback_sec']||0)/3600);
-    chart('c-listen','bar',shortL,[
-        {label:'Foreground',data:engArr,backgroundColor:'#8b5cf6',borderRadius:4, borderSkipped: false},
-        {label:'Background',data:playArr,backgroundColor:'#38bdf8',borderRadius:4, borderSkipped: false}
-    ], {...defaultChartOpts, scales: { ...defaultChartOpts.scales, x: { ...defaultChartOpts.scales.x, stacked: true }, y: { ...defaultChartOpts.scales.y, stacked: true } }});
+    const listItems = shortL.map((l, i) => ({ label: l, v1: engArr[i]||0, v2: playArr[i]||0, display: ((engArr[i]||0)+(playArr[i]||0)).toFixed(1)+'h' }));
+    document.getElementById('c-listen').innerHTML = doubleBarRow(listItems, 'bg-cyan-500/80', 'bg-cyan-900/50');
 
     const newArr=labels7.map(d=>newMap[d]||0);
     const retArr=labels7.map((d,i)=>Math.max(0,(dauV[i]||0)-(newArr[i]||0)));
-    chart('c-newret','bar',shortL,[
-        {label:'Returning',data:retArr,backgroundColor:'#3b82f6',borderRadius:4, borderSkipped: false},
-        {label:'New',data:newArr,backgroundColor:'#10b981',borderRadius:4, borderSkipped: false}
-    ], {...defaultChartOpts, scales: { ...defaultChartOpts.scales, x: { ...defaultChartOpts.scales.x, stacked: true }, y: { ...defaultChartOpts.scales.y, stacked: true } }});
+    const retItems = shortL.map((l, i) => ({ label: l, v1: newArr[i]||0, v2: retArr[i]||0, display: (newArr[i]||0) + '/' + (retArr[i]||0) }));
+    document.getElementById('c-newret').innerHTML = doubleBarRow(retItems, 'bg-emerald-500/80', 'bg-blue-500/50');
 
-    chart('c-churn','bar',shortL,[{label:'Devices Lost',data:churnByDay,backgroundColor:'#ef4444',borderRadius:4, borderSkipped: false}], defaultChartOpts);
+    const churnItems = shortL.map((l, i) => ({ label: l, v: churnByDay[i]||0, display: churnByDay[i]||0 }));
+    document.getElementById('c-churn').innerHTML = barRow(churnItems, 'bg-red-500/50');
 
     // ═══ 3. CONTENT ═══
     const podPlays={},podTime={};

@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{brand:{500:'#8b5cf6',600:'#7c3aed'}}}}}</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -84,12 +83,12 @@
             <div>
                 <div class="section-hdr"><i class="fa-solid fa-chart-line text-indigo-400"></i>7-Day Trends</div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                    <div class="glass p-4 h-56 sm:h-64"><h4 class="text-[11px] text-slate-500 font-medium mb-2">Daily Active Users</h4><canvas id="c-dau"></canvas></div>
-                    <div class="glass p-4 h-56 sm:h-64"><h4 class="text-[11px] text-slate-500 font-medium mb-2">Listening Hours</h4><canvas id="c-listen"></canvas></div>
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3 flex items-center justify-between">Daily Active Users <span class="text-[9px] text-brand-400 bg-brand-500/10 px-1.5 py-0.5 rounded">7 DAYS</span></h4><div id="c-dau" class="space-y-1.5"></div></div>
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3 flex items-center justify-between">Listening Hours <span class="text-[9px] text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded">FG / BG</span></h4><div id="c-listen" class="space-y-1.5"></div></div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="glass p-4 h-56 sm:h-64"><h4 class="text-[11px] text-slate-500 font-medium mb-2">New vs Returning Users</h4><canvas id="c-newret"></canvas></div>
-                    <div class="glass p-4 h-56 sm:h-64"><h4 class="text-[11px] text-slate-500 font-medium mb-2">Churn (Devices Gone Silent)</h4><canvas id="c-churn"></canvas></div>
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3 flex items-center justify-between">New vs Returning Users <span class="text-[9px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">NEW / RET</span></h4><div id="c-newret" class="space-y-1.5"></div></div>
+                    <div class="glass p-4"><h4 class="text-[11px] text-slate-500 font-medium mb-3 flex items-center justify-between">Churn (Devices Gone Silent) <span class="text-[9px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">LOST</span></h4><div id="c-churn" class="space-y-1.5"></div></div>
                 </div>
             </div>
 
