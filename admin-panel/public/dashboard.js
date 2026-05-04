@@ -148,6 +148,8 @@ async function loadAnalytics(){
                 ${statRow('sun','Today',todayNew,'text-emerald-400')}
                 ${statRow('calendar-days','This Week',weekInstalls,'text-emerald-400')}
                 ${statRow('infinity','All Time',totalInstalls,'text-emerald-400')}
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3 mt-4"><i class="fa-solid fa-trash-can mr-1"></i>Churn / Uninstalls</div>
+                ${statRow('skull-crossbones','Gone Silent (7d+ inactive)',goneSilent,'text-red-400')}
             </div>
             <div class="glass p-4">
                 <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3"><i class="fa-solid fa-headphones mr-1"></i>Audio Playback</div>
