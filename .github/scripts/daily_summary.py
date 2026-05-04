@@ -51,15 +51,15 @@ def get_target_date():
 def fetch_metrics(target_date):
     """Fetch aggregated metrics for the target date from Turso."""
     # DAU
-    dau_res = query_turso(f"SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date = '{target_date}'")
+    dau_res = query_turso(f"SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date = '{target_date}' AND app_version NOT LIKE '%-debug'")
     dau = dau_res[0]['c'] if dau_res else 0
     
     # 7-day WAU
-    wau_res = query_turso(f"SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date >= date('{target_date}', '-7 days')")
+    wau_res = query_turso(f"SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date >= date('{target_date}', '-7 days') AND app_version NOT LIKE '%-debug'")
     wau = wau_res[0]['c'] if wau_res else 0
     
     # Total Installs
-    installs_res = query_turso("SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats")
+    installs_res = query_turso("SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE app_version NOT LIKE '%-debug'")
     total_installs = installs_res[0]['c'] if installs_res else 0
     
     # Aggregates (excluding debug_)
