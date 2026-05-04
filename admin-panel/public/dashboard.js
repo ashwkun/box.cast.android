@@ -109,16 +109,9 @@ async function loadAnalytics(){
     const totalListenSec=(ltMap['total_playback_sec']||0)+(ltMap['total_engagement_sec']||0);
     const totalListenHrs=totalListenSec/3600;
 
-    // Averages (anchored to May 4, 2026)
-    const launchDate=new Date('2026-05-04');
-    const nowDate=new Date();
-    const daysElapsed=Math.max(1,Math.floor((nowDate-launchDate)/(1000*60*60*24))+1);
-    const instD=(totalInstalls/daysElapsed).toFixed(1);
-    const instW=(totalInstalls/daysElapsed*7).toFixed(1);
-    const instM=(totalInstalls/daysElapsed*30).toFixed(0);
-    const listenD=(totalListenHrs/daysElapsed).toFixed(1);
-    const listenW=(totalListenHrs/daysElapsed*7).toFixed(1);
-    const listenM=(totalListenHrs/daysElapsed*30).toFixed(0);
+    // Real period sums from 7-day data
+    const weekInstalls=m7['new_install']||0;
+    const weekListenHrs=((m7['total_playback_sec']||0)+(m7['total_engagement_sec']||0))/3600;
 
     // ═══ 1a. DAILY VELOCITY ═══
     document.getElementById('pulse-daily').innerHTML=`
@@ -129,23 +122,37 @@ async function loadAnalytics(){
             ${mc('Listening',todayListenTotal.toFixed(1)+'h','text-purple-400','headphones')}
         </div>`;
 
+    function statRow(icon, label, value, color='text-slate-200') {
+        return `<div class="flex items-center justify-between py-2.5 border-b border-slate-800/50 last:border-0">
+            <div class="flex items-center gap-2.5">
+                <i class="fa-solid fa-${icon} text-[11px] w-4 text-center ${color} opacity-60"></i>
+                <span class="text-[12px] text-slate-400">${label}</span>
+            </div>
+            <span class="text-[13px] font-semibold ${color}">${value}</span>
+        </div>`;
+    }
+
     // ═══ 1b. OVERALL HEALTH ═══
     document.getElementById('pulse-lifetime').innerHTML=`
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-2 mb-2">
-            ${mc('Lifetime Users',totalLifetimeUsers,'text-white','users-rectangle')}
-            ${mc('Net Active',netActive,'text-emerald-400','user-check')}
-            ${mc('Gone Silent',goneSilent,'text-red-400','skull-crossbones')}
+        <div class="glass p-4">
+            ${statRow('users-rectangle','Lifetime Users',totalLifetimeUsers,'text-white')}
+            ${statRow('user-check','Net Active (reachable)',netActive,'text-emerald-400')}
+            ${statRow('skull-crossbones','Gone Silent (7d+ inactive)',goneSilent,'text-red-400')}
+            ${statRow('calendar-week','Active This Week (7d)',totalActive7d,'text-amber-400')}
+            ${statRow('arrow-pointer','Total Sessions (all time)',totalSessions,'text-cyan-400')}
         </div>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
-            ${mc('7d Active',totalActive7d,'text-amber-400','calendar-week')}
-            ${mc('Total Sessions',totalSessions,'text-cyan-400','arrow-pointer')}
-            <div class="glass-sm p-3 text-center metric-glow transition">
-                <div class="text-sm sm:text-base font-bold text-indigo-400">${instD}/d &bull; ${instW}/w &bull; ${instM}/m</div>
-                <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider"><i class="fa-solid fa-download mr-1"></i>Avg Installs</div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+            <div class="glass p-4">
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3"><i class="fa-solid fa-download mr-1"></i>Installs</div>
+                ${statRow('sun','Today',todayNew,'text-emerald-400')}
+                ${statRow('calendar-days','This Week',weekInstalls,'text-emerald-400')}
+                ${statRow('infinity','All Time',totalInstalls,'text-emerald-400')}
             </div>
-            <div class="glass-sm p-3 text-center metric-glow transition">
-                <div class="text-sm sm:text-base font-bold text-purple-400">${listenD}h/d &bull; ${listenW}h/w &bull; ${listenM}h/m</div>
-                <div class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider"><i class="fa-solid fa-headphones mr-1"></i>Avg Listening</div>
+            <div class="glass p-4">
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3"><i class="fa-solid fa-headphones mr-1"></i>Listening</div>
+                ${statRow('sun','Today',todayListenTotal.toFixed(1)+'h','text-purple-400')}
+                ${statRow('calendar-days','This Week',weekListenHrs.toFixed(1)+'h','text-purple-400')}
+                ${statRow('infinity','All Time',totalListenHrs.toFixed(1)+'h','text-purple-400')}
             </div>
         </div>`;
 
