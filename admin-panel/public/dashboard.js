@@ -1,5 +1,5 @@
 const W='https://boxcast-telemetry.boxboxcric.workers.dev/query',AK='boxcast_secure_telemetry_key_2026';
-let charts={},dashPwd=localStorage.getItem('boxcast_dash_pwd')||'';
+let charts={},dashPwd='';
 
 async function q(sql){try{const r=await fetch(W,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${AK}`},body:JSON.stringify({query:sql})});const j=await r.json();return j.success?j.data:[];}catch(e){console.error(e);return[];}}
 function isProd(){return document.getElementById('toggleProd').checked}
@@ -339,11 +339,28 @@ async function loadAnalytics(){
 function initNotify(){['inputTitle','inputBody','inputImage','inputType','inputRoute'].forEach(id=>{const el=document.getElementById(id);if(el){el.addEventListener('input',pvUpdate);el.addEventListener('change',pvUpdate)}});updateAuthUI()}
 function pvUpdate(){const t=document.getElementById('inputTitle').value||'BoxCast Update';const b=document.getElementById('inputBody').value||'';const type=document.getElementById('inputType').value;const img=document.getElementById('inputImage').value;const route=document.getElementById('inputRoute').value;function md(s){let h=s.replace(/</g,'&lt;').replace(/>/g,'&gt;');h=h.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>');h=h.replace(/\*(.*?)\*/g,'<i>$1</i>');h=h.replace(/\n/g,'<br/>');return h}document.getElementById('pvTitle').textContent=t;document.getElementById('pvBody').innerHTML=md(b);document.getElementById('iaTitle').textContent=t;document.getElementById('iaBody').innerHTML=md(b);const n=document.getElementById('phoneNotif');if(type==='push'||type==='both')n.classList.add('show');else n.classList.remove('show');const ia=document.getElementById('phoneInApp');if(type==='in-app'||type==='both')ia.classList.add('show');else ia.classList.remove('show');const pw=document.getElementById('pvImgW'),iw=document.getElementById('iaImgW');if(img&&isUrl(img)){document.getElementById('pvImg').src=img;pw.classList.add('show');document.getElementById('iaImg').src=img;iw.classList.add('show')}else{pw.classList.remove('show');iw.classList.remove('show')}document.getElementById('iaAction').style.display=route?'inline-block':'none'}
 function isUrl(s){try{new URL(s);return true}catch(_){return false}}
-function openAuth(){document.getElementById('authModal').classList.remove('hidden');document.getElementById('authModal').classList.add('flex');document.getElementById('inputToken').value=dashPwd}
+function openAuth(){document.getElementById('authModal').classList.remove('hidden');document.getElementById('authModal').classList.add('flex');document.getElementById('inputToken').value='';document.getElementById('authError').classList.add('hidden');document.getElementById('inputToken').focus()}
 function closeAuth(){document.getElementById('authModal').classList.add('hidden');document.getElementById('authModal').classList.remove('flex')}
-function saveAuth(){const t=document.getElementById('inputToken').value.trim();if(t){localStorage.setItem('boxcast_dash_pwd',t);dashPwd=t;updateAuthUI();closeAuth()}}
+async function saveAuth(){
+    const t=document.getElementById('inputToken').value.trim();
+    const errEl=document.getElementById('authError');
+    const errMsg=document.getElementById('authErrorMsg');
+    const btn=document.getElementById('authUnlockBtn');
+    if(!t){errMsg.textContent='Password required';errEl.classList.remove('hidden');return}
+    btn.disabled=true;btn.textContent='Verifying...';
+    try{
+        const cfg=await(await fetch('config.json')).json();
+        const pat=decrypt(cfg.encrypted_token,t);
+        if(!pat.startsWith('ghp_')){errMsg.textContent='Wrong password';errEl.classList.remove('hidden');btn.disabled=false;btn.textContent='Unlock';return}
+        dashPwd=t;
+        errEl.classList.add('hidden');
+        updateAuthUI();
+        closeAuth();
+    }catch(e){errMsg.textContent='Verification failed';errEl.classList.remove('hidden')}
+    btn.disabled=false;btn.textContent='Unlock';
+}
 function updateAuthUI(){const b=document.getElementById('authBtn');if(dashPwd){b.innerHTML='<i class="fa-solid fa-lock-open"></i><span>OK</span>';b.className='text-[11px] bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded-lg border border-emerald-500/15 flex items-center gap-1'}else{b.innerHTML='<i class="fa-solid fa-lock"></i><span>Key</span>';b.className='text-[11px] bg-slate-800 text-slate-500 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-1'}}
 function decrypt(b64,pwd){try{const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));let r='';for(let i=0;i<bytes.length;i++)r+=String.fromCharCode(bytes[i]^pwd.charCodeAt(i%pwd.length));return r}catch(e){return''}}
-async function handleSend(e){e.preventDefault();if(!dashPwd){openAuth();return}const btn=document.getElementById('sendBtn');btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i> ...';try{const cfg=await(await fetch('config.json')).json();const pat=decrypt(cfg.encrypted_token,dashPwd);if(!pat.startsWith('ghp_'))throw new Error('Bad key');const p={ref:'master',inputs:{title:document.getElementById('inputTitle').value,body:document.getElementById('inputBody').value.replace(/\n/g,'\\n'),type:document.getElementById('inputType').value,route:document.getElementById('inputRoute').value||'',image:document.getElementById('inputImage').value||'',target:document.getElementById('inputTarget').value||'all_users'}};const r=await fetch('https://api.github.com/repos/ashwkun/box.cast.android/actions/workflows/manual_notify.yml/dispatches',{method:'POST',headers:{'Accept':'application/vnd.github.v3+json','Authorization':`token ${pat}`,'Content-Type':'application/json'},body:JSON.stringify(p)});if(r.ok){const st=document.getElementById('statusText');st.classList.remove('opacity-0');setTimeout(()=>st.classList.add('opacity-0'),4000)}else{throw new Error((await r.json()).message||'Failed')}}catch(err){alert('Error: '+err.message);if(err.message.includes('Bad key')){localStorage.removeItem('boxcast_dash_pwd');dashPwd='';updateAuthUI();openAuth()}}finally{btn.disabled=false;btn.innerHTML='<i class="fa-regular fa-paper-plane"></i> Send'}}
+async function handleSend(e){e.preventDefault();if(!dashPwd){openAuth();return}const btn=document.getElementById('sendBtn');btn.disabled=true;btn.innerHTML='<i class="fa-solid fa-circle-notch fa-spin"></i> ...';try{const cfg=await(await fetch('config.json')).json();const pat=decrypt(cfg.encrypted_token,dashPwd);if(!pat.startsWith('ghp_'))throw new Error('Bad key');const p={ref:'master',inputs:{title:document.getElementById('inputTitle').value,body:document.getElementById('inputBody').value.replace(/\n/g,'\\n'),type:document.getElementById('inputType').value,route:document.getElementById('inputRoute').value||'',image:document.getElementById('inputImage').value||'',target:document.getElementById('inputTarget').value||'all_users'}};const r=await fetch('https://api.github.com/repos/ashwkun/box.cast.android/actions/workflows/manual_notify.yml/dispatches',{method:'POST',headers:{'Accept':'application/vnd.github.v3+json','Authorization':`token ${pat}`,'Content-Type':'application/json'},body:JSON.stringify(p)});if(r.ok){const st=document.getElementById('statusText');st.classList.remove('opacity-0');setTimeout(()=>st.classList.add('opacity-0'),4000)}else{throw new Error((await r.json()).message||'Failed')}}catch(err){alert('Error: '+err.message);if(err.message.includes('Bad key')){dashPwd='';updateAuthUI();openAuth()}}finally{btn.disabled=false;btn.innerHTML='<i class="fa-regular fa-paper-plane"></i> Send'}}
 
 function initApp(){loadAnalytics();initNotify()}

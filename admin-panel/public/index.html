@@ -199,11 +199,12 @@
 
     <!-- Auth Modal -->
     <div id="authModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-        <div class="glass p-5 w-full max-w-xs"><div class="flex justify-between items-center mb-3"><h2 class="text-xs font-bold text-white">Dispatch Key</h2><button onclick="closeAuth()" class="text-slate-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
-        <input type="password" id="inputToken" placeholder="••••••••" class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-brand-500">
-        <button onclick="saveAuth()" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-xl text-sm font-medium">Unlock</button></div>
+        <div class="glass p-5 w-full max-w-xs"><div class="flex justify-between items-center mb-3"><h2 class="text-xs font-bold text-white">🔐 Dispatch Key</h2><button onclick="closeAuth()" class="text-slate-500 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
+        <input type="password" id="inputToken" placeholder="Enter master password" class="w-full bg-slate-800/50 border border-slate-700/40 rounded-xl px-3 py-2 text-white text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-brand-500" onkeydown="if(event.key==='Enter')saveAuth()">
+        <div id="authError" class="text-[11px] text-red-400 mb-2 hidden"><i class="fa-solid fa-circle-exclamation mr-1"></i><span id="authErrorMsg"></span></div>
+        <button onclick="saveAuth()" id="authUnlockBtn" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-2 rounded-xl text-sm font-medium">Unlock</button></div>
     </div>
 </div>
-<script src="dashboard.js?v=20260504f"></script>
+<script src="dashboard.js?v=20260504g"></script>
 </body>
 </html>
