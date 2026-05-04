@@ -105,7 +105,7 @@ async function loadAnalytics(){
         ltMap[rk]=(ltMap[rk]||0)+r.v;
     });
     const totalInstalls=ltMap['new_install']||0;
-    const totalSessions=ltMap['session_started']||ltMap['app_open']||0;
+    const totalSessions=ltMap['total_sessions']||ltMap['session_started']||ltMap['app_open']||0;
     const totalListenSec=(ltMap['total_playback_sec']||0)+(ltMap['total_engagement_sec']||0);
     const totalListenHrs=totalListenSec/3600;
 
@@ -191,10 +191,16 @@ async function loadAnalytics(){
     const cImp=cm['curated_block_impression']||0,cTap=cm['curated_card_tapped']||0,cPlay=cm['curated_episode_played']||0;
     document.getElementById('cur-metrics').innerHTML=[mc('Impressions',cImp,'text-indigo-400','eye'),mc('Taps',cTap,'text-blue-400','hand-pointer'),mc('Plays',cPlay,'text-emerald-400','play'),mc('Tap Rate',cImp>0?((cTap/cImp)*100).toFixed(1)+'%':'-','text-amber-400','percent')].join('');
 
-    // Vibes
-    const vibeKeys=Object.keys(cm).filter(k=>k.startsWith('curated_vibe_impression_'));
-    const vibes=vibeKeys.map(k=>{const id=k.replace('curated_vibe_impression_','');return{id,imp:cm[k]||0,taps:cm[`curated_tap_vibe_${id}`]||0,plays:cm[`curated_play_vibe_${id}`]||0}}).sort((a,b)=>b.taps-a.taps);
-    if(vibes.length){const mx=vibes[0].taps||1;document.getElementById('cur-vibes').innerHTML=vibes.map(v=>{const w=Math.max(8,v.taps/mx*100);const rate=v.imp>0?(v.taps/v.imp*100).toFixed(1):0;return`<div class="glass-sm p-3"><div class="flex items-center justify-between mb-1.5"><span class="text-xs font-medium capitalize">${v.id.replace(/_/g,' ')}</span><span class="text-[10px] text-slate-600">${rate}%</span></div><div class="w-full bg-slate-800/40 rounded-full h-2 mb-1.5"><div class="bar-fill h-full bg-gradient-to-r from-brand-600 to-indigo-500 rounded-full" style="width:${w}%"></div></div><div class="flex gap-3 text-[10px] text-slate-500"><span><i class="fa-solid fa-eye mr-0.5 text-slate-700"></i>${v.imp}</span><span><i class="fa-solid fa-hand-pointer mr-0.5 text-blue-600"></i>${v.taps}</span><span><i class="fa-solid fa-play mr-0.5 text-emerald-600"></i>${v.plays}</span></div></div>`}).join('')}else{document.getElementById('cur-vibes').innerHTML='<div class="text-[11px] text-slate-600 text-center py-3">No curated data yet</div>'}
+    // Vibes — find all vibe IDs from tap, play, OR impression keys
+    const vibeIdSet=new Set();
+    Object.keys(cm).forEach(k=>{
+        let m;
+        if(m=k.match(/^curated_vibe_impression_(.+)$/))vibeIdSet.add(m[1]);
+        if(m=k.match(/^curated_tap_vibe_(.+)$/))vibeIdSet.add(m[1]);
+        if(m=k.match(/^curated_play_vibe_(.+)$/))vibeIdSet.add(m[1]);
+    });
+    const vibes=[...vibeIdSet].map(id=>({id,imp:cm[`curated_vibe_impression_${id}`]||0,taps:cm[`curated_tap_vibe_${id}`]||0,plays:cm[`curated_play_vibe_${id}`]||0})).sort((a,b)=>(b.taps+b.plays)-(a.taps+a.plays));
+    if(vibes.length){const mx=Math.max(...vibes.map(v=>v.taps+v.plays))||1;document.getElementById('cur-vibes').innerHTML=vibes.map(v=>{const w=Math.max(8,(v.taps+v.plays)/mx*100);const rate=v.imp>0?(v.taps/v.imp*100).toFixed(1):'-';return`<div class="glass-sm p-3"><div class="flex items-center justify-between mb-1.5"><span class="text-xs font-medium capitalize">${v.id.replace(/_/g,' ')}</span><span class="text-[10px] text-slate-600">${rate}%</span></div><div class="w-full bg-slate-800/40 rounded-full h-2 mb-1.5"><div class="bar-fill h-full bg-gradient-to-r from-brand-600 to-indigo-500 rounded-full" style="width:${w}%"></div></div><div class="flex gap-3 text-[10px] text-slate-500"><span><i class="fa-solid fa-eye mr-0.5 text-slate-700"></i>${v.imp}</span><span><i class="fa-solid fa-hand-pointer mr-0.5 text-blue-600"></i>${v.taps}</span><span><i class="fa-solid fa-play mr-0.5 text-emerald-600"></i>${v.plays}</span></div></div>`}).join('')}else{document.getElementById('cur-vibes').innerHTML='<div class="text-[11px] text-slate-600 text-center py-3">No curated data yet</div>'}
 
     document.getElementById('cur-pos').innerHTML=[mc('Pos 0-2',cm['curated_tap_pos_0_2']||0,'text-emerald-400',''),mc('Pos 3-5',cm['curated_tap_pos_3_5']||0,'text-yellow-400',''),mc('Pos 6+',cm['curated_tap_pos_6_plus']||0,'text-red-400','')].join('');
 
