@@ -86,10 +86,9 @@ async function loadAnalytics(){
     const wau=await q(`SELECT COUNT(DISTINCT device_id) as c FROM daily_heartbeats WHERE last_seen_date>=date('now','-7 days') ${pf}`);
     const totalActive7d=wau[0]?.c||0;
 
-    // Playback/engagement
-    const todayPlay=(dayMetrics[today]?.['total_playback_sec']||0)/3600;
-    const todayEng=(dayMetrics[today]?.['total_engagement_sec']||0)/3600;
-    const todayListenTotal=todayPlay+todayEng;
+    // Playback = actual audio; Engagement = foreground screen time (NOT audio)
+    const todayPlaySec=dayMetrics[today]?.['total_playback_sec']||0;
+    const todayEngSec=dayMetrics[today]?.['total_engagement_sec']||0;
     const todayEps=m7['play_episode_started']||0;
 
     // ═══ LIFETIME METRICS ═══
@@ -106,20 +105,22 @@ async function loadAnalytics(){
     });
     const totalInstalls=ltMap['new_install']||0;
     const totalSessions=ltMap['total_sessions']||ltMap['session_started']||ltMap['app_open']||0;
-    const totalListenSec=(ltMap['total_playback_sec']||0)+(ltMap['total_engagement_sec']||0);
-    const totalListenHrs=totalListenSec/3600;
+    const totalPlaybackSec=ltMap['total_playback_sec']||0;
+    const totalScreenSec=ltMap['total_engagement_sec']||0;
 
     // Real period sums from 7-day data
     const weekInstalls=m7['new_install']||0;
-    const weekListenHrs=((m7['total_playback_sec']||0)+(m7['total_engagement_sec']||0))/3600;
+    const weekPlaySec=m7['total_playback_sec']||0;
+    const weekScreenSec=m7['total_engagement_sec']||0;
 
     // ═══ 1a. DAILY VELOCITY ═══
+    function fmtDur(s){if(s>=3600)return(s/3600).toFixed(1)+'h';if(s>=60)return Math.round(s/60)+'m';return s+'s';}
     document.getElementById('pulse-daily').innerHTML=`
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
             ${mc('Today Users',todayDAU,'text-white','users')}
             ${mc('New Installs',todayNew,'text-emerald-400','user-plus')}
             ${mc('Returning',todayReturn,'text-blue-400','rotate-left')}
-            ${mc('Listening',todayListenTotal.toFixed(1)+'h','text-purple-400','headphones')}
+            ${mc('Audio',fmtDur(todayPlaySec),'text-purple-400','headphones')}
         </div>`;
 
     function statRow(icon, label, value, color='text-slate-200') {
@@ -149,10 +150,14 @@ async function loadAnalytics(){
                 ${statRow('infinity','All Time',totalInstalls,'text-emerald-400')}
             </div>
             <div class="glass p-4">
-                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3"><i class="fa-solid fa-headphones mr-1"></i>Listening</div>
-                ${statRow('sun','Today',todayListenTotal.toFixed(1)+'h','text-purple-400')}
-                ${statRow('calendar-days','This Week',weekListenHrs.toFixed(1)+'h','text-purple-400')}
-                ${statRow('infinity','All Time',totalListenHrs.toFixed(1)+'h','text-purple-400')}
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3"><i class="fa-solid fa-headphones mr-1"></i>Audio Playback</div>
+                ${statRow('sun','Today',fmtDur(todayPlaySec),'text-purple-400')}
+                ${statRow('calendar-days','This Week',fmtDur(weekPlaySec),'text-purple-400')}
+                ${statRow('infinity','All Time',fmtDur(totalPlaybackSec),'text-purple-400')}
+                <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3 mt-4"><i class="fa-solid fa-display mr-1"></i>Screen Time</div>
+                ${statRow('sun','Today',fmtDur(todayEngSec),'text-indigo-400')}
+                ${statRow('calendar-days','This Week',fmtDur(weekScreenSec),'text-indigo-400')}
+                ${statRow('infinity','All Time',fmtDur(totalScreenSec),'text-indigo-400')}
             </div>
         </div>`;
 
@@ -304,34 +309,32 @@ async function loadAnalytics(){
 
     // ═══ 5.5 ENGAGEMENT DEPTH ═══
     const totalSess7d=m7['total_sessions']||m7['session_started']||m7['app_open']||1;
-    const totalListen7dSec=(m7['total_playback_sec']||0)+(m7['total_engagement_sec']||0);
+    const totalPlay7dSec=m7['total_playback_sec']||0;
     const uniquePods7d=Object.keys(podPlays).length;
     
-    // Per-user averages (normalized by DAU to reduce power-user skew)
-    const avgDau7=labels7.reduce((s,d)=>(s+(dauMap[d]||0)),0)/7||1;
-    const listenPerUser=totalListen7dSec/avgDau7;
-    const epsPerUser=totalEpPlays/avgDau7;
-    const sessPerUser=totalSess7d/avgDau7;
-    
-    const fmtSec=s=>s>=3600?(s/3600).toFixed(1)+'h':Math.round(s/60)+'m';
+    // Per-user averages (normalized by unique weekly users, not avg daily DAU)
+    const wau7=totalActive7d||1;
+    const listenPerUser=totalPlay7dSec/wau7;
+    const epsPerUser=totalEpPlays/wau7;
+    const sessPerUser=totalSess7d/wau7;
     
     document.getElementById('engage-per-user').innerHTML=[
-        mc('Listen/User',fmtSec(listenPerUser),'text-cyan-400','headphones'),
+        mc('Listen/User',fmtDur(listenPerUser),'text-cyan-400','headphones'),
         mc('Eps/User',(epsPerUser).toFixed(1),'text-brand-400','play'),
         mc('Sess/User',(sessPerUser).toFixed(1),'text-blue-400','arrows-rotate'),
     ].join('');
     
     // Session quality
-    const listenPerSess=totalListen7dSec/totalSess7d;
+    const listenPerSess=totalPlay7dSec/totalSess7d;
     const epsPerSess=totalEpPlays/totalSess7d;
     const fgSec=m7['total_playback_sec']||0;
     const bgSec=m7['total_engagement_sec']||0;
     const fgPct=(fgSec+bgSec)>0?Math.round(fgSec/(fgSec+bgSec)*100):0;
     
     document.getElementById('engage-session').innerHTML=[
-        mc('Time/Sess',fmtSec(listenPerSess),'text-emerald-400','clock'),
+        mc('Time/Sess',fmtDur(listenPerSess),'text-emerald-400','clock'),
         mc('Eps/Sess',(epsPerSess).toFixed(1),'text-amber-400','list-ol'),
-        mc('FG/BG',fgPct+'%/'+( 100-fgPct)+'%','text-indigo-400','display'),
+        mc('Audio/Screen',fgPct+'%/'+(100-fgPct)+'%','text-indigo-400','display'),
     ].join('');
 
     // Content concentration
