@@ -52,13 +52,13 @@ class LibraryBackupManager(
                 // Since SubscriptionRepository expects a Podcast model to subscribe,
                 // let's construct a domain Podcast model and pass it.
                 val podcast = cx.aswin.boxcast.core.model.Podcast(
-                    id = entity.podcastId,
-                    title = entity.title,
-                    artist = entity.author,
-                    imageUrl = entity.imageUrl,
+                    id = (entity.podcastId as String?) ?: "", // Cast to prevent Kotlin from optimizing out the null-check
+                    title = (entity.title as String?) ?: "Unknown",
+                    artist = (entity.author as String?) ?: "Unknown",
+                    imageUrl = (entity.imageUrl as String?) ?: "",
                     description = entity.description,
                     genre = entity.genre ?: "Podcast",
-                    type = entity.type,
+                    type = (entity.type as String?) ?: "episodic",
                     updateFrequency = entity.updateFrequency
                 )
                 subscriptionRepository.subscribe(podcast)
@@ -67,7 +67,25 @@ class LibraryBackupManager(
             
             // 2. Restore playback histories (liked episodes)
             for (entity in backup.history) {
-                playbackRepository.upsertHistoryEntity(entity)
+                // Reconstruct safe entity to prevent null crashes on non-nullable String fields
+                // Primitives (Long, Boolean) are safe as Gson initializes them to 0/false if missing
+                val safeEntity = cx.aswin.boxcast.core.data.database.ListeningHistoryEntity(
+                    episodeId = (entity.episodeId as String?) ?: "",
+                    podcastId = (entity.podcastId as String?) ?: "",
+                    episodeTitle = (entity.episodeTitle as String?) ?: "Unknown",
+                    episodeImageUrl = entity.episodeImageUrl,
+                    podcastImageUrl = entity.podcastImageUrl,
+                    episodeAudioUrl = entity.episodeAudioUrl,
+                    podcastName = (entity.podcastName as String?) ?: "Unknown",
+                    progressMs = entity.progressMs,
+                    durationMs = entity.durationMs,
+                    isCompleted = entity.isCompleted,
+                    isLiked = entity.isLiked,
+                    lastPlayedAt = entity.lastPlayedAt,
+                    isDirty = entity.isDirty,
+                    syncedAt = entity.syncedAt
+                )
+                playbackRepository.upsertHistoryEntity(safeEntity)
             }
             
             // 3. Trigger check for new episodes
