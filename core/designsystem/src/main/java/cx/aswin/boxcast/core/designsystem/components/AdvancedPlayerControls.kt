@@ -70,8 +70,17 @@ fun AdvancedPlayerControls(
         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
     ) {
         // Defines base tint based on style or override
-        val baseActiveTint = overrideColor ?: if (style == ControlStyle.Outlined) Color(0xFFE91E63) else colorScheme.primary
-        val baseInactiveTint = overrideColor ?: if (style == ControlStyle.Outlined || style == ControlStyle.TonalSquircle || style == ControlStyle.Transparent) colorScheme.onSurfaceVariant else colorScheme.primary
+        // Material3: always use standard M3 tints for clear active/inactive distinction
+        val baseActiveTint = if (style == ControlStyle.Material3) {
+            colorScheme.onPrimaryContainer
+        } else {
+            overrideColor ?: if (style == ControlStyle.Outlined) Color(0xFFE91E63) else colorScheme.primary
+        }
+        val baseInactiveTint = if (style == ControlStyle.Material3) {
+            colorScheme.onSurfaceVariant
+        } else {
+            overrideColor ?: if (style == ControlStyle.Outlined || style == ControlStyle.TonalSquircle || style == ControlStyle.Transparent) colorScheme.onSurfaceVariant else colorScheme.primary
+        }
         
         // --- Reordered for thumb reachability: low-priority LEFT → high-priority RIGHT ---
         
@@ -231,10 +240,11 @@ fun AdaptiveControlButton(
     }
 
     if (style == ControlStyle.Material3) {
-        val containerColor = if (isActive && activeContainerColor != Color.Unspecified) {
-            activeContainerColor 
+        val containerColor = if (isActive) {
+            if (activeContainerColor != Color.Unspecified) activeContainerColor
+            else colorScheme.primaryContainer // Standard M3 active state
         } else {
-             colorScheme.surfaceContainerHigh
+            colorScheme.surfaceContainerHigh
         }
         
         val size = controlSize ?: 48.dp

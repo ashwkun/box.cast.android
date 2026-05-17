@@ -645,48 +645,13 @@ fun EpisodeInfoScreen(
                         }
                     }
 
-                    // DESCRIPTION CARD -> Styled
+                    // DESCRIPTION CARD with Social Links
                     if (state.episode.description.isNotEmpty()) {
                         item {
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                shape = MaterialTheme.shapes.extraLarge
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Info,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "About this episode",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
-                                    
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    
-                                    HtmlText(
-                                        text = state.episode.description,
-                                        style = MaterialTheme.typography.bodyLarge.copy(
-                                            lineHeight = 24.sp
-                                        ),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
+                            EpisodeDescriptionCard(
+                                description = state.episode.description,
+                                accentColor = accentColor
+                            )
                         }
                     }
 
