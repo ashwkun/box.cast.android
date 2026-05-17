@@ -174,7 +174,16 @@ internal fun EpisodeDescriptionCard(
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = if (expanded || !isLong) Int.MAX_VALUE else 5,
-                modifier = Modifier.padding(horizontal = 20.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .expressiveClickable { if (isLong) expanded = !expanded }
+                    .padding(horizontal = 20.dp)
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
             )
 
             // --- Expand/Collapse Toggle ---
