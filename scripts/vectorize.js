@@ -36,7 +36,14 @@ async function executeSQL(sql, args = []) {
             }, { type: "close" }]
         })
     });
-    return response.json();
+    if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+    }
+    const res = await response.json();
+    if (res.results && res.results[0] && res.results[0].type === "error") {
+        throw new Error(`SQL execution error: ${res.results[0].error.message}`);
+    }
+    return res;
 }
 
 async function executeVectorUpdate(id, embedding) {

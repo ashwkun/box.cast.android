@@ -44,7 +44,14 @@ async function executeSQL(sql, args = []) {
             }, { type: "close" }]
         })
     });
-    return response.json();
+    if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+    }
+    const res = await response.json();
+    if (res.results && res.results[0] && res.results[0].type === "error") {
+        throw new Error(`SQL execution error: ${res.results[0].error.message}`);
+    }
+    return res;
 }
 
 async function executeBatch(statements) {
@@ -63,7 +70,16 @@ async function executeBatch(statements) {
         },
         body: JSON.stringify({ requests })
     });
-    if (!response.ok) throw new Error(`Turso error: ${response.status}`);
+    if (!response.ok) throw new Error(`Turso HTTP error: ${response.status}`);
+    
+    const res = await response.json();
+    if (res.results) {
+        for (const result of res.results) {
+            if (result.type === "error") {
+                throw new Error(`Turso SQL batch error: ${result.error.message}`);
+            }
+        }
+    }
 }
 
 async function getPodcasts() {

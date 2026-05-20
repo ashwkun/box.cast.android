@@ -40,7 +40,7 @@ fun TimeBlockSection(
         modifier = modifier.fillMaxWidth()
     ) {
         LaunchedEffect(data.title) {
-            onImpression(data.title, data.sections.map { it.title })
+            onImpression(data.title, data.sections.map { it.category })
         }
 
         // --- Master Header ---
@@ -103,10 +103,10 @@ fun TimeBlockSection(
                                     onClick = {
                                         cx.aswin.boxcast.core.data.analytics.AnalyticsHelper.trackCuratedCardTapped(
                                             podcastId = podcast.id,
-                                            vibeId = section.title,
+                                            vibeId = section.category,
                                             positionIndex = i
                                         )
-                                        onCuratedEpisodeClick(episode, podcast, section.title, i)
+                                        onCuratedEpisodeClick(episode, podcast, section.category, i)
                                     }
                                 )
                             }
