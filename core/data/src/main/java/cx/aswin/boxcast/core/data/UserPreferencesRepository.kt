@@ -49,6 +49,7 @@ class UserPreferencesRepository(context: Context) {
     suspend fun setRegion(region: String) {
         dataStore.edit { preferences ->
             preferences[Keys.REGION] = region
+            preferences[Keys.HAS_DISMISSED_REGION_NUDGE] = true
         }
     }
 

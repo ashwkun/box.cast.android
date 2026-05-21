@@ -91,6 +91,8 @@ class ExploreViewModel(
     private val _showRegionNudge = MutableStateFlow(false)
     val showRegionNudge: StateFlow<Boolean> = _showRegionNudge.asStateFlow()
 
+    private var initialNoMismatch: Boolean? = null
+
     init {
         // Observe Subscriptions for Badging
         viewModelScope.launch {
@@ -173,8 +175,11 @@ class ExploreViewModel(
                 val systemCountry = java.util.Locale.getDefault().country.lowercase().let {
                     if (it == "us" || it == "in" || it == "gb") it else "us"
                 }
-                // Show only when no mismatch and not already dismissed
-                _showRegionNudge.value = !hasDismissed && (systemCountry == region)
+                if (initialNoMismatch == null) {
+                    initialNoMismatch = (systemCountry == region)
+                }
+                // Show only when no initial mismatch and not already dismissed
+                _showRegionNudge.value = !hasDismissed && (initialNoMismatch == true)
             }
         }
     }
@@ -384,6 +389,7 @@ class ExploreViewModel(
     fun dismissExploreRegionNudge() {
         viewModelScope.launch {
             userPrefs.dismissExploreRegionNudge()
+            userPrefs.dismissRegionNudge()
         }
     }
 
