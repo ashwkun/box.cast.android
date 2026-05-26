@@ -380,6 +380,22 @@ class PodcastRepository(
             emptyMap()
         }
     }
+
+    suspend fun getPersonalizedRecommendations(history: List<cx.aswin.boxcast.core.network.model.HistoryItem>): List<Episode> = withContext(Dispatchers.IO) {
+        try {
+            if (history.isEmpty()) return@withContext emptyList()
+            val request = cx.aswin.boxcast.core.network.model.RecommendationsRequest(history)
+            val response = api.getPersonalizedRecommendations(publicKey, request).execute()
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.items.mapNotNull { mapToEpisode(it) }
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("BoxCastRepo", "Personalized Recommendations Error", e)
+            emptyList()
+        }
+    }
     
     suspend fun submitFeedback(category: String, message: String, appVersion: String): Boolean = withContext(Dispatchers.IO) {
         try {

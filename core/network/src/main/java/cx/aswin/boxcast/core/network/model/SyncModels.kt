@@ -30,3 +30,14 @@ data class FeedbackRequest(
 data class FeedbackResponse(
     val success: Boolean
 )
+
+@Serializable
+data class RecommendationsRequest(
+    val history: List<HistoryItem>
+)
+
+@Serializable
+data class HistoryItem(
+    val podcastTitle: String,
+    val episodeTitle: String
+)

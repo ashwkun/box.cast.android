@@ -7,6 +7,7 @@ import cx.aswin.boxcast.core.network.model.SearchResponse
 import cx.aswin.boxcast.core.network.model.TrendingResponse
 import cx.aswin.boxcast.core.network.model.SyncRequest
 import cx.aswin.boxcast.core.network.model.SyncResponse
+import cx.aswin.boxcast.core.network.model.RecommendationsRequest
 import cx.aswin.boxcast.core.network.model.SingleEpisodeResponse
 import cx.aswin.boxcast.core.network.model.FeedbackRequest
 import cx.aswin.boxcast.core.network.model.FeedbackResponse
@@ -100,6 +101,12 @@ interface BoxCastApi {
         @Query("id") vibeId: String,
         @Query("country") country: String? = null
     ): retrofit2.Call<TrendingResponse> // Reusing TrendingResponse structure (feeds list)
+
+    @POST("recommendations")
+    fun getPersonalizedRecommendations(
+        @Header("X-App-Key") publicKey: String,
+        @Body request: RecommendationsRequest
+    ): retrofit2.Call<EpisodesResponse>
 
     @GET("podcast/meta")
     fun getPodcastMeta(
