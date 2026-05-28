@@ -45,47 +45,8 @@ async function executeSQL(sql, args = []) {
 async function main() {
     console.log("[SCHEMA] Initializing database schema updates...");
 
-    // 1. Create episodes table
-    const createTableSQL = `
-        CREATE TABLE IF NOT EXISTS episodes (
-            id INTEGER PRIMARY KEY,
-            podcast_id INTEGER,
-            title TEXT,
-            description TEXT,
-            published_date INTEGER,
-            duration INTEGER,
-            enclosure_url TEXT,
-            image_url TEXT,
-            explicit INTEGER,
-            chapters_url TEXT,
-            transcript_url TEXT,
-            persons TEXT,
-            transcripts TEXT,
-            vector F32_BLOB(1024),
-            created_at INTEGER,
-            FOREIGN KEY (podcast_id) REFERENCES podcasts(id) ON DELETE CASCADE
-        )
-    `;
-    console.log("[SCHEMA] Creating table 'episodes' if not exists...");
-    await executeSQL(createTableSQL);
-
-    // 2. Create indices
-    console.log("[SCHEMA] Creating index 'idx_episodes_podcast_id'...");
-    await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_id ON episodes(podcast_id)");
-
-    console.log("[SCHEMA] Creating index 'idx_episodes_published_date'...");
-    await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_published_date ON episodes(published_date DESC)");
-
-    console.log("[SCHEMA] Creating compound index 'idx_episodes_podcast_pubdate'...");
-    await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_podcast_pubdate ON episodes(podcast_id, published_date DESC)");
-
-    console.log("[SCHEMA] Creating index 'idx_episodes_vector' on vector column...");
-    try {
-        await executeSQL("CREATE INDEX IF NOT EXISTS idx_episodes_vector ON episodes(libsql_vector_idx(vector, 'metric=cosine'))");
-        console.log("[SCHEMA] Index 'idx_episodes_vector' successfully verified/created.");
-    } catch (e) {
-        console.warn("[SCHEMA] Note: Indexing vector column failed:", e.message);
-    }
+    // 1. Episodes table bypass: Episodes and vectors are stored in Qdrant Cloud.
+    console.log("[SCHEMA] Skipping 'episodes' table creation (episodes are stored in Qdrant Vector DB).");
 
     // 3. Create missing performance and feature indexes
     console.log("[SCHEMA] Creating index 'idx_podcasts_itunes_id' (critical root cause fix)...");

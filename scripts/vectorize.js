@@ -1,42 +1,155 @@
 #!/usr/bin/env node
 
 /**
- * Generate vector embeddings for episodes
+ * Generate vector embeddings for podcast episodes and sync to Qdrant Cloud.
  * Uses CPU-based transformers.js (bge-large-en-v1.5, 1024-dim)
- * Designed to run in GitHub Actions
+ * Integrates directly with Qdrant REST APIs.
  */
 
-const { env, pipeline } = require('@xenova/transformers'); // Use generic import or dynamic import if needed
-env.cacheDir = './.cache';
-// const { pipeline } = await import('@xenova/transformers'); // ESM in CJS workaround if needed
+const crypto = require('crypto');
 
+// Environment Variables
 const TURSO_URL = process.env.TURSO_URL?.replace('libsql://', 'https://');
 const TURSO_TOKEN = process.env.TURSO_AUTH_TOKEN;
+const QDRANT_URL = process.env.QDRANT_URL;
+const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
+const API_KEY = process.env.PODCAST_INDEX_API_KEY;
+const API_SECRET = process.env.PODCAST_INDEX_API_SECRET;
+const API_BASE = "https://api.podcastindex.org/api/1.0";
 
-if (!TURSO_URL || !TURSO_TOKEN) {
-    console.error("Missing TURSO_URL or TURSO_AUTH_TOKEN");
+if (!TURSO_URL || !TURSO_TOKEN || !QDRANT_URL || !QDRANT_API_KEY || !API_KEY || !API_SECRET) {
+    console.error("Missing required environment variables (TURSO_*, QDRANT_*, PODCAST_INDEX_*)");
     process.exit(1);
 }
 
 // Configuration
 const MODEL_NAME = 'Xenova/bge-large-en-v1.5';
-const BATCH_SIZE = 10;
-const LIMIT = 8000; // Max items per run to fit within timeout
+const COLLECTION_NAME = 'episodes';
+const BATCH_SIZE = 50;
+const EPISODES_LIMIT = 30; // 30 episodes per podcast
 
-/**
- * Clean episode description for better vectorization quality.
- * Removes HTML, URLs, sponsor blocks, emails, timestamps, social handles, and boilerplate.
- * (Mirror of the same function in sync-episodes.js)
- */
+// Helper: Generate Podcast Index Auth Headers
+function generateAuthHeaders() {
+    const apiHeaderTime = Math.floor(Date.now() / 1000);
+    const data4Hash = API_KEY + API_SECRET + apiHeaderTime;
+    const hash = crypto.createHash('sha1').update(data4Hash).digest('hex');
+
+    return {
+        "User-Agent": "BoxCast/1.0",
+        "X-Auth-Key": API_KEY,
+        "X-Auth-Date": "" + apiHeaderTime,
+        "Authorization": hash
+    };
+}
+
+// Helper: Map Turso JS values to pipeline types
+function mapArgType(val) {
+    if (val === null || val === undefined || val === "") {
+        return { type: "null", value: null };
+    }
+    if (typeof val === 'number') {
+        return { type: "integer", value: String(val) };
+    }
+    if (typeof val === 'string' && /^\d+$/.test(val)) {
+        return { type: "integer", value: val };
+    }
+    return { type: "text", value: String(val) };
+}
+
+// Helper: Execute Turso SQL
+async function executeSQL(sql, args = []) {
+    const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${TURSO_TOKEN}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            requests: [{
+                type: "execute",
+                stmt: { sql, args: args.map(mapArgType) }
+            }, { type: "close" }]
+        })
+    });
+    if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+    }
+    const res = await response.json();
+    if (res.results && res.results[0] && res.results[0].type === "error") {
+        throw new Error(`SQL execution error: ${res.results[0].error.message}`);
+    }
+    return res;
+}
+
+// Helper: Fetch latest 30 episodes from Podcast Index
+async function fetchEpisodes(feedId) {
+    try {
+        const headers = generateAuthHeaders();
+        const res = await fetch(`${API_BASE}/episodes/byfeedid?id=${feedId}&max=${EPISODES_LIMIT}`, { headers });
+        if (!res.ok) throw new Error(`API error: ${res.status}`);
+        const data = await res.json();
+        return data.items || [];
+    } catch (e) {
+        console.error(`[FAIL] fetchEpisodes pod=${feedId}: ${e.message}`);
+        return [];
+    }
+}
+
+// Helper: Generate a stable UUID from a string ID (Qdrant requires UUIDs)
+function generateUUID(strId) {
+    const hash = crypto.createHash('md5').update(String(strId)).digest('hex');
+    return `${hash.substring(0,8)}-${hash.substring(8,12)}-${hash.substring(12,16)}-${hash.substring(16,20)}-${hash.substring(20)}`;
+}
+
+// Helper: Qdrant Batch Existence Check
+async function qdrantCheckExistence(ids) {
+    if (ids.length === 0) return new Set();
+    try {
+        const response = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}/points`, {
+            method: "POST",
+            headers: {
+                "api-key": QDRANT_API_KEY,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                ids,
+                with_vector: false,
+                with_payload: false
+            })
+        });
+        if (!response.ok) return new Set();
+        const data = await response.json();
+        const existing = new Set((data.result || []).map(r => String(r.id)));
+        return existing;
+    } catch (e) {
+        console.error(`[QDRANT] Existence check failed: ${e.message}`);
+        return new Set();
+    }
+}
+
+// Helper: Qdrant Batch Upsert
+async function qdrantUpsertBatch(points) {
+    if (points.length === 0) return;
+    const response = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}/points?wait=true`, {
+        method: "PUT",
+        headers: {
+            "api-key": QDRANT_API_KEY,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ points })
+    });
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Qdrant upsert failed: ${response.status} - ${errText}`);
+    }
+    const res = await response.json();
+    return res;
+}
+
+// Clean descriptions
 function cleanDescription(raw) {
     if (!raw || typeof raw !== 'string') return "";
-
-    let text = raw;
-
-    // 1. Strip HTML tags
-    text = text.replace(/<[^>]+>/g, ' ');
-
-    // 2. Decode common HTML entities
+    let text = raw.replace(/<[^>]+>/g, ' ');
     text = text
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
@@ -46,21 +159,12 @@ function cleanDescription(raw) {
         .replace(/&#x27;/g, "'")
         .replace(/&#\d+;/g, ' ')
         .replace(/&\w+;/g, ' ');
-
-    // 3. Remove URLs (http/https/www)
     text = text.replace(/https?:\/\/[^\s)"\]]+/gi, '');
     text = text.replace(/www\.[^\s)"\]]+/gi, '');
-
-    // 4. Remove email addresses
     text = text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '');
-
-    // 5. Remove social media handles (@user, #hashtag)
     text = text.replace(/[@#]\w+/g, '');
-
-    // 6. Remove timestamps (e.g., "01:23:45", "12:34")
     text = text.replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g, '');
-
-    // 7. Remove sponsor/ad blocks
+    
     const sponsorPatterns = [
         /^.*sponsored by.*$/gim,
         /^.*brought to you by.*$/gim,
@@ -71,11 +175,8 @@ function cleanDescription(raw) {
         /^.*go to\b.*for\b.*$/gim,
         /^.*visit\b.*\.com.*$/gim,
     ];
-    for (const pattern of sponsorPatterns) {
-        text = text.replace(pattern, '');
-    }
+    for (const pattern of sponsorPatterns) text = text.replace(pattern, '');
 
-    // 8. Remove boilerplate phrases
     const boilerplate = [
         /learn more at\b.*/gi,
         /for more info(rmation)?\b.*/gi,
@@ -93,208 +194,239 @@ function cleanDescription(raw) {
         /see omnystudio\.com.*/gi,
         /advertising inquiries\b.*/gi,
     ];
-    for (const pattern of boilerplate) {
-        text = text.replace(pattern, '');
-    }
+    for (const pattern of boilerplate) text = text.replace(pattern, '');
 
-    // 9. Normalize whitespace
-    text = text.replace(/\s+/g, ' ').trim();
-
-    // 10. Truncate to 1000 chars
-    return text.substring(0, 1000);
+    return text.replace(/\s+/g, ' ').trim().substring(0, 1000);
 }
-
-async function executeSQL(sql, args = []) {
-    const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${TURSO_TOKEN}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            requests: [{
-                type: "execute",
-                stmt: { sql, args: args.map(a => ({ type: a === null ? "null" : "text", value: a === null ? null : String(a) })) }
-            }, { type: "close" }]
-        })
-    });
-    if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
-    }
-    const res = await response.json();
-    if (res.results && res.results[0] && res.results[0].type === "error") {
-        throw new Error(`SQL execution error: ${res.results[0].error.message}`);
-    }
-    return res;
-}
-
-async function executeVectorBatchUpdate(updates) {
-    if (updates.length === 0) return;
-
-    const requests = updates.map(u => {
-        const vectorString = '[' + Array.from(u.embedding).join(',') + ']';
-        return {
-            type: "execute",
-            stmt: {
-                sql: `UPDATE episodes SET vector = vector32(?) WHERE id = ?`,
-                args: [
-                    { type: "text", value: vectorString },
-                    { type: "integer", value: String(u.id) }
-                ]
-            }
-        };
-    });
-
-    requests.push({ type: "close" });
-
-    const response = await fetch(`${TURSO_URL}/v2/pipeline`, {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${TURSO_TOKEN}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ requests })
-    });
-
-    if (!response.ok) {
-        throw new Error(`Batch update failed: ${response.status}`);
-    }
-    const res = await response.json();
-    if (res.results) {
-        for (let i = 0; i < res.results.length - 1; i++) {
-            if (res.results[i].type === "error") {
-                console.error(`Batch item ${i} failed:`, res.results[i].error.message);
-            }
-        }
-    }
-    return res;
-}
-
-
 
 async function main() {
-    console.log("Starting Vectorization...");
+    console.log("=== Starting Qdrant Vector Sync Pipeline ===");
 
-    // Dynamic import for transformers (ESM)
+    // === DIAGNOSTIC FAILSAFE LOGGING ===
+    console.log("[DIAGNOSTIC] Verifying GHA Environment Configuration...");
+    console.log(`  - TURSO_URL:     ${TURSO_URL ? 'PRESENT' : 'MISSING'}`);
+    console.log(`  - TURSO_TOKEN:   ${TURSO_TOKEN ? 'PRESENT (Masked: ' + TURSO_TOKEN.substring(0, 8) + '...)' : 'MISSING'}`);
+    console.log(`  - QDRANT_URL:    ${QDRANT_URL ? 'PRESENT (' + QDRANT_URL + ')' : 'MISSING'}`);
+    console.log(`  - QDRANT_API_KEY:${QDRANT_API_KEY ? 'PRESENT (Masked: ' + QDRANT_API_KEY.substring(0, 8) + '...)' : 'MISSING'}`);
+    console.log(`  - API_KEY:       ${API_KEY ? 'PRESENT' : 'MISSING'}`);
+
+    console.log("[DIAGNOSTIC] Testing Qdrant Cluster Connection & Health...");
+    try {
+        const clusterRes = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}`, {
+            headers: { "api-key": QDRANT_API_KEY }
+        });
+        if (clusterRes.ok) {
+            const clusterData = await clusterRes.json();
+            console.log(`[STATUS] Qdrant connection SUCCESSFUL!`);
+            console.log(`  - Collection:   '${COLLECTION_NAME}'`);
+            console.log(`  - Status:       ${clusterData.result?.status}`);
+            console.log(`  - Active Points: ${clusterData.result?.points_count}`);
+            console.log(`  - Vectors Size: ${clusterData.result?.config?.params?.vectors?.size}`);
+        } else {
+            const errorText = await clusterRes.text();
+            throw new Error(`Cluster returned HTTP ${clusterRes.status} - ${errorText}`);
+        }
+    } catch (e) {
+        console.error(`[CRITICAL] Qdrant connection check FAILED: ${e.message}`);
+        console.error("  -> Please verify QDRANT_URL and QDRANT_API_KEY secrets in GitHub Repository Secrets!");
+        process.exit(1);
+    }
+    // ===================================
+
+    // 1. Setup local CPU embedding generator
     const { env: envESM, pipeline } = await import('@xenova/transformers');
     envESM.cacheDir = './.cache';
-
-    // === PHASE 1: Episode Vectorization (1024-dim, bge-large) ===
-    console.log(`\n=== Phase 1: Episode Vectorization (Model: ${MODEL_NAME}) ===`);
     const extractor = await pipeline('feature-extraction', MODEL_NAME);
+    console.log(`[MODEL] Loaded embedding extractor: ${MODEL_NAME}`);
 
-    // 2. Fetch Candidates
-    // Prioritize items with latest episodes (richer context)
+    // 2. Fetch active trending podcasts from charts matching country matrix
     const countryIndex = process.argv.indexOf('--country');
     const country = countryIndex !== -1 ? process.argv[countryIndex + 1] : null;
 
-    let sql;
+    let sql = `
+        SELECT DISTINCT p.id, p.title, p.categories
+        FROM charts c
+        JOIN podcasts p ON c.itunes_id = p.itunes_id
+    `;
     let args = [];
-
     if (country) {
-        sql = `
-            SELECT DISTINCT e.id, e.title, e.description, p.title as podcast_title, p.categories
-            FROM charts c
-            JOIN podcasts p ON c.itunes_id = p.itunes_id
-            JOIN episodes e ON e.podcast_id = p.id
-            WHERE e.vector IS NULL AND c.country = ?
-            LIMIT ${LIMIT}
-        `;
-        args = [country];
-        console.log(`Filtering vectorization candidates for country: ${country}`);
-    } else {
-        sql = `
-            SELECT e.id, e.title, e.description, p.title as podcast_title, p.categories
-            FROM episodes e
-            JOIN podcasts p ON e.podcast_id = p.id
-            WHERE e.vector IS NULL 
-            LIMIT ${LIMIT}
-        `;
+        sql += ` WHERE c.country = ?`;
+        args.push(country);
+        console.log(`[SYNC] Filtering candidates for country: ${country}`);
     }
 
-    console.log("Fetching candidates...");
+    console.log("[SYNC] Querying Turso for chart podcasts...");
     const res = await executeSQL(sql, args);
-    const rows = res?.results?.[0]?.response?.result?.rows || [];
+    const podcasts = res?.results?.[0]?.response?.result?.rows?.map(r => ({
+        id: String(r[0].value),
+        title: r[1].value || "Unknown Show",
+        categories: r[2]?.value || "Podcast"
+    })) || [];
 
-    if (rows.length === 0) {
-        console.log("No episodes need vectorization.");
-    } else {
-        console.log(`Found ${rows.length} episodes to vectorize.`);
+    console.log(`[SYNC] Found ${podcasts.length} active podcasts to sync.`);
+    if (podcasts.length === 0) return;
 
-        let success = 0;
-        let errors = 0;
-        const startTime = Date.now();
+    let success = 0;
+    let skipped = 0;
+    let errors = 0;
+    const startTime = Date.now();
 
-        console.log("\n=== Vectorization Plan ===");
-        console.log(`Model:      ${MODEL_NAME}`);
-        console.log(`Candidates: ${rows.length}`);
-        console.log(`==========================\n`);
+    // 3. Process podcasts sequentially to be polite to APIs and prevent locks
+    for (let idx = 0; idx < podcasts.length; idx++) {
+        const pod = podcasts[idx];
+        console.log(`\n[${idx+1}/${podcasts.length}] Processing: "${pod.title}" (ID: ${pod.id})`);
 
-        console.log("Processing episodes...");
+        // Fetch latest 30 episodes
+        const episodes = await fetchEpisodes(pod.id);
+        if (episodes.length === 0) {
+            console.log(`  -> No episodes found for "${pod.title}". Skipping.`);
+            continue;
+        }
 
-        const batch = [];
-        const BATCH_SIZE = 50;
+        // Map episode IDs to stable UUIDs
+        const episodeMap = episodes.map(ep => ({
+            raw: ep,
+            uuid: generateUUID(ep.id)
+        }));
+        const uuids = episodeMap.map(m => m.uuid);
 
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            const id = row[0].value;
-            const title = row[1].value || "";
-            const desc = row[2].value || "";
-            const podcastTitle = row[3].value || "";
-            const categories = row[4]?.value || "";
+        // Qdrant Batch check
+        const existingUuids = await qdrantCheckExistence(uuids);
+        console.log(`  -> Qdrant status: ${existingUuids.size}/${episodes.length} episodes already indexed.`);
 
-            console.log(`[VECTOR] [${i+1}/${rows.length}] Starting vectorization for episode ${id} ("${title}") | Podcast: "${podcastTitle}"`);
+        const toVectorize = episodeMap.filter(m => !existingUuids.has(m.uuid));
+        skipped += existingUuids.size;
 
-            // Construct Text — clean description for better semantic signal
-            const cleanedDesc = cleanDescription(desc);
+        if (toVectorize.length === 0) {
+            console.log(`  -> All episodes are up-to-date in Qdrant.`);
+            continue;
+        }
+
+        console.log(`  -> ${toVectorize.length} new episodes qualify for vectorization.`);
+        const points = [];
+
+        for (const item of toVectorize) {
+            const ep = item.raw;
+            const uuid = item.uuid;
+            const epTitle = ep.title || "";
+            const rawDesc = ep.description || "";
+            const cleanedDesc = cleanDescription(rawDesc);
+
+            // Construct text string
             const textParts = [
-                `Episode: ${title}`,
+                `Episode: ${epTitle}`,
                 cleanedDesc ? `Description: ${cleanedDesc}` : null,
-                `Podcast: ${podcastTitle}`,
-                categories ? `Genres: ${categories}` : null
+                `Podcast: ${pod.title}`,
+                pod.categories ? `Genres: ${pod.categories}` : null
             ].filter(Boolean);
             const text = textParts.join('. ').replace(/[\n\r]+/g, ' ').substring(0, 1000);
 
             try {
+                // Generate embedding vector
                 const output = await extractor(text, { pooling: 'mean', normalize: true });
-                const embedding = output.data;
+                const vector = Array.from(output.data);
 
-                batch.push({ id, embedding });
-                console.log(`[VECTOR] [${i+1}/${rows.length}] Added to batch for episode ${id} ("${title}")`);
+                // Build point metadata payload
+                const payload = {
+                    title: epTitle,
+                    podcast_id: parseInt(pod.id) || 0,
+                    podcast_title: pod.title,
+                    audio_url: ep.enclosureUrl || "",
+                    image_url: ep.image || ep.feedImage || "",
+                    published_date: ep.datePublished || 0,
+                    duration: ep.duration || 0
+                };
 
-                if (batch.length >= BATCH_SIZE) {
-                    console.log(`[VECTOR] Flushing batch of ${batch.length} vector updates to DB...`);
-                    await executeVectorBatchUpdate(batch);
-                    success += batch.length;
-                    batch.length = 0;
-                }
-            } catch (e) {
-                console.error(`[VECTOR] [${i+1}/${rows.length}] Failed to process/vectorize ${id} ("${title}"): ${e.message}`);
+                points.push({
+                    id: uuid,
+                    vector,
+                    payload
+                });
+                console.log(`  [VEC] Vectorized: "${epTitle}"`);
+            } catch (err) {
+                console.error(`  [ERR] Failed to vectorize "${epTitle}": ${err.message}`);
                 errors++;
             }
         }
 
-        // Flush any remaining items in the batch
-        if (batch.length > 0) {
-            console.log(`[VECTOR] Flushing final batch of ${batch.length} vector updates to DB...`);
+        // Batch upload new points to Qdrant
+        if (points.length > 0) {
+            console.log(`  -> Uploading ${points.length} vectors to Qdrant...`);
             try {
-                await executeVectorBatchUpdate(batch);
-                success += batch.length;
-            } catch (e) {
-                console.error(`[VECTOR] Failed to flush final batch: ${e.message}`);
-                errors += batch.length;
+                await qdrantUpsertBatch(points);
+                success += points.length;
+                console.log(`  -> Successful upload to Qdrant!`);
+            } catch (err) {
+                console.error(`  -> Failed to upload batch to Qdrant: ${err.message}`);
+                errors += points.length;
             }
         }
 
-        const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        console.log(`\n=== Episode Vectorization Complete ===`);
-        console.log(`Success:  ${success}`);
-        console.log(`Errors:   ${errors}`);
-        console.log(`Duration: ${totalElapsed}s`);
-        console.log(`======================================\n`);
+        // Rolling Window Delete: Keep only the latest 30 episodes in Qdrant for this podcast
+        // (Any point belonging to this podcast whose UUID is NOT in the current active top 30 list)
+        if (uuids.length > 0) {
+            try {
+                const deleteResponse = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}/points/delete`, {
+                    method: "POST",
+                    headers: {
+                        "api-key": QDRANT_API_KEY,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        filter: {
+                            must: [
+                                { key: "podcast_id", match: { value: parseInt(pod.id) || 0 } }
+                            ],
+                            must_not: [
+                                { has_id: uuids }
+                            ]
+                        }
+                    })
+                });
+                if (deleteResponse.ok) {
+                    console.log(`  -> Pruned older episodes for "${pod.title}" successfully.`);
+                }
+            } catch (pruneErr) {
+                console.warn(`  -> Pruning failed for "${pod.title}":`, pruneErr.message);
+            }
+        }
+        
+        // Polite API rate limiting delay
+        await new Promise(r => setTimeout(r, 100));
     }
 
+    // 4. Global Rolling Window Cleanup (Backup prune: Deletes any point older than 60 days)
+    console.log("\n[CLEANUP] Running global 60-day rolling window cleanup...");
+    const sixtyDaysAgo = Math.floor(Date.now() / 1000) - (60 * 24 * 60 * 60);
+    try {
+        const cleanupResponse = await fetch(`${QDRANT_URL}/collections/${COLLECTION_NAME}/points/delete`, {
+            method: "POST",
+            headers: {
+                "api-key": QDRANT_API_KEY,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                filter: {
+                    must: [
+                        { key: "published_date", range: { lt: sixtyDaysAgo } }
+                    ]
+                }
+            })
+        });
+        if (cleanupResponse.ok) {
+            console.log("[CLEANUP] Global 60-day rolling window deletion completed!");
+        }
+    } catch (cleanupErr) {
+        console.error("[CLEANUP] Global cleanup failed:", cleanupErr.message);
+    }
 
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n=== Qdrant Vector Sync Pipeline Complete ===`);
+    console.log(`New Vectors Uploaded: ${success}`);
+    console.log(`Existing Skipped:     ${skipped}`);
+    console.log(`Errors:               ${errors}`);
+    console.log(`Total Duration:       ${elapsed}s`);
+    console.log(`============================================\n`);
 }
 
 main().catch(console.error);

@@ -232,7 +232,26 @@ async function fetchFeedInfo(feedId) {
 async function main() {
     console.log("Starting Episode Sync via API...");
 
-    // 1. Removed old fetch logic
+    // === DIAGNOSTIC FAILSAFE LOGGING ===
+    console.log("[DIAGNOSTIC] Verifying GHA Environment Configuration...");
+    console.log(`  - TURSO_URL:     ${TURSO_URL ? 'PRESENT' : 'MISSING'}`);
+    console.log(`  - TURSO_TOKEN:   ${TURSO_TOKEN ? 'PRESENT (Masked: ' + TURSO_TOKEN.substring(0, 8) + '...)' : 'MISSING'}`);
+    console.log(`  - API_KEY:       ${API_KEY ? 'PRESENT' : 'MISSING'}`);
+
+    console.log("[DIAGNOSTIC] Testing Turso Database Connection & Health...");
+    try {
+        const dbRes = await executeSQL("SELECT 1");
+        if (dbRes && dbRes.results && dbRes.results[0] && dbRes.results[0].type === "success") {
+            console.log(`[STATUS] Turso database connection SUCCESSFUL!`);
+        } else {
+            throw new Error("Database query returned an unexpected response.");
+        }
+    } catch (e) {
+        console.error(`[CRITICAL] Turso database connection check FAILED: ${e.message}`);
+        console.error("  -> Please verify TURSO_URL and TURSO_AUTH_TOKEN secrets in GitHub Repository Secrets!");
+        process.exit(1);
+    }
+    // ===================================
 
 
     // 2. Ensure podcasts table has new columns
@@ -475,79 +494,12 @@ async function main() {
                     ]
                 });
 
-                // 2. Insert episodes in chunks of 25 to keep payloads small
-                const EP_CHUNK = 25;
-                for (let e = 0; e < episodes.length; e += EP_CHUNK) {
-                    const chunk = episodes.slice(e, e + EP_CHUNK);
-                    const placeholders = [];
-                    const flatArgs = [];
-
-                    chunk.forEach(ep => {
-                        placeholders.push('(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-                        flatArgs.push(
-                            ep.id,
-                            pod.id,
-                            ep.title || "",
-                            cleanDescription(ep.description),
-                            ep.datePublished || 0,
-                            ep.duration || 0,
-                            ep.enclosureUrl || "",
-                            ep.image || ep.feedImage || "",
-                            ep.explicit ? 1 : 0,
-                            ep.chaptersUrl || null,
-                            ep.transcriptUrl || null,
-                            ep.persons ? JSON.stringify(ep.persons) : null,
-                            ep.transcripts ? JSON.stringify(ep.transcripts) : null,
-                            Date.now()
-                        );
-                    });
-
-                    podStatements.push({
-                        sql: `
-                            INSERT INTO episodes (
-                                id, podcast_id, title, description, published_date, duration, 
-                                enclosure_url, image_url, explicit, chapters_url, transcript_url, 
-                                persons, transcripts, created_at
-                            ) VALUES ${placeholders.join(',')}
-                            ON CONFLICT(id) DO UPDATE SET
-                                title = excluded.title,
-                                description = excluded.description,
-                                published_date = excluded.published_date,
-                                duration = excluded.duration,
-                                enclosure_url = excluded.enclosure_url,
-                                image_url = excluded.image_url,
-                                explicit = excluded.explicit,
-                                chapters_url = excluded.chapters_url,
-                                transcript_url = excluded.transcript_url,
-                                persons = excluded.persons,
-                                transcripts = excluded.transcripts,
-                                vector = CASE WHEN (title != excluded.title OR description != excluded.description) THEN NULL ELSE vector END
-                        `,
-                        args: flatArgs
-                    });
-                }
-
-                // 3. Prune old episodes
-                podStatements.push({
-                    sql: `
-                        DELETE FROM episodes 
-                        WHERE podcast_id = ? 
-                          AND id NOT IN (
-                            SELECT id FROM episodes 
-                            WHERE podcast_id = ? 
-                            ORDER BY published_date DESC 
-                            LIMIT 150
-                          )
-                    `,
-                    args: [pod.id, pod.id]
-                });
-
-                // Fire this podcast's DB write immediately (concurrent with other pods)
+                // Fire this podcast's DB metadata write immediately (concurrent with other pods)
                 const dbRes = await executeBatch(podStatements);
                 batchDbMs += dbRes._durationMs;
                 batchRowsRead += dbRes._rowsRead;
                 batchRowsWritten += dbRes._rowsWritten;
-                batchEpisodes += episodes.length;
+                batchEpisodes += 1;
                 batchUpdated++;
 
             } catch (err) {

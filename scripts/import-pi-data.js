@@ -280,6 +280,26 @@ async function importTable(filename, tableName, limitPerGroupCol = null, limitCo
 async function main() {
     console.log("Starting PI data import...");
 
+    // === DIAGNOSTIC FAILSAFE LOGGING ===
+    console.log("[DIAGNOSTIC] Verifying GHA Environment Configuration...");
+    console.log(`  - TURSO_URL:     ${TURSO_URL ? 'PRESENT' : 'MISSING'}`);
+    console.log(`  - TURSO_TOKEN:   ${TURSO_TOKEN ? 'PRESENT (Masked: ' + TURSO_TOKEN.substring(0, 8) + '...)' : 'MISSING'}`);
+
+    console.log("[DIAGNOSTIC] Testing Turso Database Connection & Health...");
+    try {
+        const dbRes = await executeSQL("SELECT 1");
+        if (dbRes && dbRes.results && dbRes.results[0] && dbRes.results[0].type === "success") {
+            console.log(`[STATUS] Turso database connection SUCCESSFUL!`);
+        } else {
+            throw new Error("Database query returned an unexpected response.");
+        }
+    } catch (e) {
+        console.error(`[CRITICAL] Turso database connection check FAILED: ${e.message}`);
+        console.error("  -> Please verify TURSO_URL and TURSO_AUTH_TOKEN secrets in GitHub Repository Secrets!");
+        process.exit(1);
+    }
+    // ===================================
+
     const countryIndex = process.argv.indexOf('--country');
     const country = countryIndex !== -1 ? process.argv[countryIndex + 1] : null;
 

@@ -161,8 +161,12 @@ jobs:
         env:
           TURSO_URL: ${{ secrets.TURSO_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          PODCAST_INDEX_API_KEY: ${{ secrets.PODCAST_INDEX_API_KEY }}
+          PODCAST_INDEX_API_SECRET: ${{ secrets.PODCAST_INDEX_API_SECRET }}
         run: |
-          echo "[WORKFLOW] Running vectorize.js to calculate and store embedding vectors for country ${{ matrix.country }}..."
+          echo "[WORKFLOW] Running vectorize.js to calculate and sync embedding vectors to Qdrant Cloud for country ${{ matrix.country }}..."
           node scripts/vectorize.js --country ${{ matrix.country }}
           
       - name: Cleanup
