@@ -1,5 +1,7 @@
 package cx.aswin.boxlore.feature.library.subscriptions
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +40,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,7 +78,7 @@ internal data class SubscriptionSortActions(
  * 3. Shows inside folders.
  * Also includes an informative tip regarding press-and-hold repositioning.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun SubscriptionSortSheet(
     config: SubscriptionSortConfig,
@@ -91,54 +94,58 @@ internal fun SubscriptionSortSheet(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = modifier,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .navigationBarsPadding(),
+        CompositionLocalProvider(
+            LocalOverscrollFactory provides null,
         ) {
-            SheetHeader(onDismiss = actions.onDismiss)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
+                    .navigationBarsPadding(),
+            ) {
+                SheetHeader(onDismiss = actions.onDismiss)
 
-            Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-            AutoOrganizeRow(
-                autoOrganize = config.autoOrganizeFolders,
-                onToggle = actions.onAutoOrganizeFoldersChange,
-            )
+                AutoOrganizeRow(
+                    autoOrganize = config.autoOrganizeFolders,
+                    onToggle = actions.onAutoOrganizeFoldersChange,
+                )
 
-            Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-            )
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            ShowsSortSection(
-                currentSort = config.currentSort,
-                onSortChange = actions.onSortChange,
-            )
+                ShowsSortSection(
+                    currentSort = config.currentSort,
+                    onSortChange = actions.onSortChange,
+                )
 
-            Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-            FolderSortSection(
-                folderSort = config.folderSort,
-                onFolderSortChange = actions.onFolderSortChange,
-            )
+                FolderSortSection(
+                    folderSort = config.folderSort,
+                    onFolderSortChange = actions.onFolderSortChange,
+                )
 
-            Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-            IntraFolderSortSection(
-                intraFolderSort = config.intraFolderSort,
-                onIntraFolderSortChange = actions.onIntraFolderSortChange,
-            )
+                IntraFolderSortSection(
+                    intraFolderSort = config.intraFolderSort,
+                    onIntraFolderSortChange = actions.onIntraFolderSortChange,
+                )
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-            DragRepositionTipBanner()
+                DragRepositionTipBanner()
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 }
@@ -288,7 +295,7 @@ private fun FolderSortSection(
 ) {
     SectionHeader(
         icon = Icons.Rounded.Folder,
-        title = "Folders (Pinned at Top)",
+        title = "Folders",
         description = "How folders are ordered relative to each other",
     )
     Spacer(modifier = Modifier.height(8.dp))

@@ -1,18 +1,25 @@
 package cx.aswin.boxlore.feature.library.subscriptions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.CreateNewFolder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import cx.aswin.boxlore.core.designsystem.components.ActionPillFilterChip
 import cx.aswin.boxlore.core.designsystem.components.PillFilterChip
 import cx.aswin.boxlore.core.model.Podcast
 
@@ -39,13 +46,12 @@ internal fun SubscriptionsFilterRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = contentPadding,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onNewFolderClick != null) {
             item(key = "action_new_folder") {
-                ActionPillFilterChip(
-                    label = "New folder",
+                CompactNewFolderChip(
                     onClick = onNewFolderClick,
-                    icon = Icons.Rounded.Add,
                 )
             }
         }
@@ -68,6 +74,30 @@ internal fun SubscriptionsFilterRow(
                 },
                 icon = genre.icon,
                 trailingIcon = if (isSelected) Icons.Rounded.Close else null,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun CompactNewFolderChip(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f),
+        contentColor = MaterialTheme.colorScheme.primary,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+        modifier = modifier.size(32.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Rounded.CreateNewFolder,
+                contentDescription = "New folder",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(17.dp),
             )
         }
     }

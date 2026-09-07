@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -459,20 +458,19 @@ internal fun FolderDisplaySizeSelector(
             }
         }
 
-        val isCompact = selectedSize == FolderDisplaySize.COMPACT
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.padding(start = 2.dp, top = 2.dp),
         ) {
             Icon(
-                imageVector = if (isCompact) Icons.Rounded.GridView else Icons.Rounded.PushPin,
+                imageVector = Icons.Rounded.GridView,
                 contentDescription = null,
-                tint = if (isCompact) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(15.dp),
             )
             Text(
-                text = selectedSize.placementLabel,
+                text = selectedSize.subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = GoogleSansWeight.medium,
@@ -513,33 +511,16 @@ private fun FolderSizeCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                if (size.isPinnedToTop) {
-                    Icon(
-                        imageVector = Icons.Rounded.PushPin,
-                        contentDescription = "Pinned to top",
-                        tint = if (isSelected) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        },
-                        modifier = Modifier.size(11.dp),
-                    )
-                }
-                Text(
-                    text = size.dimensionsLabel,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = GoogleSansWeight.bold,
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
-            }
+            Text(
+                text = size.dimensionsLabel,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = GoogleSansWeight.bold,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
             Text(
                 text = size.title,
                 style = MaterialTheme.typography.labelSmall,
