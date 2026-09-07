@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -388,8 +390,20 @@ internal fun Compact1x1FolderCard(
     dragModifier: Modifier = Modifier,
 ) {
     val lastSeenEpisodes = LocalLastSeenEpisodes.current
+    val hasOverflowNew = remember(podcasts, lastSeenEpisodes) {
+        if (podcasts.size > 4) {
+            hasFolderOverflowNew(podcasts.drop(3), lastSeenEpisodes)
+        } else {
+            false
+        }
+    }
     val hasAnyNew = remember(podcasts, lastSeenEpisodes) {
         hasAnyFolderShowNew(podcasts, lastSeenEpisodes)
+    }
+    val showFolderBadge = if (folder.effectiveShowPodcastGrid) {
+        hasOverflowNew
+    } else {
+        hasAnyNew
     }
     val shape = RoundedCornerShape(14.dp)
     val dragScale by animateFloatAsState(
@@ -411,14 +425,14 @@ internal fun Compact1x1FolderCard(
                 scaleX = dragScale
                 scaleY = dragScale
                 this.shape = shape
-                clip = true
+                clip = false
             }
             .shadow(elevation = dragElevation, shape = shape, clip = false),
     ) {
         Surface(
             shape = shape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            border = if (hasAnyNew) {
+            border = if (showFolderBadge) {
                 BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.85f))
             } else {
                 BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
@@ -436,17 +450,15 @@ internal fun Compact1x1FolderCard(
                 CompactPodcastGridContent(
                     folder = folder,
                     podcasts = podcasts,
-                    onPodcastClick = actions.onPodcastClick,
-                    onFolderClick = actions.onFolderClick,
-                    onFolderLongClick = actions.onFolderLongClick,
+                    lastSeenEpisodes = lastSeenEpisodes,
+                    hasOverflowNew = hasOverflowNew,
+                    actions = actions,
                 )
             }
         }
 
-        if (hasAnyNew) {
-            NewEpisodeBadge(
-                modifier = Modifier.zIndex(2f),
-            )
+        if (showFolderBadge) {
+            FolderFloatingBadge()
         }
     }
 }
@@ -505,16 +517,33 @@ private fun CompactFolderIconContent(
 private fun CompactPodcastGridContent(
     folder: SubscriptionFolder,
     podcasts: List<Podcast>,
-    onPodcastClick: (String) -> Unit,
-    onFolderClick: (String) -> Unit,
-    onFolderLongClick: (SubscriptionFolder) -> Unit,
+    lastSeenEpisodes: Map<String, String>,
+    hasOverflowNew: Boolean,
+    actions: FolderCardActions,
 ) {
+    val pod0 = podcasts.getOrNull(0)
+    val isNew0 = remember(pod0, lastSeenEpisodes) {
+        pod0?.let { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) } ?: false
+    }
+    val pod1 = podcasts.getOrNull(1)
+    val isNew1 = remember(pod1, lastSeenEpisodes) {
+        pod1?.let { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) } ?: false
+    }
+    val pod2 = podcasts.getOrNull(2)
+    val isNew2 = remember(pod2, lastSeenEpisodes) {
+        pod2?.let { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) } ?: false
+    }
+    val pod3 = podcasts.getOrNull(3)
+    val isNew3 = remember(pod3, lastSeenEpisodes) {
+        pod3?.let { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) } ?: false
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .combinedClickable(
-                onClick = { onFolderClick(folder.id) },
-                onLongClick = { onFolderLongClick(folder) },
+                onClick = { actions.onFolderClick(folder.id) },
+                onLongClick = { actions.onFolderLongClick(folder) },
             )
             .padding(5.dp),
     ) {
@@ -529,15 +558,17 @@ private fun CompactPodcastGridContent(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 MiniPodcastSlot(
-                    podcast = podcasts.getOrNull(0),
-                    onClick = onPodcastClick,
-                    onEmptyClick = { onFolderClick(folder.id) },
+                    podcast = pod0,
+                    hasNewEpisode = isNew0,
+                    onClick = actions.onPodcastClick,
+                    onEmptyClick = { actions.onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
                 MiniPodcastSlot(
-                    podcast = podcasts.getOrNull(1),
-                    onClick = onPodcastClick,
-                    onEmptyClick = { onFolderClick(folder.id) },
+                    podcast = pod1,
+                    hasNewEpisode = isNew1,
+                    onClick = actions.onPodcastClick,
+                    onEmptyClick = { actions.onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -548,9 +579,10 @@ private fun CompactPodcastGridContent(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 MiniPodcastSlot(
-                    podcast = podcasts.getOrNull(2),
-                    onClick = onPodcastClick,
-                    onEmptyClick = { onFolderClick(folder.id) },
+                    podcast = pod2,
+                    hasNewEpisode = isNew2,
+                    onClick = actions.onPodcastClick,
+                    onEmptyClick = { actions.onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
                 if (podcasts.size > 4) {
@@ -560,7 +592,7 @@ private fun CompactPodcastGridContent(
                             .fillMaxSize()
                             .clip(RoundedCornerShape(6.dp))
                             .background(MaterialTheme.colorScheme.primaryContainer)
-                            .clickable { onFolderClick(folder.id) },
+                            .clickable { actions.onFolderClick(folder.id) },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -569,12 +601,16 @@ private fun CompactPodcastGridContent(
                             fontWeight = GoogleSansWeight.bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
+                        if (hasOverflowNew) {
+                            NewEpisodeBadge()
+                        }
                     }
                 } else {
                     MiniPodcastSlot(
-                        podcast = podcasts.getOrNull(3),
-                        onClick = onPodcastClick,
-                        onEmptyClick = { onFolderClick(folder.id) },
+                        podcast = pod3,
+                        hasNewEpisode = isNew3,
+                        onClick = actions.onPodcastClick,
+                        onEmptyClick = { actions.onFolderClick(folder.id) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -588,6 +624,7 @@ private fun MiniPodcastSlot(
     podcast: Podcast?,
     onClick: (String) -> Unit,
     onEmptyClick: () -> Unit = {},
+    hasNewEpisode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val miniShape = RoundedCornerShape(6.dp)
@@ -606,6 +643,9 @@ private fun MiniPodcastSlot(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
+            if (hasNewEpisode) {
+                NewEpisodeBadge()
+            }
         }
     } else {
         Box(
@@ -616,6 +656,18 @@ private fun MiniPodcastSlot(
                 .clickable(onClick = onEmptyClick),
         )
     }
+}
+
+@Composable
+private fun BoxScope.FolderFloatingBadge(
+    modifier: Modifier = Modifier,
+) {
+    NewEpisodeBadge(
+        modifier = modifier
+            .offset(x = 8.dp, y = (-8).dp)
+            .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp))
+            .zIndex(10f),
+    )
 }
 
 @Composable
