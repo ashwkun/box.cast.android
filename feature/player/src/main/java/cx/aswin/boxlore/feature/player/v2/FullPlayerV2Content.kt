@@ -271,7 +271,17 @@ internal fun fullPlayerClickActions(
     },
     onDownloadClick = {
         cx.aswin.boxlore.core.analytics.PlayerSessionAggregator.logAction("download")
-        scope.launch { toggleEpisodeDownload(model, dependencies.downloadRepository) }
+        when (cx.aswin.boxlore.core.downloads.DownloadTogglePolicy.resolveAction(model.isDownloaded, model.isDownloading)) {
+            cx.aswin.boxlore.core.downloads.DownloadToggleAction.CONFIRM_REMOVAL -> {
+                ui.showRemoveDownloadDialog = true
+            }
+            cx.aswin.boxlore.core.downloads.DownloadToggleAction.CANCEL_DOWNLOAD -> {
+                scope.launch { dependencies.downloadRepository.removeDownload(model.episode.id) }
+            }
+            cx.aswin.boxlore.core.downloads.DownloadToggleAction.START_DOWNLOAD -> {
+                scope.launch { dependencies.downloadRepository.addDownload(model.episode, model.podcast) }
+            }
+        }
     },
     onMarkPlayedClick = {
         cx.aswin.boxlore.core.analytics.PlayerSessionAggregator.logAction("mark_played")
@@ -290,10 +300,14 @@ internal suspend fun toggleEpisodeDownload(
     model: FullPlayerControlModel,
     downloadRepository: cx.aswin.boxlore.core.downloads.DownloadRepository
 ) {
-    if (model.isDownloaded || model.isDownloading) {
-        downloadRepository.removeDownload(model.episode.id)
-    } else {
-        downloadRepository.addDownload(model.episode, model.podcast)
+    when (cx.aswin.boxlore.core.downloads.DownloadTogglePolicy.resolveAction(model.isDownloaded, model.isDownloading)) {
+        cx.aswin.boxlore.core.downloads.DownloadToggleAction.CONFIRM_REMOVAL,
+        cx.aswin.boxlore.core.downloads.DownloadToggleAction.CANCEL_DOWNLOAD -> {
+            downloadRepository.removeDownload(model.episode.id)
+        }
+        cx.aswin.boxlore.core.downloads.DownloadToggleAction.START_DOWNLOAD -> {
+            downloadRepository.addDownload(model.episode, model.podcast)
+        }
     }
 }
 

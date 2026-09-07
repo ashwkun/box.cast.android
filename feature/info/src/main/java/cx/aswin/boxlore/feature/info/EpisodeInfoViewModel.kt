@@ -53,6 +53,7 @@ sealed interface EpisodeInfoUiState {
     data object Error : EpisodeInfoUiState
 }
 
+@Suppress("LargeClass")
 class EpisodeInfoViewModel(
     application: Application,
     private val podcastRepository: cx.aswin.boxlore.core.catalog.PodcastRepository,
@@ -87,6 +88,21 @@ class EpisodeInfoViewModel(
                     .WhileSubscribed(5_000),
                 initialValue = emptySet(),
             )
+
+    private val _showRemoveDownloadDialog = MutableStateFlow(false)
+    val showRemoveDownloadDialog: StateFlow<Boolean> = _showRemoveDownloadDialog.asStateFlow()
+
+    fun confirmDownloadRemoval() {
+        val currentState = _uiState.value as? EpisodeInfoUiState.Success ?: return
+        viewModelScope.launch {
+            downloadRepository.removeDownload(currentState.episode.id)
+            _showRemoveDownloadDialog.value = false
+        }
+    }
+
+    fun dismissDownloadRemoval() {
+        _showRemoveDownloadDialog.value = false
+    }
 
     // --- Tracking State ---
     private var sessionStartTime = System.currentTimeMillis()
@@ -464,26 +480,31 @@ class EpisodeInfoViewModel(
     }
 
     fun toggleDownload(episode: Episode) {
-        didDownload = true
         val currentState = _uiState.value
         if (currentState is EpisodeInfoUiState.Success) {
             viewModelScope.launch {
-                // Check if already downloaded or currently downloading
                 val isDownloaded = downloadRepository.isDownloaded(episode.id).first()
                 val isDownloading = downloadRepository.isDownloading(episode.id).first()
-                if (isDownloaded || isDownloading) {
-                    downloadRepository.removeDownload(episode.id)
-                } else {
-                    val podcast =
-                        cx.aswin.boxlore.core.model.Podcast(
-                            id = currentState.podcastId,
-                            title = currentState.podcastTitle,
-                            artist = "",
-                            imageUrl = currentState.episode.podcastImageUrl ?: "",
-                            description = "",
-                            genre = currentState.podcastGenre,
-                        )
-                    downloadRepository.addDownload(episode, podcast)
+                when (cx.aswin.boxlore.core.downloads.DownloadTogglePolicy.resolveAction(isDownloaded, isDownloading)) {
+                    cx.aswin.boxlore.core.downloads.DownloadToggleAction.CONFIRM_REMOVAL -> {
+                        _showRemoveDownloadDialog.value = true
+                    }
+                    cx.aswin.boxlore.core.downloads.DownloadToggleAction.CANCEL_DOWNLOAD -> {
+                        downloadRepository.removeDownload(episode.id)
+                    }
+                    cx.aswin.boxlore.core.downloads.DownloadToggleAction.START_DOWNLOAD -> {
+                        didDownload = true
+                        val podcast =
+                            cx.aswin.boxlore.core.model.Podcast(
+                                id = currentState.podcastId,
+                                title = currentState.podcastTitle,
+                                artist = "",
+                                imageUrl = currentState.episode.podcastImageUrl ?: "",
+                                description = "",
+                                genre = currentState.podcastGenre,
+                            )
+                        downloadRepository.addDownload(episode, podcast)
+                    }
                 }
             }
         }

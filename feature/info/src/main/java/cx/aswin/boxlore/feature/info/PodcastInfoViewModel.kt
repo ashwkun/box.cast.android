@@ -263,6 +263,21 @@ class PodcastInfoViewModel(
                 initialValue = emptySet(),
             )
 
+    private val _episodePendingDownloadRemoval = MutableStateFlow<Episode?>(null)
+    val episodePendingDownloadRemoval: StateFlow<Episode?> = _episodePendingDownloadRemoval.asStateFlow()
+
+    fun confirmDownloadRemoval() {
+        val episode = _episodePendingDownloadRemoval.value ?: return
+        viewModelScope.launch {
+            downloadRepository.removeDownload(episode.id)
+            _episodePendingDownloadRemoval.value = null
+        }
+    }
+
+    fun dismissDownloadRemoval() {
+        _episodePendingDownloadRemoval.value = null
+    }
+
     fun isEpisodeCompleted(episodeId: String): Boolean = completedEpisodeIds.value.contains(episodeId)
 
     fun onToggleCompletion(episode: Episode) {
@@ -325,13 +340,16 @@ class PodcastInfoViewModel(
             viewModelScope.launch {
                 val isDownloaded = downloadRepository.isDownloaded(episode.id).first()
                 val isDownloading = downloadRepository.isDownloading(episode.id).first()
-                android.util.Log.d("PodcastInfoVM", "toggleDownload check: downloaded=$isDownloaded, downloading=$isDownloading")
-                if (isDownloaded || isDownloading) {
-                    android.util.Log.d("PodcastInfoVM", "Removing download")
-                    downloadRepository.removeDownload(episode.id)
-                } else {
-                    android.util.Log.d("PodcastInfoVM", "Adding download")
-                    downloadRepository.addDownload(episode, currentState.podcast)
+                when (cx.aswin.boxlore.core.downloads.DownloadTogglePolicy.resolveAction(isDownloaded, isDownloading)) {
+                    cx.aswin.boxlore.core.downloads.DownloadToggleAction.CONFIRM_REMOVAL -> {
+                        _episodePendingDownloadRemoval.value = episode
+                    }
+                    cx.aswin.boxlore.core.downloads.DownloadToggleAction.CANCEL_DOWNLOAD -> {
+                        downloadRepository.removeDownload(episode.id)
+                    }
+                    cx.aswin.boxlore.core.downloads.DownloadToggleAction.START_DOWNLOAD -> {
+                        downloadRepository.addDownload(episode, currentState.podcast)
+                    }
                 }
             }
         } else {

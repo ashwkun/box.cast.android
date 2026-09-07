@@ -108,6 +108,7 @@ internal class FullPlayerUiState {
     var showInlineTranscript by mutableStateOf(false)
     var isSyncEnabled by mutableStateOf(true)
     var isAudioOnly by mutableStateOf(false)
+    var showRemoveDownloadDialog by mutableStateOf(false)
 }
 
 internal val FullPlayerUiStateSaver =
@@ -124,20 +125,22 @@ internal val FullPlayerUiStateSaver =
                 state.showInlineTranscript,
                 state.isSyncEnabled,
                 state.isAudioOnly,
+                state.showRemoveDownloadDialog,
             )
         },
         restore = { values ->
             FullPlayerUiState().apply {
-                showQueueSheet = values[0]
-                showChaptersSheet = values[1]
-                showSpeedSheet = values[2]
-                showSleepSheet = values[3]
-                showShareSheet = values[4]
-                showGenerateDialog = values[5]
-                showFullscreenTranscript = values[6]
-                showInlineTranscript = values[7]
-                isSyncEnabled = values[8]
-                isAudioOnly = values[9]
+                showQueueSheet = values.getOrElse(0) { false }
+                showChaptersSheet = values.getOrElse(1) { false }
+                showSpeedSheet = values.getOrElse(2) { false }
+                showSleepSheet = values.getOrElse(3) { false }
+                showShareSheet = values.getOrElse(4) { false }
+                showGenerateDialog = values.getOrElse(5) { false }
+                showFullscreenTranscript = values.getOrElse(6) { false }
+                showInlineTranscript = values.getOrElse(7) { false }
+                isSyncEnabled = values.getOrElse(8) { true }
+                isAudioOnly = values.getOrElse(9) { false }
+                showRemoveDownloadDialog = values.getOrElse(10) { false }
             }
         },
     )

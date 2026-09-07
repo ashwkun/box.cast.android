@@ -76,6 +76,7 @@ import coil.request.ImageRequest
 import cx.aswin.boxlore.core.designsystem.components.BoxLoreLoader
 import cx.aswin.boxlore.core.designsystem.components.ControlStyle
 import cx.aswin.boxlore.core.designsystem.components.OptimizedImage
+import cx.aswin.boxlore.core.designsystem.components.RemoveDownloadConfirmationDialog
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.designsystem.theme.expressiveClickable
 import kotlinx.coroutines.delay
@@ -162,6 +163,7 @@ fun EpisodeInfoScreen(
     // Download State
     val isDownloaded by viewModel.isDownloaded(episodeId).collectAsState(initial = false)
     val isDownloading by viewModel.isDownloading(episodeId).collectAsState(initial = false)
+    val showRemoveDownloadDialog by viewModel.showRemoveDownloadDialog.collectAsState()
 
     // Scroll-driven animation state
     val scrollOffset by remember {
@@ -848,5 +850,13 @@ fun EpisodeInfoScreen(
                     },
             )
         }
+    }
+
+    if (showRemoveDownloadDialog) {
+        RemoveDownloadConfirmationDialog(
+            episodeTitle = (uiState as? EpisodeInfoUiState.Success)?.episode?.title ?: episodeTitle,
+            onConfirm = viewModel::confirmDownloadRemoval,
+            onDismiss = viewModel::dismissDownloadRemoval,
+        )
     }
 }
