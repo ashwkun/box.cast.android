@@ -53,31 +53,36 @@ sealed interface ReorderMode {
 internal data class ReorderBarContent(
     val title: String,
     val subtitle: String,
+    val note: String,
     val icon: ImageVector,
 )
 
 internal fun resolveReorderBarContent(reorderMode: ReorderMode): ReorderBarContent = when (reorderMode) {
     ReorderMode.Folders -> ReorderBarContent(
         title = "Reordering: Folders",
-        subtitle = "Drag to arrange • Switches to manual sort",
+        subtitle = "Drag to arrange",
+        note = "Switches to manual sort",
         icon = Icons.Rounded.Folder,
     )
     is ReorderMode.FolderShows -> {
         val name = reorderMode.folderName.takeIf { it.isNotBlank() } ?: "Folder"
         ReorderBarContent(
             title = "Reordering: $name",
-            subtitle = "Drag to arrange • Switches to folder manual sort",
+            subtitle = "Drag to arrange",
+            note = "Switches to manual sort",
             icon = Icons.Rounded.FolderOpen,
         )
     }
     ReorderMode.RootShows -> ReorderBarContent(
         title = "Reordering: Shows",
-        subtitle = "Drag to arrange • Switches to manual sort",
+        subtitle = "Drag to arrange",
+        note = "Switches to manual sort",
         icon = Icons.Rounded.Subscriptions,
     )
     ReorderMode.Inactive -> ReorderBarContent(
         title = "",
         subtitle = "",
+        note = "",
         icon = Icons.Rounded.Reorder,
     )
 }
@@ -137,7 +142,7 @@ internal fun SubscriptionReorderBar(
                         }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column {
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = content.title,
                             style = MaterialTheme.typography.titleSmall,
@@ -146,13 +151,24 @@ internal fun SubscriptionReorderBar(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Text(
-                            text = content.subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        if (content.subtitle.isNotBlank()) {
+                            Text(
+                                text = content.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (content.note.isNotBlank()) {
+                            Text(
+                                text = content.note,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
 
