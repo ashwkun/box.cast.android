@@ -1,7 +1,5 @@
 package cx.aswin.boxlore.feature.library.subscriptions
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -10,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,7 +15,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,16 +32,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import cx.aswin.boxlore.core.designsystem.components.NewEpisodeBadge
 import cx.aswin.boxlore.core.designsystem.components.OptimizedImage
 import cx.aswin.boxlore.core.designsystem.components.rememberNewEpisodeBadgeShimmerBrush
@@ -418,330 +410,6 @@ private fun MiniCover(podcast: Podcast, modifier: Modifier = Modifier) {
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier.fillMaxSize(),
-    )
-}
-
-/**
- * 1×1 compact card supporting dual styles:
- * 1. Single Folder Icon style (prominent folder icon over background, single tap expands).
- * 2. 2×2 Podcast Grid style (mini covers directly clickable, overflow badge expands).
- */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-internal fun Compact1x1FolderCard(
-    folder: SubscriptionFolder,
-    podcasts: List<Podcast>,
-    actions: FolderCardActions,
-    modifier: Modifier = Modifier,
-    isDragging: Boolean = false,
-    dragModifier: Modifier = Modifier,
-) {
-    val lastSeenEpisodes = LocalLastSeenEpisodes.current
-    val hasOverflowNew = remember(podcasts, lastSeenEpisodes) {
-        if (podcasts.size > 4) {
-            hasFolderOverflowNew(podcasts.drop(3), lastSeenEpisodes)
-        } else {
-            false
-        }
-    }
-    val hasAnyNew = remember(podcasts, lastSeenEpisodes) {
-        hasAnyFolderShowNew(podcasts, lastSeenEpisodes)
-    }
-    val showFolderBadge = if (folder.effectiveShowPodcastGrid) {
-        hasOverflowNew
-    } else {
-        hasAnyNew
-    }
-    val shape = RoundedCornerShape(14.dp)
-    val dragScale by animateFloatAsState(
-        targetValue = if (isDragging) 1.04f else 1f,
-        label = "compactFolderDragScale",
-    )
-    val dragElevation by animateDpAsState(
-        targetValue = if (isDragging) 8.dp else 0.dp,
-        label = "compactFolderDragElevation",
-    )
-
-    Box(
-        modifier = modifier
-            .then(dragModifier)
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .zIndex(if (isDragging) 1f else 0f)
-            .graphicsLayer {
-                scaleX = dragScale
-                scaleY = dragScale
-                this.shape = shape
-                clip = false
-            }
-            .shadow(elevation = dragElevation, shape = shape, clip = false),
-    ) {
-        Surface(
-            shape = shape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            border = if (showFolderBadge) {
-                BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.85f))
-            } else {
-                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            },
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            if (!folder.effectiveShowPodcastGrid) {
-                CompactFolderIconContent(
-                    folder = folder,
-                    podcastCount = podcasts.size,
-                    onFolderClick = actions.onFolderClick,
-                    onFolderLongClick = actions.onFolderLongClick,
-                )
-            } else {
-                CompactPodcastGridContent(
-                    folder = folder,
-                    podcasts = podcasts,
-                    lastSeenEpisodes = lastSeenEpisodes,
-                    actions = actions,
-                )
-            }
-        }
-
-        if (showFolderBadge) {
-            if (folder.effectiveShowPodcastGrid) {
-                FolderFloatingBadge()
-            } else {
-                NewEpisodeBadge()
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun CompactFolderIconContent(
-    folder: SubscriptionFolder,
-    podcastCount: Int,
-    onFolderClick: (String) -> Unit,
-    onFolderLongClick: (SubscriptionFolder) -> Unit,
-) {
-    val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .combinedClickable(
-                onClick = { onFolderClick(folder.id) },
-                onLongClick = { onFolderLongClick(folder) },
-            )
-            .padding(8.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                imageVector = folderIcon,
-                contentDescription = folder.name,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(34.dp),
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = folder.name,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = GoogleSansWeight.bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = "$podcastCount shows",
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun CompactPodcastGridContent(
-    folder: SubscriptionFolder,
-    podcasts: List<Podcast>,
-    lastSeenEpisodes: Map<String, String>,
-    actions: FolderCardActions,
-) {
-    val pod0 = podcasts.getOrNull(0)
-    val isNew0 = remember(pod0, lastSeenEpisodes) {
-        pod0?.let { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) } ?: false
-    }
-    val pod1 = podcasts.getOrNull(1)
-    val isNew1 = remember(pod1, lastSeenEpisodes) {
-        pod1?.let { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) } ?: false
-    }
-    val pod2 = podcasts.getOrNull(2)
-    val isNew2 = remember(pod2, lastSeenEpisodes) {
-        pod2?.let { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) } ?: false
-    }
-    val pod3 = podcasts.getOrNull(3)
-    val isNew3 = remember(pod3, lastSeenEpisodes) {
-        pod3?.let { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) } ?: false
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .combinedClickable(
-                onClick = { actions.onFolderClick(folder.id) },
-                onLongClick = { actions.onFolderLongClick(folder) },
-            )
-            .padding(5.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                MiniPodcastSlot(
-                    podcast = pod0,
-                    hasNewEpisode = isNew0,
-                    onClick = actions.onPodcastClick,
-                    onEmptyClick = { actions.onFolderClick(folder.id) },
-                    modifier = Modifier.weight(1f),
-                )
-                MiniPodcastSlot(
-                    podcast = pod1,
-                    hasNewEpisode = isNew1,
-                    onClick = actions.onPodcastClick,
-                    onEmptyClick = { actions.onFolderClick(folder.id) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                MiniPodcastSlot(
-                    podcast = pod2,
-                    hasNewEpisode = isNew2,
-                    onClick = actions.onPodcastClick,
-                    onEmptyClick = { actions.onFolderClick(folder.id) },
-                    modifier = Modifier.weight(1f),
-                )
-                if (podcasts.size > 4) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                            .clickable { actions.onFolderClick(folder.id) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "+${podcasts.size - 3}",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = GoogleSansWeight.bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        )
-                    }
-                } else {
-                    MiniPodcastSlot(
-                        podcast = pod3,
-                        hasNewEpisode = isNew3,
-                        onClick = actions.onPodcastClick,
-                        onEmptyClick = { actions.onFolderClick(folder.id) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MiniPodcastSlot(
-    podcast: Podcast?,
-    onClick: (String) -> Unit,
-    onEmptyClick: () -> Unit = {},
-    hasNewEpisode: Boolean = false,
-    modifier: Modifier = Modifier,
-) {
-    val miniShape = RoundedCornerShape(6.dp)
-    if (podcast != null) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .clip(miniShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .clickable { onClick(podcast.id) },
-        ) {
-            OptimizedImage(
-                url = podcast.imageUrl.takeIf { it.isNotEmpty() } ?: podcast.fallbackImageUrl,
-                proxyWidth = 140,
-                contentDescription = podcast.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            if (hasNewEpisode) {
-                MiniNewEpisodeBadge()
-            }
-        }
-    } else {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .clip(miniShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
-                .clickable(onClick = onEmptyClick),
-        )
-    }
-}
-
-@Composable
-private fun BoxScope.MiniNewEpisodeBadge(
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(3.dp)
-    val brush = rememberNewEpisodeBadgeShimmerBrush()
-    Surface(
-        shape = shape,
-        color = Color.Transparent,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surface),
-        modifier = modifier
-            .align(Alignment.TopEnd)
-            .padding(top = 2.dp, end = 2.dp)
-            .background(brush, shape),
-    ) {
-        Text(
-            text = "NEW",
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 6.sp,
-                fontWeight = GoogleSansWeight.extraBold,
-                letterSpacing = 0.3.sp,
-                lineHeight = 7.sp,
-            ),
-            color = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.padding(horizontal = 2.5.dp, vertical = 1.dp),
-        )
-    }
-}
-
-@Composable
-private fun BoxScope.FolderFloatingBadge(
-    modifier: Modifier = Modifier,
-) {
-    NewEpisodeBadge(
-        modifier = modifier
-            .offset(x = 8.dp, y = (-8).dp)
-            .shadow(elevation = 3.dp, shape = RoundedCornerShape(6.dp))
-            .zIndex(10f),
     )
 }
 
