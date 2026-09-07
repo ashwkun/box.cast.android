@@ -35,6 +35,7 @@ class SubscriptionRepository(
             .getSubscribedPodcasts()
             .map { list -> list.map { it.toPodcast() } }
 
+    @Suppress("kotlin:S6619")
     suspend fun toggleSubscription(podcast: Podcast) {
         val existing = podcastDao.getPodcast(podcast.id)
         val linkedRss =
