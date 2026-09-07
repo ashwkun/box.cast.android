@@ -81,6 +81,10 @@ The app uses your listening activity—such as what you play, skip, and like—t
 <li>Fixed an issue where the queue would skip upcoming episodes of the show you were listening to. <a href="https://github.com/boxcreate/boxlore/pull/1019"><img src="https://img.shields.io/badge/PR-1019-6750A4?style=flat-square" alt="PR #1019" height="18"/></a></li>
 <li>Added a convenient queue banner to preview and add upcoming episodes of a show when played from recommendations. <a href="https://github.com/boxcreate/boxlore/pull/1019"><img src="https://img.shields.io/badge/PR-1019-6750A4?style=flat-square" alt="PR #1019" height="18"/></a></li>
 </ul>
+<b>🆕 New features:</b>
+<ul align="left">
+<li>time-of-day rotation and cross-day variation for because you like rail <a href="https://github.com/boxcreate/boxlo... ([#1063](https://github.com/boxcreate/boxlore/pull/1063"><img src="https://img.shields.io/badge/PR-1063-6750A4?style=flat-square" alt="PR #1063" height="18"/></a></li>
+</ul>
 <b>⚡ Improvements:</b>
 <ul align="left">
 <li>Added custom podcast tags and icons for subscribed shows in boxlore, with live chip preview, keyword suggestions, and priority filtering in Subscriptions. <a href="https://github.com/boxcreate/boxlore/pull/1055"><img src="https://img.shields.io/badge/PR-1055-6750A4?style=flat-square" alt="PR #1055" height="18"/></a></li>
@@ -101,6 +105,7 @@ The app uses your listening activity—such as what you play, skip, and like—t
 <li>Fixed an intermittent crash that could occur when disconnecting from Android Auto during artwork loading. <a href="https://github.com/boxcreate/boxlore/pull/1041"><img src="https://img.shields.io/badge/PR-1041-6750A4?style=flat-square" alt="PR #1041" height="18"/></a></li>
 <li>Fixed the Cast icon in the full-screen player so it adapts to light and dark themes and matches the Share button. <a href="https://github.com/boxcreate/boxlore/pull/1039"><img src="https://img.shields.io/badge/PR-1039-6750A4?style=flat-square" alt="PR #1039" height="18"/></a></li>
 </ul>
+<p align="center"><sub><sub>AI-generated summary; may contain mistakes.<br/>Verify details in the <a href="CHANGELOG.md">changelog</a> and linked pull requests.</sub></sub></p>
 <!-- release-upcoming:end -->
 
 

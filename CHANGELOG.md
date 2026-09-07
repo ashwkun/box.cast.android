@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Room migration 13 to 14 adding `custom_genre` and `custom_genre_icon` columns to `podcasts`. ([#1055](https://github.com/boxcreate/boxlore/pull/1055)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Curated 30+ Material rounded icon catalog in `GenreIcons.kt`. ([#1055](https://github.com/boxcreate/boxlore/pull/1055)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Hybrid user-priority ordering for custom tags in Subscriptions filter chips. ([#1055](https://github.com/boxcreate/boxlore/pull/1055)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
+- time-of-day rotation and cross-day variation for because you like rail ([#1063](https://github.com/boxcreate/boxlore/pull/1063)) <!-- impact:user-impact-medium -->
 ### Changed
 - Subscriptions screen grid rendering to support sized folder items alongside unfiled podcasts. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Enhanced subscription sort sheet with 3-tier folder and intra-folder sort options and auto-organize controls. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
