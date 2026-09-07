@@ -150,14 +150,16 @@ internal fun FolderBetaFeedbackNotice(
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Icon(
                 imageVector = Icons.Rounded.Info,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier
+                    .size(14.dp)
+                    .padding(top = 2.dp),
             )
             Text(
                 text = "Folders are still in beta — your feedback is greatly appreciated, especially if you find any bugs.",
@@ -234,50 +236,66 @@ internal fun FolderTechnologyWarningCard(
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.errorContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f)),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Close,
-                    contentDescription = "Warning",
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .padding(top = 2.dp),
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Info,
+                            contentDescription = "Notice",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+
                 Text(
-                    text = "The last dev who tried supporting 'Technology' as a folder name broke push notifications for three weeks and burned our server. Please, just 'Tech'. 📉",
+                    text = "The last time I tried supporting technology as a foldername, the app started saying it made AGI and was trying to get IPO'd, so please just \"Tech\"",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     fontWeight = GoogleSansWeight.medium,
+                    lineHeight = 19.sp,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(top = 4.dp),
                 )
             }
 
-            Button(
-                onClick = onSwitchToTech,
-                shape = ExpressiveShapes.Pill,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                modifier = Modifier.align(Alignment.End),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
             ) {
-                Text(
-                    text = "Switch to 'Tech'",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = GoogleSansWeight.bold,
-                )
+                Button(
+                    onClick = onSwitchToTech,
+                    shape = ExpressiveShapes.Pill,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                    ),
+                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = "Switch to \"Tech\"",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = GoogleSansWeight.bold,
+                    )
+                }
             }
         }
     }
