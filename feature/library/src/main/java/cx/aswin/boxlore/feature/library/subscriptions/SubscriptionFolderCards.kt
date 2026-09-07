@@ -81,9 +81,6 @@ internal fun PinnedEnlargedFolderCard(
     val shape = RoundedCornerShape(18.dp)
     val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
     val slots = calculateFolderSlots(podcasts, folder.displaySize)
-    val hasOverflowNew = remember(slots.overflowShows, lastSeenEpisodes) {
-        hasFolderOverflowNew(slots.overflowShows, lastSeenEpisodes)
-    }
 
     Surface(
         shape = shape,
@@ -106,7 +103,6 @@ internal fun PinnedEnlargedFolderCard(
                 folder = folder,
                 podcastsCount = podcasts.size,
                 folderIcon = folderIcon,
-                hasOverflowNew = hasOverflowNew,
                 onFolderClick = actions.onFolderClick,
                 onFolderLongClick = actions.onFolderLongClick,
             )
@@ -135,7 +131,6 @@ private fun PinnedFolderHeader(
     folder: SubscriptionFolder,
     podcastsCount: Int,
     folderIcon: ImageVector,
-    hasOverflowNew: Boolean,
     onFolderClick: (String) -> Unit,
     onFolderLongClick: (SubscriptionFolder) -> Unit,
     modifier: Modifier = Modifier,
@@ -169,25 +164,14 @@ private fun PinnedFolderHeader(
         Spacer(modifier = Modifier.width(10.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = folder.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = GoogleSansWeight.bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                if (hasOverflowNew) {
-                    Box(modifier = Modifier.size(width = 38.dp, height = 22.dp)) {
-                        NewEpisodeBadge()
-                    }
-                }
-            }
+            Text(
+                text = folder.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = GoogleSansWeight.bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text(
                 text = if (podcastsCount == 1) "1 show" else "$podcastsCount shows",
                 style = MaterialTheme.typography.labelSmall,
@@ -242,9 +226,13 @@ private fun FolderCoversGrid(
                             modifier = Modifier.weight(1f),
                         )
                     } else if (itemIndex == slots.visibleShows.size && slots.hasOverflow) {
+                        val hasOverflowNew = remember(slots.overflowShows, lastSeenEpisodes) {
+                            hasFolderOverflowNew(slots.overflowShows, lastSeenEpisodes)
+                        }
                         FolderOverflowSlotCard(
                             overflowShows = slots.overflowShows,
                             overflowCount = slots.overflowCount,
+                            hasNewEpisode = hasOverflowNew,
                             onClick = onOverflowClick,
                             modifier = Modifier.weight(1f),
                         )
@@ -305,6 +293,7 @@ private fun FolderOverflowSlotCard(
     overflowShows: List<Podcast>,
     overflowCount: Int,
     onClick: () -> Unit,
+    hasNewEpisode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -313,6 +302,16 @@ private fun FolderOverflowSlotCard(
             .aspectRatio(1f)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .then(
+                if (hasNewEpisode) {
+                    Modifier.border(
+                        BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)),
+                        shape,
+                    )
+                } else {
+                    Modifier
+                }
+            )
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -359,6 +358,10 @@ private fun FolderOverflowSlotCard(
                 fontWeight = GoogleSansWeight.bold,
                 color = Color.White,
             )
+        }
+
+        if (hasNewEpisode) {
+            NewEpisodeBadge()
         }
     }
 }
