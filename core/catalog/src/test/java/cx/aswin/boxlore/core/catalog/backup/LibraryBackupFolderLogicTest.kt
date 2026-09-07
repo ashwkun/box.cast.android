@@ -64,6 +64,7 @@ class LibraryBackupFolderLogicTest {
         override suspend fun deleteFolder(folderId: String) {}
         override suspend fun addPodcastToFolder(podcastId: String, folderId: String) {}
         override suspend fun removePodcastFromFolder(podcastId: String, folderId: String) {}
+        override suspend fun removePodcastFromAllFolders(podcastId: String) {}
         override suspend fun setPodcastsForFolder(folderId: String, podcastIds: List<String>) {}
         override suspend fun syncLinkedGenres() {}
         override suspend fun autoOrganizeSubscribedShows(

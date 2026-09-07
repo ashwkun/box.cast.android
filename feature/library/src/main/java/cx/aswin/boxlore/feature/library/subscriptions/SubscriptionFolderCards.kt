@@ -304,6 +304,7 @@ private fun RowScope.FolderCoverSlot(
                     } else {
                         Modifier.combinedClickable(
                             onClick = { actions.onFolderClick(folder.id) },
+                            onClickLabel = "Open folder",
                             onLongClick = { actions.onFolderLongClick(folder) },
                         )
                     },

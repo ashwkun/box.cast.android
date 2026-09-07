@@ -70,8 +70,8 @@ internal fun FolderShowsSelectionSheet(
     // Sort shows: already added to this folder first, then remainder by title
     val sortedPodcasts = remember(allSubscribedPodcasts, folder.podcastIds) {
         val initialMemberIds = folder.podcastIds.toSet()
-        val members = allSubscribedPodcasts.filter { it.id in initialMemberIds }
-            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
+        val podcastMap = allSubscribedPodcasts.associateBy { it.id }
+        val members = folder.podcastIds.mapNotNull { podcastMap[it] }
         val nonMembers = allSubscribedPodcasts.filter { it.id !in initialMemberIds }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
         members + nonMembers

@@ -141,6 +141,10 @@ class SubscriptionRepository(
             ),
             action = RankingAction.UNSUBSCRIBE,
         )
+        folderRepository?.removePodcastFromAllFolders(podcast.id)
+        if (target.podcastId != podcast.id) {
+            folderRepository?.removePodcastFromAllFolders(target.podcastId)
+        }
         folderRepository?.syncLinkedGenres()
     }
 
@@ -246,7 +250,7 @@ class SubscriptionRepository(
                 action = RankingAction.SUBSCRIBE,
             )
         }
-        if (isNewSubscription) {
+        if (isNewSubscription && recordFeedback) {
             onSubscribed()
         }
     }

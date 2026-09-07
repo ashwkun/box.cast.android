@@ -15,6 +15,7 @@ import androidx.compose.material.icons.rounded.CreateNewFolder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -90,7 +91,9 @@ internal fun CompactNewFolderChip(
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)),
-        modifier = modifier.size(36.dp),
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .size(36.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(

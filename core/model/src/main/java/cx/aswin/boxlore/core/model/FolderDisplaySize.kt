@@ -15,7 +15,7 @@ enum class FolderDisplaySize(
         spanRows = 1,
         dimensionsLabel = "1×1",
         title = "Compact",
-        subtitle = "1 cell • Tap or pods",
+        subtitle = "1 cell • Tap for pods",
     ),
     WIDE(
         spanCols = 2,

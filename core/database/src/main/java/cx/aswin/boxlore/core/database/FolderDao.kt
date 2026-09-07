@@ -38,6 +38,9 @@ interface FolderDao {
     @Query("SELECT podcastId FROM podcast_folder_cross_ref WHERE folderId = :folderId")
     suspend fun getPodcastIdsForFolderList(folderId: String): List<String>
 
+    @Query("DELETE FROM podcast_folder_cross_ref WHERE podcastId = :podcastId")
+    suspend fun removePodcastFromAllFolders(podcastId: String)
+
     @Query("SELECT * FROM podcast_folder_cross_ref")
     fun getAllCrossRefs(): Flow<List<PodcastFolderCrossRef>>
 

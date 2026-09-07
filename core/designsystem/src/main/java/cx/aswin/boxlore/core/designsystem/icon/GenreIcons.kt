@@ -120,6 +120,14 @@ object GenreIcons {
         Regex("""(^|[^\p{L}\p{N}])${Regex.escape(keyword)}($|[^\p{L}\p{N}])""")
             .containsMatchIn(genre)
 
+    fun findExactKeywordIcon(genre: String?): ImageVector? {
+        if (genre.isNullOrBlank()) return null
+        val normalized = genre.trim().lowercase()
+        return GENRE_KEYWORDS.firstOrNull { (keywords, _) ->
+            keywords.any { it.equals(normalized, ignoreCase = true) }
+        }?.second
+    }
+
     fun defaultGenreIcon(genre: String?): ImageVector {
         if (genre.isNullOrBlank()) return Icons.Rounded.Category
         val normalized = genre.trim().lowercase()

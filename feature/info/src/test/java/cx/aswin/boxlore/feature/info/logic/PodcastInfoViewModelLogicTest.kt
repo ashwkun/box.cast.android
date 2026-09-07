@@ -618,4 +618,74 @@ class PodcastInfoViewModelLogicTest {
         assertNull(preservedUnsubscribed.customGenreIcon)
         assertEquals("Comedy", preservedUnsubscribed.effectiveGenre)
     }
+
+    @Test
+    fun `syncFoldersAfterGenreUpdate with null repository completes safely`() = kotlinx.coroutines.test.runTest {
+        PodcastInfoFolderSyncLogic.syncFoldersAfterGenreUpdate(
+            folderRepository = null,
+            autoOrganizeEnabled = true,
+        )
+        PodcastInfoFolderSyncLogic.syncFoldersAfterGenreUpdate(
+            folderRepository = null,
+            autoOrganizeEnabled = false,
+        )
+    }
+
+    @Test
+    fun `syncFoldersAfterGenreUpdate calls autoOrganize when enabled and syncLinkedGenres when disabled`() = kotlinx.coroutines.test.runTest {
+        val repo = TestSyncFolderRepository()
+        PodcastInfoFolderSyncLogic.syncFoldersAfterGenreUpdate(
+            folderRepository = repo,
+            autoOrganizeEnabled = true,
+        )
+        assertEquals(1, repo.autoOrganizeCalls)
+        assertEquals(0, repo.syncLinkedGenresCalls)
+
+        PodcastInfoFolderSyncLogic.syncFoldersAfterGenreUpdate(
+            folderRepository = repo,
+            autoOrganizeEnabled = false,
+        )
+        assertEquals(1, repo.autoOrganizeCalls)
+        assertEquals(1, repo.syncLinkedGenresCalls)
+    }
+
+    private class TestSyncFolderRepository : cx.aswin.boxlore.core.catalog.FolderRepository {
+        var autoOrganizeCalls = 0
+        var syncLinkedGenresCalls = 0
+
+        override val folders: kotlinx.coroutines.flow.Flow<List<cx.aswin.boxlore.core.model.SubscriptionFolder>> =
+            kotlinx.coroutines.flow.emptyFlow()
+        override val folderNames: kotlinx.coroutines.flow.Flow<List<String>> =
+            kotlinx.coroutines.flow.emptyFlow()
+
+        override suspend fun getFolders(): List<cx.aswin.boxlore.core.model.SubscriptionFolder> = emptyList()
+        override suspend fun getFolder(folderId: String): cx.aswin.boxlore.core.model.SubscriptionFolder? = null
+        override fun getFolderFlow(folderId: String): kotlinx.coroutines.flow.Flow<cx.aswin.boxlore.core.model.SubscriptionFolder?> =
+            kotlinx.coroutines.flow.emptyFlow()
+        override suspend fun createFolder(
+            name: String,
+            icon: String?,
+            displaySize: cx.aswin.boxlore.core.model.FolderDisplaySize,
+            linkedGenre: String?,
+            showPodcastGrid: Boolean,
+            podcastIds: List<String>,
+        ): cx.aswin.boxlore.core.model.SubscriptionFolder = throw UnsupportedOperationException()
+        override suspend fun restoreFolder(folder: cx.aswin.boxlore.core.model.SubscriptionFolder): cx.aswin.boxlore.core.model.SubscriptionFolder =
+            throw UnsupportedOperationException()
+        override suspend fun updateFolder(folder: cx.aswin.boxlore.core.model.SubscriptionFolder) {}
+        override suspend fun deleteFolder(folderId: String) {}
+        override suspend fun addPodcastToFolder(podcastId: String, folderId: String) {}
+        override suspend fun removePodcastFromFolder(podcastId: String, folderId: String) {}
+        override suspend fun removePodcastFromAllFolders(podcastId: String) {}
+        override suspend fun setPodcastsForFolder(folderId: String, podcastIds: List<String>) {}
+        override suspend fun syncLinkedGenres() {
+            syncLinkedGenresCalls++
+        }
+        override suspend fun autoOrganizeSubscribedShows(
+            defaultDisplaySize: cx.aswin.boxlore.core.model.FolderDisplaySize?,
+            showPodcastGrid: Boolean,
+        ) {
+            autoOrganizeCalls++
+        }
+    }
 }

@@ -140,6 +140,30 @@ class LibraryViewModel(
         }
     }
 
+    fun createFolderAndMovePodcast(
+        name: String,
+        icon: String?,
+        displaySize: FolderDisplaySize,
+        linkedGenre: String?,
+        showPodcastGrid: Boolean = false,
+        podcastId: String,
+        fromFolderId: String? = null,
+    ) {
+        viewModelScope.launch {
+            val created = folderRepository?.createFolder(
+                name = name,
+                icon = icon,
+                displaySize = displaySize,
+                linkedGenre = linkedGenre,
+                showPodcastGrid = showPodcastGrid,
+                podcastIds = listOf(podcastId),
+            )
+            if (created != null && fromFolderId != null) {
+                folderRepository.removePodcastFromFolder(podcastId, fromFolderId)
+            }
+        }
+    }
+
     fun updateFolder(folder: SubscriptionFolder) {
         viewModelScope.launch {
             folderRepository?.updateFolder(folder)
@@ -182,6 +206,9 @@ class LibraryViewModel(
     fun unsubscribe(podcast: Podcast) {
         viewModelScope.launch {
             subscriptionRepository.toggleSubscription(podcast)
+            if (!subscriptionRepository.isSubscribed(podcast.id)) {
+                userPreferencesRepository.removePodcastIdFromManualOrderAndPins(podcast.id)
+            }
         }
     }
 

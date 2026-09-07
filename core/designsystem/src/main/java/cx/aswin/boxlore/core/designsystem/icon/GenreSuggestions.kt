@@ -70,7 +70,7 @@ val ALL_GENRE_SUGGESTIONS: List<GenreSuggestion> = listOf(
             "engineering", "cybersecurity", "machine learning", "data science", "cloud",
             "mobile", "android", "ios", "crypto", "web", "robotics", "semiconductor",
             "silicon valley", "devops", "apps", "open source", "artificial intelligence",
-            "it", "algorithms", "tech news",
+            "it", "algorithms",
         ),
     ),
     GenreSuggestion(
@@ -80,7 +80,7 @@ val ALL_GENRE_SUGGESTIONS: List<GenreSuggestion> = listOf(
         keywords = listOf(
             "technology", "computers", "software", "coding", "ai", "hardware",
             "programming", "developer", "cyber", "internet", "gadgets", "apps",
-            "artificial intelligence", "data", "engineering", "tech news",
+            "artificial intelligence", "data", "engineering",
         ),
     ),
     GenreSuggestion(

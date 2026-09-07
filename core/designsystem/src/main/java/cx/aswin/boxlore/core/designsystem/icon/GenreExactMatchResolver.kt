@@ -52,7 +52,7 @@ private fun findExactKeywordMatch(query: String, suggestions: List<GenreSuggesti
     }?.iconKey
 
 private fun findFallbackGenreIconMatch(query: String): String? {
-    val fallbackVector = GenreIcons.defaultGenreIcon(query)
+    val fallbackVector = GenreIcons.findExactKeywordIcon(query) ?: return null
     return GenreIcons.all.firstOrNull {
         it.icon == fallbackVector &&
             it.key != "category" &&

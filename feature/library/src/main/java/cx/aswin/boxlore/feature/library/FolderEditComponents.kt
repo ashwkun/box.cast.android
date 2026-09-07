@@ -402,7 +402,7 @@ private fun FolderIconTile(
         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
     val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        MaterialTheme.colorScheme.primaryContainer
     } else {
         MaterialTheme.colorScheme.surfaceContainer
     }
@@ -541,7 +541,7 @@ private fun FolderSizeCard(
         MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
     }
     val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        MaterialTheme.colorScheme.primaryContainer
     } else {
         MaterialTheme.colorScheme.surfaceContainer
     }
@@ -652,9 +652,9 @@ private fun CoverStyleOptionTab(
     val enabled = onClick != null
     val colorScheme = MaterialTheme.colorScheme
     val containerColor = if (isSelected) {
-        colorScheme.primaryContainer.copy(alpha = 0.45f)
+        colorScheme.primaryContainer
     } else {
-        colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+        colorScheme.surfaceContainerHighest
     }
     val borderWidth = if (isSelected) 1.5.dp else 1.dp
     val borderColor = if (isSelected) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.4f)

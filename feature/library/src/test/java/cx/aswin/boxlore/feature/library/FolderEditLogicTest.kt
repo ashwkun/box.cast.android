@@ -5,7 +5,6 @@ import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
 import cx.aswin.boxlore.core.designsystem.icon.GenreSuggestion
 import cx.aswin.boxlore.core.designsystem.icon.buildFolderSuggestionsWithLibrary
 import cx.aswin.boxlore.core.designsystem.icon.filterGenreSuggestions
-import cx.aswin.boxlore.core.designsystem.icon.findExactGenreIconKey
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
@@ -93,6 +92,19 @@ class FolderEditLogicTest {
             _folders.update { list ->
                 list.map { folder ->
                     if (folder.id == folderId && podcastId in folder.podcastIds) {
+                        val newIds = folder.podcastIds - podcastId
+                        folder.copy(podcastIds = newIds, podcastCount = newIds.size)
+                    } else {
+                        folder
+                    }
+                }
+            }
+        }
+
+        override suspend fun removePodcastFromAllFolders(podcastId: String) {
+            _folders.update { list ->
+                list.map { folder ->
+                    if (podcastId in folder.podcastIds) {
                         val newIds = folder.podcastIds - podcastId
                         folder.copy(podcastIds = newIds, podcastCount = newIds.size)
                     } else {
@@ -239,23 +251,43 @@ class FolderEditLogicTest {
 
     @Test
     fun linkedGenreFallback_logicWhenAutoSyncEnabled() {
-        fun resolveLinkedGenre(autoSync: Boolean, linkedGenreText: String, folderNameText: String): String? = if (autoSync) {
-                linkedGenreText.trim().ifEmpty { folderNameText.trim() }.takeIf { it.isNotEmpty() }
-            } else {
-                null
-            }
-
         // When autoSync is disabled -> null
-        assertNull(resolveLinkedGenre(autoSync = false, linkedGenreText = "Tech", folderNameText = "My Tech"))
+        assertNull(
+            FolderEditLogic.resolveEffectiveLinkedGenre(
+                autoSync = false,
+                linkedGenre = "Tech",
+                folderName = "My Tech",
+            ),
+        )
 
         // When autoSync is enabled and text provided -> uses text
-        assertEquals("Tech", resolveLinkedGenre(autoSync = true, linkedGenreText = "Tech", folderNameText = "My Tech"))
+        assertEquals(
+            "Tech",
+            FolderEditLogic.resolveEffectiveLinkedGenre(
+                autoSync = true,
+                linkedGenre = "Tech",
+                folderName = "My Tech",
+            ),
+        )
 
         // When autoSync is enabled and text is empty -> falls back to folder name
-        assertEquals("My Tech", resolveLinkedGenre(autoSync = true, linkedGenreText = "", folderNameText = "My Tech"))
+        assertEquals(
+            "My Tech",
+            FolderEditLogic.resolveEffectiveLinkedGenre(
+                autoSync = true,
+                linkedGenre = "",
+                folderName = "My Tech",
+            ),
+        )
 
         // When autoSync is enabled and both empty -> null
-        assertNull(resolveLinkedGenre(autoSync = true, linkedGenreText = "", folderNameText = ""))
+        assertNull(
+            FolderEditLogic.resolveEffectiveLinkedGenre(
+                autoSync = true,
+                linkedGenre = "",
+                folderName = "",
+            ),
+        )
     }
 
     @Test
@@ -300,12 +332,12 @@ class FolderEditLogicTest {
         // User finishes typing "Technology"
         nameText = "Technology"
 
-        // Resolve effective linked genre
-        val effectiveLinkedGenre = if (autoSyncGenre) {
-            linkedGenreText.trim().ifEmpty { nameText.trim() }.takeIf { it.isNotEmpty() }
-        } else {
-            null
-        }
+        // Resolve effective linked genre via production helper
+        val effectiveLinkedGenre = FolderEditLogic.resolveEffectiveLinkedGenre(
+            autoSync = autoSyncGenre,
+            linkedGenre = linkedGenreText,
+            folderName = nameText,
+        )
 
         // Must dynamically evaluate to "Technology", NOT "T"
         assertEquals("Technology", effectiveLinkedGenre)
@@ -355,95 +387,125 @@ class FolderEditLogicTest {
 
     @Test
     fun folderName_disallowsTechnologyAndAllowsSwitchToTech() {
-        var nameText = "Technology"
-        var selectedIconKey: String? = null
+        val nameText = "Technology"
 
-        fun isTechnologyDisallowed(name: String) = name.trim().equals("Technology", ignoreCase = true)
-        fun canSave(name: String) = name.trim().isNotEmpty() && !isTechnologyDisallowed(name)
-
-        assertTrue(isTechnologyDisallowed(nameText))
-        assertFalse(canSave(nameText))
+        assertTrue(FolderEditLogic.isTechnologyDisallowed(nameText))
+        assertFalse(FolderEditLogic.canSave(nameText))
 
         // Also case-insensitive check
-        assertTrue(isTechnologyDisallowed("  technology  "))
-        assertFalse(canSave("  technology  "))
+        assertTrue(FolderEditLogic.isTechnologyDisallowed("  technology  "))
+        assertFalse(FolderEditLogic.canSave("  technology  "))
 
         // Switch to Tech
-        nameText = "Tech"
-        selectedIconKey = "tech"
-
-        assertFalse(isTechnologyDisallowed(nameText))
-        assertTrue(canSave(nameText))
-        assertEquals("Tech", nameText)
-        assertEquals("tech", selectedIconKey)
+        val techName = "Tech"
+        assertFalse(FolderEditLogic.isTechnologyDisallowed(techName))
+        assertTrue(FolderEditLogic.canSave(techName))
     }
 
     @Test
     fun folderName_typingExactKeywordSwitchesIconAutomaticallyWithoutTap() {
         val allFolderSuggestions = buildFolderSuggestionsWithLibrary(listOf("Tech", "Comedy"))
-        var nameText = ""
-        var selectedIconKey: String? = null
-        var isIconManuallySelected = false
 
-        fun onNameChange(newName: String) {
-            nameText = newName
-            val trimmed = newName.trim()
-            if (trimmed.isEmpty()) {
-                isIconManuallySelected = false
-                selectedIconKey = null
-            } else if (!isIconManuallySelected) {
-                val matchedKey = findExactGenreIconKey(trimmed, allFolderSuggestions)
-                if (matchedKey != null) {
-                    selectedIconKey = matchedKey
-                }
-            }
-        }
+        // 1. Partial typing does not match
+        assertEquals(
+            NameChangeOutcome(updatedIcon = null, isIconManual = false),
+            FolderEditLogic.computeNameChange("c", isIconManuallySelected = false, allFolderSuggestions),
+        )
+        assertEquals(
+            NameChangeOutcome(updatedIcon = null, isIconManual = false),
+            FolderEditLogic.computeNameChange("co", isIconManuallySelected = false, allFolderSuggestions),
+        )
+        assertEquals(
+            NameChangeOutcome(updatedIcon = null, isIconManual = false),
+            FolderEditLogic.computeNameChange("comed", isIconManuallySelected = false, allFolderSuggestions),
+        )
 
-        fun onSelectIcon(icon: String?) {
-            selectedIconKey = icon
-            isIconManuallySelected = true
-        }
+        // 2. Exact genre match automatically switches icon
+        val comedyMatch = FolderEditLogic.computeNameChange("comedy", isIconManuallySelected = false, allFolderSuggestions)
+        assertEquals("comedy", comedyMatch.updatedIcon)
+        assertEquals(true, comedyMatch.autoSync)
+        assertEquals("comedy", comedyMatch.linkedGenre)
 
-        // 1. Partial typing does not switch icon
-        onNameChange("c")
-        assertNull(selectedIconKey)
-        onNameChange("co")
-        assertNull(selectedIconKey)
-        onNameChange("comed")
-        assertNull(selectedIconKey)
+        // 3. Clearing text resets icon
+        val emptyMatch = FolderEditLogic.computeNameChange("", isIconManuallySelected = false, allFolderSuggestions)
+        assertNull(emptyMatch.updatedIcon)
+        assertFalse(emptyMatch.isIconManual)
 
-        // 2. Exact genre match automatically switches icon without tapping
-        onNameChange("comedy")
-        assertEquals("comedy", selectedIconKey)
+        // 4. Typing exact keyword for tech switches to tech
+        val techMatch = FolderEditLogic.computeNameChange("tech", isIconManuallySelected = false, allFolderSuggestions)
+        assertEquals("tech", techMatch.updatedIcon)
 
-        // 3. Refining name to a multi-word phrase retains the matched genre icon
-        onNameChange("comedy shows")
-        assertEquals("comedy", selectedIconKey)
+        // 5. Typing exact keyword for technology switches to tech
+        val technologyMatch = FolderEditLogic.computeNameChange("technology", isIconManuallySelected = false, allFolderSuggestions)
+        assertEquals("tech", technologyMatch.updatedIcon)
 
-        // 4. Clearing text resets icon to null
-        onNameChange("")
-        assertNull(selectedIconKey)
-        assertFalse(isIconManuallySelected)
+        // 6. When manually selected, icon does not change on typing
+        val manualMatch = FolderEditLogic.computeNameChange("comedy", isIconManuallySelected = true, allFolderSuggestions)
+        assertNull(manualMatch.updatedIcon)
+        assertTrue(manualMatch.isIconManual)
+    }
 
-        // 5. Typing exact keyword for sports switches icon to sports
-        onNameChange("football")
-        assertEquals("sports", selectedIconKey)
+    @Test
+    fun resolveFinalSaveParams_computesExpectedValues() {
+        // When autoSync enabled and icon present
+        val paramsWithIcon = FolderEditLogic.resolveFinalSaveParams(
+            name = " My Tech ",
+            icon = "tech",
+            displaySize = FolderDisplaySize.FEATURED,
+            autoSync = true,
+            linkedGenre = "",
+            showPodcastGrid = false,
+        )
+        assertEquals("My Tech", paramsWithIcon.name)
+        assertEquals("tech", paramsWithIcon.icon)
+        assertEquals(FolderDisplaySize.FEATURED, paramsWithIcon.displaySize)
+        assertEquals("My Tech", paramsWithIcon.linkedGenre)
+        assertFalse(paramsWithIcon.showPodcastGrid)
 
-        // 6. Typing another keyword like "tech" switches to tech
-        onNameChange("tech")
-        assertEquals("tech", selectedIconKey)
+        // When icon is null, showPodcastGrid forced to true
+        val paramsWithoutIcon = FolderEditLogic.resolveFinalSaveParams(
+            name = "No Icon",
+            icon = null,
+            displaySize = FolderDisplaySize.COMPACT,
+            autoSync = false,
+            linkedGenre = "Tech",
+            showPodcastGrid = false,
+        )
+        assertEquals("No Icon", paramsWithoutIcon.name)
+        assertNull(paramsWithoutIcon.icon)
+        assertNull(paramsWithoutIcon.linkedGenre)
+        assertTrue(paramsWithoutIcon.showPodcastGrid)
+    }
 
-        // 7. Typing "technology" switches to tech icon
-        onNameChange("technology")
-        assertEquals("tech", selectedIconKey)
+    @Test
+    fun createFolderAndMovePodcast_addsToNewFolderAndRemovesFromOldFolder() = runTest {
+        val fakeRepo = FakeFolderRepository()
+        val oldFolder = fakeRepo.createFolder(
+            name = "Old Folder",
+            icon = null,
+            displaySize = FolderDisplaySize.COMPACT,
+            linkedGenre = null,
+            showPodcastGrid = false,
+            podcastIds = listOf("pod-1", "pod-2"),
+        )
+        assertEquals(listOf("pod-1", "pod-2"), fakeRepo.getFolder(oldFolder.id)?.podcastIds)
 
-        // 8. Manual icon selection locks icon so typing doesn't overwrite it
-        onSelectIcon("star")
-        assertEquals("star", selectedIconKey)
-        assertTrue(isIconManuallySelected)
+        // Simulate createFolderAndMovePodcast:
+        val newFolder = fakeRepo.createFolder(
+            name = "New Folder",
+            icon = "tech",
+            displaySize = FolderDisplaySize.FEATURED,
+            linkedGenre = "Tech",
+            showPodcastGrid = true,
+            podcastIds = listOf("pod-1"),
+        )
+        fakeRepo.removePodcastFromFolder("pod-1", oldFolder.id)
 
-        onNameChange("comedy")
-        assertEquals("star", selectedIconKey) // Preserves manual choice
+        val updatedOld = fakeRepo.getFolder(oldFolder.id)
+        val updatedNew = fakeRepo.getFolder(newFolder.id)
+
+        assertEquals(listOf("pod-2"), updatedOld?.podcastIds)
+        assertEquals(listOf("pod-1"), updatedNew?.podcastIds)
     }
 
     @Test

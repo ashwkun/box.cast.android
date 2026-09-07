@@ -34,7 +34,7 @@ internal fun AutoOrganizeEnableDialog(
     onProceed: (displaySize: FolderDisplaySize?, showPodcastGrid: Boolean) -> Unit,
     onCancel: () -> Unit,
 ) {
-    var selectedSize by remember { mutableStateOf<FolderDisplaySize?>(null) }
+    var selectedSize by remember { mutableStateOf<FolderDisplaySize?>(FolderDisplaySize.SHELF) }
     var showPodcastGrid by remember { mutableStateOf(false) }
 
     AlertDialog(

@@ -470,13 +470,14 @@ private fun MiniPodcastSlot(
             modifier = modifier
                 .fillMaxSize()
                 .clip(miniShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                 .then(
                     if (isReordering) {
                         Modifier
                     } else {
                         Modifier.combinedClickable(
                             onClick = onEmptyClick,
+                            onClickLabel = "Open folder",
                             onLongClick = onLongClick,
                         )
                     }

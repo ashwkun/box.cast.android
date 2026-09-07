@@ -74,4 +74,14 @@ class GenreIconsTest {
         val musicMatches = GenreIcons.suggestIcons("music")
         assertTrue(musicMatches.any { it.key == "music" })
     }
+
+    @Test
+    fun `findExactGenreIconKey preserves exact matching and rejects partial multiword queries`() {
+        assertEquals("tech", findExactGenreIconKey("tech"))
+        assertEquals("tech", findExactGenreIconKey("Technology"))
+        assertEquals("music", findExactGenreIconKey("Music"))
+        assertNull(findExactGenreIconKey("Tech News"))
+        assertNull(findExactGenreIconKey("Random Multi Word"))
+        assertNull(findExactGenreIconKey(""))
+    }
 }

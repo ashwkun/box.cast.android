@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -117,6 +118,23 @@ private fun rememberShowsPartition(
 }
 
 @Composable
+private fun rememberOrderedFolderKeys(
+    folders: List<SubscriptionFolder>,
+    folderManualOrder: List<String>,
+): MutableState<List<String>> = remember(folders, folderManualOrder) {
+    mutableStateOf(
+        if (folderManualOrder.isNotEmpty()) {
+            val existing = folders.map { it.id }.toSet()
+            val ordered = folderManualOrder.filter { it in existing }
+            val remainder = folders.map { it.id }.filter { it !in ordered }
+            ordered + remainder
+        } else {
+            folders.map { it.id }
+        },
+    )
+}
+
+@Composable
 internal fun ShowsTabContent(
     podcasts: List<Podcast>,
     folders: List<SubscriptionFolder>,
@@ -134,6 +152,11 @@ internal fun ShowsTabContent(
     }
     val distinctGenres = remember(podcasts) { extractDistinctGenres(podcasts) }
     var selectedGenre by rememberSaveable { mutableStateOf("All") }
+    LaunchedEffect(distinctGenres) {
+        val stillAvailable = selectedGenre.equals("All", ignoreCase = true) ||
+            distinctGenres.any { it.equals(selectedGenre, ignoreCase = true) }
+        if (!stillAvailable) selectedGenre = "All"
+    }
     val partition = rememberShowsPartition(podcasts, folders, selectedGenre, config)
     val unfiledPodcasts = partition.unfiledPodcasts
     val isFoldersReordering = config.reorderMode is ReorderMode.Folders
@@ -155,19 +178,7 @@ internal fun ShowsTabContent(
         )
     }
 
-    val allFolderIds = remember(folders) { folders.map { it.id } }
-    var orderedFolderKeys by remember(folders, config.folderManualOrder) {
-        mutableStateOf(
-            if (config.folderManualOrder.isNotEmpty()) {
-                val existing = folders.map { it.id }.toSet()
-                val ordered = config.folderManualOrder.filter { it in existing }
-                val remainder = folders.map { it.id }.filter { it !in ordered }
-                ordered + remainder
-            } else {
-                allFolderIds
-            },
-        )
-    }
+    var orderedFolderKeys by rememberOrderedFolderKeys(folders, config.folderManualOrder)
 
     val onMove = rememberShowsMoveHandler(
         isFoldersReordering = isFoldersReordering,
@@ -563,6 +574,11 @@ private fun LatestEpisodesList(
 ) {
     val distinctGenres = remember(episodePodcasts) { extractDistinctGenres(episodePodcasts) }
     var selectedGenre by rememberSaveable { mutableStateOf("All") }
+    LaunchedEffect(distinctGenres) {
+        val stillAvailable = selectedGenre.equals("All", ignoreCase = true) ||
+            distinctGenres.any { it.equals(selectedGenre, ignoreCase = true) }
+        if (!stillAvailable) selectedGenre = "All"
+    }
     val filteredEpisodePodcasts = remember(episodePodcasts, selectedGenre) {
         filterPodcastsByGenre(episodePodcasts, selectedGenre)
     }

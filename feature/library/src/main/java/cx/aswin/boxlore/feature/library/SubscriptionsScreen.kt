@@ -555,6 +555,7 @@ fun SubscriptionsScreen(
                     onDismissRequest = {
                         showFolderEditSheet = false
                         editingFolder = null
+                        moveShowTarget = null
                     },
                     onSave = { name, icon, displaySize, linkedGenre, showPodcastGrid ->
                         val target = editingFolder
@@ -569,13 +570,27 @@ fun SubscriptionsScreen(
                                 ),
                             )
                         } else {
-                            viewModel.createFolder(
-                                name = name,
-                                icon = icon,
-                                displaySize = displaySize,
-                                linkedGenre = linkedGenre,
-                                showPodcastGrid = showPodcastGrid,
-                            )
+                            val targetMove = moveShowTarget
+                            if (targetMove != null) {
+                                viewModel.createFolderAndMovePodcast(
+                                    name = name,
+                                    icon = icon,
+                                    displaySize = displaySize,
+                                    linkedGenre = linkedGenre,
+                                    showPodcastGrid = showPodcastGrid,
+                                    podcastId = targetMove.second.id,
+                                    fromFolderId = targetMove.first?.id,
+                                )
+                                moveShowTarget = null
+                            } else {
+                                viewModel.createFolder(
+                                    name = name,
+                                    icon = icon,
+                                    displaySize = displaySize,
+                                    linkedGenre = linkedGenre,
+                                    showPodcastGrid = showPodcastGrid,
+                                )
+                            }
                         }
                         showFolderEditSheet = false
                         editingFolder = null
@@ -723,7 +738,6 @@ fun SubscriptionsScreen(
                     onCreateNewFolder = {
                         editingFolder = null
                         showFolderEditSheet = true
-                        moveShowTarget = null
                     },
                     onDismissRequest = { moveShowTarget = null },
                 )

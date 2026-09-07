@@ -20,6 +20,7 @@ import cx.aswin.boxlore.core.playback.toggleLike
 import cx.aswin.boxlore.core.playback.togglePlayPause
 import cx.aswin.boxlore.core.prefs.HomePinnedShows
 import cx.aswin.boxlore.feature.info.logic.PodcastInfoAsyncResultLogic
+import cx.aswin.boxlore.feature.info.logic.PodcastInfoFolderSyncLogic
 import cx.aswin.boxlore.feature.info.logic.PodcastInfoPullRefreshLogic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -1327,11 +1328,10 @@ class PodcastInfoViewModel(
                         )
                 }
             }
-            if (userPrefs.autoOrganizeFoldersStream.first()) {
-                folderRepository?.autoOrganizeSubscribedShows()
-            } else {
-                folderRepository?.syncLinkedGenres()
-            }
+            PodcastInfoFolderSyncLogic.syncFoldersAfterGenreUpdate(
+                folderRepository = folderRepository,
+                autoOrganizeEnabled = userPrefs.autoOrganizeFoldersStream.first(),
+            )
         }
     }
 

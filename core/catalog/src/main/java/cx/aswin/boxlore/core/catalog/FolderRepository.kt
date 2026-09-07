@@ -27,6 +27,7 @@ interface FolderRepository {
     suspend fun deleteFolder(folderId: String)
     suspend fun addPodcastToFolder(podcastId: String, folderId: String)
     suspend fun removePodcastFromFolder(podcastId: String, folderId: String)
+    suspend fun removePodcastFromAllFolders(podcastId: String)
     suspend fun setPodcastsForFolder(folderId: String, podcastIds: List<String>)
     suspend fun syncLinkedGenres()
     suspend fun autoOrganizeSubscribedShows(

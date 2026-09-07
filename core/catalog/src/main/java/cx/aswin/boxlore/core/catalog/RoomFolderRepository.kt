@@ -180,6 +180,10 @@ class RoomFolderRepository(
         folderDao.deleteCrossRef(podcastId = podcastId, folderId = folderId)
     }
 
+    override suspend fun removePodcastFromAllFolders(podcastId: String) {
+        folderDao.removePodcastFromAllFolders(podcastId)
+    }
+
     override suspend fun setPodcastsForFolder(folderId: String, podcastIds: List<String>) {
         folderDao.setPodcastsForFolder(folderId, podcastIds)
     }
@@ -202,8 +206,11 @@ class RoomFolderRepository(
                 .map { it.podcastId }
                 .distinct()
             val currentIds = folderDao.getPodcastIdsForFolderList(folder.folderId)
-            if (currentIds != matchingIds) {
-                folderDao.setPodcastsForFolder(folder.folderId, matchingIds)
+            val preservedMatching = currentIds.filter { it in matchingIds }
+            val newMatching = matchingIds.filter { it !in preservedMatching }
+            val combinedIds = preservedMatching + newMatching
+            if (currentIds != combinedIds) {
+                folderDao.setPodcastsForFolder(folder.folderId, combinedIds)
             }
             if (folder.linkedGenre.isNullOrBlank() && PodcastGenres.canonicalize(folder.name) != null) {
                 folderDao.upsertFolder(folder.copy(linkedGenre = targetGenre))

@@ -143,14 +143,14 @@ private fun rememberFolderEditStateAndActions(
 
     val focusManager = LocalFocusManager.current
     val isEditing = initialFolder != null
-    val isTechnologyDisallowed = nameState.value.trim().equals("Technology", ignoreCase = true)
-    val canSave = nameState.value.trim().isNotEmpty() && !isTechnologyDisallowed
+    val isTechnologyDisallowed = FolderEditLogic.isTechnologyDisallowed(nameState.value)
+    val canSave = FolderEditLogic.canSave(nameState.value)
 
-    val effectiveLinkedGenre = if (autoSyncState.value) {
-        linkedGenreState.value.trim().ifEmpty { nameState.value.trim() }
-    } else {
-        null
-    }
+    val effectiveLinkedGenre = FolderEditLogic.resolveEffectiveLinkedGenre(
+        autoSync = autoSyncState.value,
+        linkedGenre = linkedGenreState.value,
+        folderName = nameState.value,
+    )
 
     val allFolderSuggestions = remember(suggestedGenres) {
         buildFolderSuggestionsWithLibrary(suggestedGenres)
@@ -236,7 +236,7 @@ private fun rememberFolderEditFormActions(
     },
     onSelectIcon = {
         fields.iconState.value = it
-        fields.iconManualState.value = true
+        fields.iconManualState.value = it != null
         focusManager.clearFocus()
     },
     onSelectDisplaySize = { fields.displaySizeState.value = it },
@@ -264,15 +264,15 @@ private fun rememberFolderEditFormActions(
     onDone = { focusManager.clearFocus() },
     onSave = {
         focusManager.clearFocus()
-        val finalName = fields.nameState.value.trim()
-        val finalIcon = fields.iconState.value?.trim()?.takeIf { it.isNotEmpty() }
-        val finalLinked = if (fields.autoSyncState.value) {
-            fields.linkedGenreState.value.trim().ifEmpty { finalName }.takeIf { it.isNotEmpty() }
-        } else {
-            null
-        }
-        val finalShowPodcastGrid = finalIcon == null || fields.podcastGridState.value
-        onSave(finalName, finalIcon, fields.displaySizeState.value, finalLinked, finalShowPodcastGrid)
+        val params = FolderEditLogic.resolveFinalSaveParams(
+            name = fields.nameState.value,
+            icon = fields.iconState.value,
+            displaySize = fields.displaySizeState.value,
+            autoSync = fields.autoSyncState.value,
+            linkedGenre = fields.linkedGenreState.value,
+            showPodcastGrid = fields.podcastGridState.value,
+        )
+        onSave(params.name, params.icon, params.displaySize, params.linkedGenre, params.showPodcastGrid)
     },
     onClose = onDismissRequest,
     onDelete = onDelete,

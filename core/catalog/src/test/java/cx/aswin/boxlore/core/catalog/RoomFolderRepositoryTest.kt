@@ -304,4 +304,189 @@ class RoomFolderRepositoryTest {
         assertEquals("tech", dbEntity?.icon)
         assertEquals("Tech", dbEntity?.linkedGenre)
     }
+
+    @Test
+    fun createFolder_supportsShowPodcastGrid() = runTest {
+        val folder = repository.createFolder(
+            name = "Grid Folder",
+            icon = "tech",
+            displaySize = FolderDisplaySize.COMPACT,
+            showPodcastGrid = true,
+        )
+
+        assertNotNull(folder.id)
+        assertTrue(folder.showPodcastGrid)
+        assertTrue(folder.effectiveShowPodcastGrid)
+
+        val retrieved = repository.getFolder(folder.id)
+        assertNotNull(retrieved)
+        assertTrue(retrieved?.showPodcastGrid == true)
+    }
+
+    @Test
+    fun autoOrganizeSubscribedShows_createsDefaultShelfFoldersAndPopulatesShows() = runTest {
+        insertSubscribedPodcast("pod-1", "Laugh Out Loud", genre = "Comedy")
+        insertSubscribedPodcast("pod-2", "Silicon Talk", genre = "Technology")
+        insertSubscribedPodcast("pod-3", "Code Bytes", genre = "Technology")
+
+        repository.autoOrganizeSubscribedShows(
+            defaultDisplaySize = FolderDisplaySize.SHELF,
+            showPodcastGrid = false,
+        )
+
+        val folders = repository.getFolders()
+        assertEquals(2, folders.size)
+
+        val techFolder = folders.firstOrNull { it.name == "Tech" }
+        assertNotNull(techFolder)
+        assertEquals(FolderDisplaySize.SHELF, techFolder?.displaySize)
+        assertEquals(listOf("pod-2", "pod-3"), techFolder?.podcastIds?.sorted())
+        assertEquals("tech", techFolder?.icon)
+
+        val comedyFolder = folders.firstOrNull { it.name == "Comedy" }
+        assertNotNull(comedyFolder)
+        assertEquals(FolderDisplaySize.SHELF, comedyFolder?.displaySize)
+        assertEquals(listOf("pod-1"), comedyFolder?.podcastIds)
+        assertEquals("comedy", comedyFolder?.icon)
+    }
+
+    @Test
+    fun autoOrganizeSubscribedShows_preservesExistingGenreAndCustomFolders() = runTest {
+        insertSubscribedPodcast("pod-1", "My Fav", genre = "Comedy")
+        insertSubscribedPodcast("pod-2", "Tech News", genre = "Technology")
+
+        val custom = repository.createFolder(
+            name = "Favorites",
+            icon = "star",
+            displaySize = FolderDisplaySize.COMPACT,
+            podcastIds = listOf("pod-1"),
+        )
+
+        val existingTech = repository.createFolder(
+            name = "Technology",
+            icon = "custom_icon",
+            displaySize = FolderDisplaySize.PANEL,
+            linkedGenre = "Technology",
+        )
+
+        repository.autoOrganizeSubscribedShows()
+
+        val allFolders = repository.getFolders()
+        assertEquals(3, allFolders.size)
+
+        val retrievedCustom = repository.getFolder(custom.id)
+        assertNotNull(retrievedCustom)
+        assertEquals(FolderDisplaySize.COMPACT, retrievedCustom?.displaySize)
+        assertEquals("star", retrievedCustom?.icon)
+        assertEquals(listOf("pod-1"), retrievedCustom?.podcastIds)
+
+        val retrievedTech = repository.getFolder(existingTech.id)
+        assertNotNull(retrievedTech)
+        assertEquals("Tech", retrievedTech?.name)
+        assertEquals(FolderDisplaySize.PANEL, retrievedTech?.displaySize)
+        assertEquals("custom_icon", retrievedTech?.icon)
+        assertEquals(listOf("pod-2"), retrievedTech?.podcastIds)
+
+        val comedy = allFolders.firstOrNull { it.name == "Comedy" }
+        assertNotNull(comedy)
+        assertEquals(listOf("pod-1"), comedy?.podcastIds)
+    }
+
+    @Test
+    fun syncLinkedGenres_movesShowWhenGenreChanges() = runTest {
+        val comedyFolder = repository.createFolder(
+            name = "Comedy Shows",
+            linkedGenre = "Comedy",
+        )
+        val techFolder = repository.createFolder(
+            name = "Tech Hub",
+            linkedGenre = "Tech",
+        )
+        val manualFolder = repository.createFolder(
+            name = "My Commute",
+            podcastIds = listOf("pod-1"),
+        )
+
+        insertSubscribedPodcast("pod-1", "Dynamic Show", genre = "Comedy")
+
+        repository.syncLinkedGenres()
+
+        assertEquals(listOf("pod-1"), repository.getFolder(comedyFolder.id)?.podcastIds)
+        assertEquals(emptyList<String>(), repository.getFolder(techFolder.id)?.podcastIds)
+        assertEquals(listOf("pod-1"), repository.getFolder(manualFolder.id)?.podcastIds)
+
+        insertSubscribedPodcast("pod-1", "Dynamic Show", genre = "Comedy", customGenre = "Tech")
+
+        repository.syncLinkedGenres()
+
+        assertEquals(emptyList<String>(), repository.getFolder(comedyFolder.id)?.podcastIds)
+        assertEquals(listOf("pod-1"), repository.getFolder(techFolder.id)?.podcastIds)
+        assertEquals(listOf("pod-1"), repository.getFolder(manualFolder.id)?.podcastIds)
+    }
+
+    @Test
+    fun syncLinkedGenres_preservesExistingOrderOfMatchingShows() = runTest {
+        insertSubscribedPodcast("pod-tech-1", "First Tech", genre = "Tech")
+        insertSubscribedPodcast("pod-tech-2", "Second Tech", genre = "Tech")
+        insertSubscribedPodcast("pod-tech-3", "Third Tech", genre = "Tech")
+
+        val techFolder = repository.createFolder(
+            name = "Tech Hub",
+            linkedGenre = "Tech",
+            podcastIds = listOf("pod-tech-2", "pod-tech-1"),
+        )
+
+        repository.syncLinkedGenres()
+
+        val retrieved = repository.getFolder(techFolder.id)
+        assertNotNull(retrieved)
+        assertEquals(listOf("pod-tech-2", "pod-tech-1", "pod-tech-3"), retrieved?.podcastIds)
+    }
+
+    @Test
+    fun autoOrganizeSubscribedShows_adaptiveSizingAssignsSizesBasedOnShowCount() = runTest {
+        insertSubscribedPodcast("comedy-1", "Standup Central", genre = "Comedy")
+
+        insertSubscribedPodcast("tech-1", "Tech 1", genre = "Technology")
+        insertSubscribedPodcast("tech-2", "Tech 2", genre = "Technology")
+        insertSubscribedPodcast("tech-3", "Tech 3", genre = "Technology")
+        insertSubscribedPodcast("tech-4", "Tech 4", genre = "Technology")
+
+        insertSubscribedPodcast("news-1", "News 1", genre = "News")
+        insertSubscribedPodcast("news-2", "News 2", genre = "News")
+        insertSubscribedPodcast("news-3", "News 3", genre = "News")
+        insertSubscribedPodcast("news-4", "News 4", genre = "News")
+        insertSubscribedPodcast("news-5", "News 5", genre = "News")
+        insertSubscribedPodcast("news-6", "News 6", genre = "News")
+
+        repository.autoOrganizeSubscribedShows(defaultDisplaySize = null)
+
+        val folders = repository.getFolders()
+        assertEquals(3, folders.size)
+
+        val comedy = folders.first { it.name == "Comedy" }
+        assertEquals(FolderDisplaySize.COMPACT, comedy.displaySize)
+        assertTrue(comedy.showPodcastGrid)
+
+        val tech = folders.first { it.name == "Tech" }
+        assertEquals(FolderDisplaySize.SHELF, tech.displaySize)
+
+        val news = folders.first { it.name == "News" }
+        assertEquals(FolderDisplaySize.PANEL, news.displaySize)
+    }
+
+    @Test
+    fun removePodcastFromAllFoldersRemovesCrossRefsAcrossAllFolders() = runTest {
+        insertSubscribedPodcast("pod-1", "Universal Show")
+        val f1 = repository.createFolder("Folder 1", podcastIds = listOf("pod-1"))
+        val f2 = repository.createFolder("Folder 2", podcastIds = listOf("pod-1"))
+
+        assertEquals(listOf("pod-1"), repository.getFolder(f1.id)?.podcastIds)
+        assertEquals(listOf("pod-1"), repository.getFolder(f2.id)?.podcastIds)
+
+        repository.removePodcastFromAllFolders("pod-1")
+
+        assertEquals(emptyList<String>(), repository.getFolder(f1.id)?.podcastIds)
+        assertEquals(emptyList<String>(), repository.getFolder(f2.id)?.podcastIds)
+    }
 }
