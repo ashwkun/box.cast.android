@@ -49,7 +49,8 @@ sealed interface LibraryUiState {
         val downloadedEpisodes: List<cx.aswin.boxlore.core.database.DownloadedEpisodeEntity> = emptyList(),
         val recentHistory: List<ListeningHistoryEntity> = emptyList(),
         val currentSort: SubscriptionSort = SubscriptionSort.SmartRank,
-        val allHistory: List<ListeningHistoryEntity> = emptyList()
+        val allHistory: List<ListeningHistoryEntity> = emptyList(),
+        val manualOrder: List<String> = emptyList(),
     ) : LibraryUiState
     data class Error(val message: String) : LibraryUiState
 }
@@ -356,7 +357,8 @@ class LibraryViewModel(
             downloadedEpisodes = downloads,
             recentHistory = allHistory.filter { !it.isManualCompletion && !it.isBulkCompletion }.take(3),
             currentSort = sort,
-            allHistory = allHistory
+            allHistory = allHistory,
+            manualOrder = manualOrder,
         )
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(

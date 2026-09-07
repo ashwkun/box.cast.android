@@ -71,6 +71,7 @@ import cx.aswin.boxlore.feature.library.subscriptions.LatestTabConfig
 import cx.aswin.boxlore.feature.library.subscriptions.LatestTabContent
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsSortMenuItems
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabActions
+import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabConfig
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabContent
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionFolderDialog
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionsTabSelectorFab
@@ -385,9 +386,13 @@ fun SubscriptionsScreen(
                                     0 -> ShowsTabContent(
                                         podcasts = podcasts,
                                         folders = folders,
-                                        isGridView = isGridView,
-                                        canReorder = searchQuery.isBlank(),
-                                        pinnedPodcastIds = pinnedPodcastIds,
+                                        config = ShowsTabConfig(
+                                            isGridView = isGridView,
+                                            canReorder = searchQuery.isBlank(),
+                                            pinnedPodcastIds = pinnedPodcastIds,
+                                            sort = success.currentSort,
+                                            manualOrder = success.manualOrder,
+                                        ),
                                         actions = ShowsTabActions(
                                             onExploreClick = onExploreClick,
                                             onPodcastClick = {

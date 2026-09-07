@@ -34,6 +34,7 @@ import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.feature.library.ExpressiveSolarSystemEmptyState
 import cx.aswin.boxlore.feature.library.LocalLastSeenEpisodes
 import cx.aswin.boxlore.feature.library.PlayAllFab
+import cx.aswin.boxlore.feature.library.SubscriptionSort
 import cx.aswin.boxlore.feature.library.logic.SubscriptionManualOrderLogic
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
@@ -50,16 +51,56 @@ internal data class ShowsTabActions(
     val onNewFolderClick: (() -> Unit)? = null,
     val onFolderClick: (String) -> Unit = {},
     val onFolderLongClick: (SubscriptionFolder) -> Unit = {},
+) {
+    fun toFolderCardActions(): FolderCardActions = FolderCardActions(
+        onPodcastClick = onPodcastClick,
+        onFolderClick = onFolderClick,
+        onFolderLongClick = onFolderLongClick,
+    )
+}
+
+/** Configuration for [ShowsTabContent], grouped to keep the composable parameter list small. */
+internal data class ShowsTabConfig(
+    val isGridView: Boolean,
+    val canReorder: Boolean = false,
+    val pinnedPodcastIds: Set<String> = emptySet(),
+    val sort: SubscriptionSort = SubscriptionSort.SmartRank,
+    val manualOrder: List<String> = emptyList(),
 )
+
+private data class ShowsGridConfig(
+    val reorderEnabled: Boolean,
+    val pinnedPodcastIds: Set<String>,
+)
+
+@Composable
+private fun rememberShowsOrderedKeys(
+    partition: PartitionedSubscriptionItems,
+    manualOrder: List<String>,
+    isManualSort: Boolean,
+): androidx.compose.runtime.MutableState<List<String>> {
+    val incomingKeys = remember(partition, manualOrder, isManualSort) {
+        buildUnifiedGridItems(
+            compactFolders = partition.compactFolders,
+            unfiledPodcasts = partition.unfiledPodcasts,
+            podcastsByFolderId = partition.podcastsByFolderId,
+            manualOrder = manualOrder,
+            isManualSort = isManualSort,
+        ).map { it.key }
+    }
+    val orderedState = remember { mutableStateOf(incomingKeys) }
+    LaunchedEffect(incomingKeys) {
+        orderedState.value = incomingKeys
+    }
+    return orderedState
+}
 
 @Composable
 internal fun ShowsTabContent(
     podcasts: List<Podcast>,
-    isGridView: Boolean,
+    folders: List<SubscriptionFolder>,
+    config: ShowsTabConfig,
     actions: ShowsTabActions,
-    folders: List<SubscriptionFolder> = emptyList(),
-    canReorder: Boolean = false,
-    pinnedPodcastIds: Set<String> = emptySet(),
 ) {
     if (podcasts.isEmpty()) {
         ExpressiveSolarSystemEmptyState(
@@ -77,18 +118,44 @@ internal fun ShowsTabContent(
     val filteredFolders = remember(folders, selectedGenre, podcasts) {
         filterFoldersByGenre(folders, selectedGenre, podcasts)
     }
-    val partition = remember(distinctPodcasts, filteredFolders) {
-        partitionSubscribedShows(distinctPodcasts, filteredFolders)
+    val partition = remember(distinctPodcasts, filteredFolders, config.sort) {
+        partitionSubscribedShows(distinctPodcasts, filteredFolders, config.sort)
     }
     val unfiledPodcasts = partition.unfiledPodcasts
-    val reorderEnabled = canReorder && (selectedGenre.equals("All", ignoreCase = true) || selectedGenre.isBlank())
-    val incomingIds = remember(unfiledPodcasts) { unfiledPodcasts.map { it.id } }
-    var orderedIds by remember { mutableStateOf(incomingIds) }
-    LaunchedEffect(incomingIds) {
-        orderedIds = incomingIds
+    val reorderEnabled = config.canReorder && (selectedGenre.equals("All", ignoreCase = true) || selectedGenre.isBlank())
+    val isManualSort = config.sort == SubscriptionSort.Manual
+
+    var orderedKeys by rememberShowsOrderedKeys(partition, config.manualOrder, isManualSort)
+
+    val unifiedGridItems = remember(partition, orderedKeys, isManualSort) {
+        buildUnifiedGridItems(
+            compactFolders = partition.compactFolders,
+            unfiledPodcasts = partition.unfiledPodcasts,
+            podcastsByFolderId = partition.podcastsByFolderId,
+            manualOrder = orderedKeys,
+            isManualSort = isManualSort,
+        )
     }
-    val podcastsById = remember(unfiledPodcasts) { unfiledPodcasts.associateBy { it.id } }
-    val orderedPodcasts = orderedIds.mapNotNull(podcastsById::get)
+
+    val blockedKeys = remember(partition.pinnedFolders) {
+        ShowsBlockedReorderKeys + partition.pinnedFolders.map { "pinned_folder_${it.id}" }
+    }
+
+    val applyReorder: (String, String) -> Unit = { fromId, toId ->
+        if (reorderEnabled) {
+            val moved =
+                SubscriptionManualOrderLogic.moveVisible(
+                    ids = orderedKeys,
+                    fromId = fromId,
+                    toId = toId,
+                    blockedKeys = blockedKeys,
+                )
+            if (moved != null) {
+                orderedKeys = moved
+                actions.onReorder(moved)
+            }
+        }
+    }
 
     val genreChips: @Composable () -> Unit = {
         SubscriptionGenreChips(
@@ -99,25 +166,9 @@ internal fun ShowsTabContent(
             },
             distinctGenres = distinctGenres,
             podcasts = podcasts,
-            contentPadding = PaddingValues(horizontal = if (isGridView) 0.dp else 16.dp),
+            contentPadding = PaddingValues(horizontal = if (config.isGridView) 0.dp else 16.dp),
             onNewFolderClick = actions.onNewFolderClick,
         )
-    }
-
-    val applyReorder: (String, String) -> Unit = { fromId, toId ->
-        if (reorderEnabled) {
-            val moved =
-                SubscriptionManualOrderLogic.moveVisible(
-                    ids = orderedIds,
-                    fromId = fromId,
-                    toId = toId,
-                    blockedKeys = ShowsBlockedReorderKeys,
-                )
-            if (moved != null) {
-                orderedIds = moved
-                actions.onReorder(moved)
-            }
-        }
     }
 
     val folderItems = remember(partition) {
@@ -128,22 +179,28 @@ internal fun ShowsTabContent(
         )
     }
 
-    if (isGridView) {
+    if (config.isGridView) {
         ShowsReorderableGrid(
-            orderedPodcasts = orderedPodcasts,
             folderItems = folderItems,
-            reorderEnabled = reorderEnabled,
-            pinnedPodcastIds = pinnedPodcastIds,
+            unifiedGridItems = unifiedGridItems,
+            gridConfig = ShowsGridConfig(reorderEnabled, config.pinnedPodcastIds),
             actions = actions,
             onMove = applyReorder,
             genreChips = genreChips,
         )
     } else {
+        val unfiledPodcastsById = remember(unfiledPodcasts) { unfiledPodcasts.associateBy { it.id } }
+        val orderedPodcastsForList = remember(orderedKeys, unfiledPodcastsById, unfiledPodcasts) {
+            if (isManualSort) {
+                orderedKeys.mapNotNull(unfiledPodcastsById::get)
+            } else {
+                unfiledPodcasts
+            }
+        }
         ShowsReorderableList(
-            orderedPodcasts = orderedPodcasts,
+            orderedPodcasts = orderedPodcastsForList,
             folderItems = folderItems,
-            reorderEnabled = reorderEnabled,
-            pinnedPodcastIds = pinnedPodcastIds,
+            gridConfig = ShowsGridConfig(reorderEnabled, config.pinnedPodcastIds),
             actions = actions,
             onMove = applyReorder,
             genreChips = genreChips,
@@ -153,10 +210,9 @@ internal fun ShowsTabContent(
 
 @Composable
 private fun ShowsReorderableGrid(
-    orderedPodcasts: List<Podcast>,
     folderItems: ShowsFolderItems,
-    reorderEnabled: Boolean,
-    pinnedPodcastIds: Set<String>,
+    unifiedGridItems: List<SubscriptionGridItem>,
+    gridConfig: ShowsGridConfig,
     actions: ShowsTabActions,
     onMove: (fromId: String, toId: String) -> Unit,
     genreChips: @Composable () -> Unit,
@@ -168,6 +224,8 @@ private fun ShowsReorderableGrid(
             val toId = to.key as? String ?: return@rememberReorderableLazyGridState
             onMove(fromId, toId)
         }
+    val folderActions = remember(actions) { actions.toFolderCardActions() }
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         state = gridState,
@@ -197,49 +255,53 @@ private fun ShowsReorderableGrid(
             PinnedEnlargedFolderCard(
                 folder = folder,
                 podcasts = folderShows,
-                onPodcastClick = actions.onPodcastClick,
-                onFolderClick = actions.onFolderClick,
-                onFolderLongClick = actions.onFolderLongClick,
+                actions = folderActions,
             )
         }
 
-        // Compact 1×1 Folders
+        // Unified 1×1 slots: Compact 1×1 folders and unfiled podcasts
         items(
-            items = folderItems.compactFolders,
-            key = { "compact_folder_${it.id}" },
+            items = unifiedGridItems,
+            key = { it.key },
             span = { GridItemSpan(1) },
-        ) { folder ->
-            val folderShows = folderItems.podcastsByFolderId[folder.id].orEmpty()
-            Compact1x1FolderCard(
-                folder = folder,
-                podcasts = folderShows,
-                onPodcastClick = actions.onPodcastClick,
-                onFolderClick = actions.onFolderClick,
-                onFolderLongClick = actions.onFolderLongClick,
-            )
-        }
-
-        // Unfiled podcasts
-        items(items = orderedPodcasts, key = { it.id }) { podcast ->
+        ) { item ->
             val lastSeenEpisodes = LocalLastSeenEpisodes.current
             ReorderableItem(
                 reorderableGridState,
-                key = podcast.id,
-                enabled = reorderEnabled,
+                key = item.key,
+                enabled = gridConfig.reorderEnabled,
             ) { isDragging ->
-                SubscriptionGridCard(
-                    podcast = podcast,
-                    lastSeenId = lastSeenEpisodes[podcast.id],
-                    onClick = { actions.onPodcastClick(podcast.id) },
-                    isPinned = podcast.id in pinnedPodcastIds,
-                    isDragging = isDragging,
-                    dragModifier =
-                    if (reorderEnabled) {
-                        Modifier.longPressDraggableHandle()
-                    } else {
-                        Modifier
-                    },
-                )
+                when (item) {
+                    is SubscriptionGridItem.PodcastItem -> {
+                        SubscriptionGridCard(
+                            podcast = item.podcast,
+                            lastSeenId = lastSeenEpisodes[item.podcast.id],
+                            onClick = { actions.onPodcastClick(item.podcast.id) },
+                            isPinned = item.podcast.id in gridConfig.pinnedPodcastIds,
+                            isDragging = isDragging,
+                            dragModifier =
+                            if (gridConfig.reorderEnabled) {
+                                Modifier.longPressDraggableHandle()
+                            } else {
+                                Modifier
+                            },
+                        )
+                    }
+                    is SubscriptionGridItem.FolderItem -> {
+                        Compact1x1FolderCard(
+                            folder = item.folder,
+                            podcasts = item.podcasts,
+                            actions = folderActions,
+                            isDragging = isDragging,
+                            dragModifier =
+                            if (gridConfig.reorderEnabled) {
+                                Modifier.longPressDraggableHandle()
+                            } else {
+                                Modifier
+                            },
+                        )
+                    }
+                }
             }
         }
     }
@@ -249,8 +311,7 @@ private fun ShowsReorderableGrid(
 private fun ShowsReorderableList(
     orderedPodcasts: List<Podcast>,
     folderItems: ShowsFolderItems,
-    reorderEnabled: Boolean,
-    pinnedPodcastIds: Set<String>,
+    gridConfig: ShowsGridConfig,
     actions: ShowsTabActions,
     onMove: (fromId: String, toId: String) -> Unit,
     genreChips: @Composable () -> Unit,
@@ -262,6 +323,8 @@ private fun ShowsReorderableList(
             val toId = to.key as? String ?: return@rememberReorderableLazyListState
             onMove(fromId, toId)
         }
+    val folderActions = remember(actions) { actions.toFolderCardActions() }
+
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(bottom = 180.dp, top = 8.dp),
@@ -286,9 +349,7 @@ private fun ShowsReorderableList(
                 PinnedEnlargedFolderCard(
                     folder = folder,
                     podcasts = folderShows,
-                    onPodcastClick = actions.onPodcastClick,
-                    onFolderClick = actions.onFolderClick,
-                    onFolderLongClick = actions.onFolderLongClick,
+                    actions = folderActions,
                 )
             }
         }
@@ -296,15 +357,15 @@ private fun ShowsReorderableList(
             ReorderableItem(
                 reorderableListState,
                 key = podcast.id,
-                enabled = reorderEnabled,
+                enabled = gridConfig.reorderEnabled,
             ) { isDragging ->
                 SubscriptionListRow(
                     podcast = podcast,
                     onClick = { actions.onPodcastClick(podcast.id) },
-                    isPinned = podcast.id in pinnedPodcastIds,
+                    isPinned = podcast.id in gridConfig.pinnedPodcastIds,
                     isDragging = isDragging,
                     dragModifier =
-                    if (reorderEnabled) {
+                    if (gridConfig.reorderEnabled) {
                         Modifier.longPressDraggableHandle()
                     } else {
                         Modifier

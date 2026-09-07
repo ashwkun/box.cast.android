@@ -1,10 +1,14 @@
 package cx.aswin.boxlore.feature.library
 
+import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
+import cx.aswin.boxlore.feature.library.subscriptions.buildUnifiedGridItems
 import cx.aswin.boxlore.feature.library.subscriptions.calculateFolderSlots
 import cx.aswin.boxlore.feature.library.subscriptions.filterFoldersByGenre
+import cx.aswin.boxlore.feature.library.subscriptions.hasAnyFolderShowNew
+import cx.aswin.boxlore.feature.library.subscriptions.hasFolderOverflowNew
 import cx.aswin.boxlore.feature.library.subscriptions.partitionSubscribedShows
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -13,13 +17,34 @@ import org.junit.jupiter.api.Test
 
 class SubscriptionFolderLayoutLogicTest {
 
-    private fun mockPodcast(id: String, genre: String = "Technology", customGenre: String? = null) = Podcast(
+    private fun mockPodcast(
+        id: String,
+        title: String = "Podcast $id",
+        genre: String = "Technology",
+        customGenre: String? = null,
+        latestPubDate: Long = 0L,
+        rssHasNewEpisodes: Boolean = false,
+    ) = Podcast(
         id = id,
-        title = "Podcast $id",
+        title = title,
         artist = "Host $id",
         imageUrl = "https://example.com/$id.jpg",
         genre = genre,
         customGenre = customGenre,
+        rssHasNewEpisodes = rssHasNewEpisodes,
+        latestEpisode = if (latestPubDate > 0L) {
+            Episode(
+                id = "ep-$id",
+                podcastId = id,
+                title = "Episode $id",
+                description = "Description $id",
+                audioUrl = "https://example.com/audio-$id.mp3",
+                duration = 1800,
+                publishedDate = latestPubDate,
+            )
+        } else {
+            null
+        },
     )
 
     @Test
@@ -197,5 +222,143 @@ class SubscriptionFolderLayoutLogicTest {
         val emptyFolder = SubscriptionFolder(id = "f-empty", name = "Empty", podcastIds = emptyList())
         val emptyShows = emptyFolder.podcastIds.mapNotNull(podcastsById::get)
         assertTrue(emptyShows.isEmpty())
+    }
+
+    @Test
+    fun `buildUnifiedGridItems interleaves compact folders and podcasts in manual order`() {
+        val p1 = mockPodcast("p-1", title = "Alpha")
+        val p2 = mockPodcast("p-2", title = "Beta")
+        val p3 = mockPodcast("p-3", title = "Gamma")
+
+        val folder1 = SubscriptionFolder(id = "f-1", name = "Tech", displaySize = FolderDisplaySize.COMPACT)
+        val folder2 = SubscriptionFolder(id = "f-2", name = "Comedy", displaySize = FolderDisplaySize.COMPACT)
+
+        val unfiled = listOf(p1, p2, p3)
+        val folders = listOf(folder1, folder2)
+        val byFolderId = mapOf("f-1" to emptyList<Podcast>(), "f-2" to emptyList<Podcast>())
+
+        // Default order (non-manual): folders first, then unfiled podcasts
+        val defaultItems = buildUnifiedGridItems(
+            compactFolders = folders,
+            unfiledPodcasts = unfiled,
+            podcastsByFolderId = byFolderId,
+            isManualSort = false,
+        )
+        assertEquals(
+            listOf("folder:f-1", "folder:f-2", "p-1", "p-2", "p-3"),
+            defaultItems.map { it.key },
+        )
+
+        // Manual order: custom interleaving
+        val manualOrder = listOf("p-2", "folder:f-2", "p-1", "folder:f-1")
+        val manualItems = buildUnifiedGridItems(
+            compactFolders = folders,
+            unfiledPodcasts = unfiled,
+            podcastsByFolderId = byFolderId,
+            manualOrder = manualOrder,
+            isManualSort = true,
+        )
+        // p-3 was not in manualOrder, so it appends at the end
+        assertEquals(
+            listOf("p-2", "folder:f-2", "p-1", "folder:f-1", "p-3"),
+            manualItems.map { it.key },
+        )
+    }
+
+    @Test
+    fun `partitionSubscribedShows sorts in-folder shows to match active podcast sort order`() {
+        // Feed in sorted podcasts (e.g. sorted by Recently Updated: p3 newest, then p1, then p2)
+        val p3 = mockPodcast("p-3", latestPubDate = 3000L)
+        val p1 = mockPodcast("p-1", latestPubDate = 2000L)
+        val p2 = mockPodcast("p-2", latestPubDate = 1000L)
+        val sortedPodcasts = listOf(p3, p1, p2)
+
+        // Folder has podcastIds in arbitrary unsorted order: p1, p2, p3
+        val folder = SubscriptionFolder(
+            id = "f-1",
+            name = "Folder",
+            displaySize = FolderDisplaySize.SHELF,
+            podcastIds = listOf("p-1", "p-2", "p-3"),
+        )
+
+        val partition = partitionSubscribedShows(
+            podcasts = sortedPodcasts,
+            folders = listOf(folder),
+            sort = SubscriptionSort.RecentlyUpdated,
+        )
+
+        val inFolderShows = partition.podcastsByFolderId["f-1"].orEmpty()
+        assertEquals(listOf("p-3", "p-1", "p-2"), inFolderShows.map { it.id })
+    }
+
+    @Test
+    fun `partitionSubscribedShows sorts pinned and compact folders according to active sort`() {
+        val pOld = mockPodcast("p-old", title = "Old Show", latestPubDate = 1000L)
+        val pNew = mockPodcast("p-new", title = "New Show", latestPubDate = 5000L)
+        val podcasts = listOf(pNew, pOld)
+
+        val fShelfZ = SubscriptionFolder(
+            id = "f-z",
+            name = "Zeta Shelf",
+            displaySize = FolderDisplaySize.SHELF,
+            podcastIds = listOf("p-old"), // max pub date 1000L
+        )
+        val fShelfA = SubscriptionFolder(
+            id = "f-a",
+            name = "Alpha Shelf",
+            displaySize = FolderDisplaySize.SHELF,
+            podcastIds = listOf("p-new"), // max pub date 5000L
+        )
+        val fCompactZ = SubscriptionFolder(
+            id = "c-z",
+            name = "Zeta Compact",
+            displaySize = FolderDisplaySize.COMPACT,
+            podcastIds = listOf("p-old"),
+        )
+        val fCompactA = SubscriptionFolder(
+            id = "c-a",
+            name = "Alpha Compact",
+            displaySize = FolderDisplaySize.COMPACT,
+            podcastIds = listOf("p-new"),
+        )
+
+        val allFolders = listOf(fShelfZ, fShelfA, fCompactZ, fCompactA)
+
+        // 1. RecentlyUpdated: newest episode date first
+        val recentPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = allFolders,
+            sort = SubscriptionSort.RecentlyUpdated,
+        )
+        assertEquals(listOf("f-a", "f-z"), recentPartition.pinnedFolders.map { it.id })
+        assertEquals(listOf("c-a", "c-z"), recentPartition.compactFolders.map { it.id })
+
+        // 2. Alphabetical: A-Z by name
+        val alphaPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = allFolders,
+            sort = SubscriptionSort.Alphabetical,
+        )
+        assertEquals(listOf("f-a", "f-z"), alphaPartition.pinnedFolders.map { it.id })
+        assertEquals(listOf("c-a", "c-z"), alphaPartition.compactFolders.map { it.id })
+    }
+
+    @Test
+    fun `hasFolderOverflowNew and hasAnyFolderShowNew detect new episodes correctly`() {
+        val showWithNew = mockPodcast("p-new", rssHasNewEpisodes = true)
+        val showWithoutNew = mockPodcast("p-old", rssHasNewEpisodes = false)
+
+        val lastSeenEpisodes = mapOf("p-old" to "ep-p-old")
+
+        // Overflow shows detection
+        val overflowWithNew = listOf(showWithoutNew, showWithNew)
+        val overflowWithoutNew = listOf(showWithoutNew)
+
+        assertTrue(hasFolderOverflowNew(overflowWithNew, lastSeenEpisodes))
+        assertFalse(hasFolderOverflowNew(overflowWithoutNew, lastSeenEpisodes))
+
+        // Any folder show detection (for 1x1 compact folders)
+        assertTrue(hasAnyFolderShowNew(listOf(showWithNew), lastSeenEpisodes))
+        assertFalse(hasAnyFolderShowNew(listOf(showWithoutNew), lastSeenEpisodes))
     }
 }

@@ -1,5 +1,7 @@
 package cx.aswin.boxlore.feature.library.subscriptions
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -27,20 +29,38 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import cx.aswin.boxlore.core.designsystem.components.NewEpisodeBadge
 import cx.aswin.boxlore.core.designsystem.components.OptimizedImage
 import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
+import cx.aswin.boxlore.core.model.isLatestEpisodeNew
+import cx.aswin.boxlore.feature.library.LocalLastSeenEpisodes
+
+/**
+ * Callbacks for interacting with folder cards in the Subscriptions grid.
+ */
+internal data class FolderCardActions(
+    val onPodcastClick: (String) -> Unit,
+    val onFolderClick: (String) -> Unit,
+    val onFolderLongClick: (SubscriptionFolder) -> Unit = {},
+)
 
 /**
  * Pinned enlarged folder card spanning full grid width (SHELF 3×1, PANEL 3×2, SHOWCASE 3×3).
@@ -52,14 +72,16 @@ import cx.aswin.boxlore.core.model.SubscriptionFolder
 internal fun PinnedEnlargedFolderCard(
     folder: SubscriptionFolder,
     podcasts: List<Podcast>,
-    onPodcastClick: (String) -> Unit,
-    onFolderClick: (String) -> Unit,
-    onFolderLongClick: (SubscriptionFolder) -> Unit,
+    actions: FolderCardActions,
     modifier: Modifier = Modifier,
 ) {
+    val lastSeenEpisodes = LocalLastSeenEpisodes.current
     val shape = RoundedCornerShape(18.dp)
     val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
     val slots = calculateFolderSlots(podcasts, folder.displaySize)
+    val hasOverflowNew = remember(slots.overflowShows, lastSeenEpisodes) {
+        hasFolderOverflowNew(slots.overflowShows, lastSeenEpisodes)
+    }
 
     Surface(
         shape = shape,
@@ -68,8 +90,8 @@ internal fun PinnedEnlargedFolderCard(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
-                onClick = { onFolderClick(folder.id) },
-                onLongClick = { onFolderLongClick(folder) },
+                onClick = { actions.onFolderClick(folder.id) },
+                onLongClick = { actions.onFolderLongClick(folder) },
             ),
     ) {
         Column(
@@ -78,73 +100,105 @@ internal fun PinnedEnlargedFolderCard(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // Header: Icon, Folder Name, Show Count, Chevron (Click to expand folder)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .combinedClickable(
-                        onClick = { onFolderClick(folder.id) },
-                        onLongClick = { onFolderLongClick(folder) },
-                    )
-                    .padding(vertical = 4.dp, horizontal = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = folderIcon,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = folder.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = GoogleSansWeight.bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = if (podcasts.size == 1) "1 show" else "${podcasts.size} shows",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
-                    contentDescription = "Open folder",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp),
-                )
-            }
+            PinnedFolderHeader(
+                folder = folder,
+                podcastsCount = podcasts.size,
+                folderIcon = folderIcon,
+                hasOverflowNew = hasOverflowNew,
+                onFolderClick = actions.onFolderClick,
+                onFolderLongClick = actions.onFolderLongClick,
+            )
 
             // Grid of directly clickable covers
             if (podcasts.isEmpty()) {
                 EmptyFolderPlaceholder(
-                    onAddShowsClick = { onFolderClick(folder.id) },
+                    onAddShowsClick = { actions.onFolderClick(folder.id) },
                 )
             } else {
                 FolderCoversGrid(
                     slots = slots,
                     columns = folder.displaySize.spanCols,
-                    onPodcastClick = onPodcastClick,
-                    onOverflowClick = { onFolderClick(folder.id) },
+                    lastSeenEpisodes = lastSeenEpisodes,
+                    onPodcastClick = actions.onPodcastClick,
+                    onOverflowClick = { actions.onFolderClick(folder.id) },
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PinnedFolderHeader(
+    folder: SubscriptionFolder,
+    podcastsCount: Int,
+    folderIcon: ImageVector,
+    hasOverflowNew: Boolean,
+    onFolderClick: (String) -> Unit,
+    onFolderLongClick: (SubscriptionFolder) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .combinedClickable(
+                onClick = { onFolderClick(folder.id) },
+                onLongClick = { onFolderLongClick(folder) },
+            )
+            .padding(vertical = 4.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+            modifier = Modifier.size(32.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = folderIcon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = folder.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = GoogleSansWeight.bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (hasOverflowNew) {
+                    Box(modifier = Modifier.size(width = 38.dp, height = 22.dp)) {
+                        NewEpisodeBadge()
+                    }
+                }
+            }
+            Text(
+                text = if (podcastsCount == 1) "1 show" else "$podcastsCount shows",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = "Open folder",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
@@ -155,6 +209,7 @@ internal fun PinnedEnlargedFolderCard(
 private fun FolderCoversGrid(
     slots: FolderSlots,
     columns: Int,
+    lastSeenEpisodes: Map<String, String>,
     onPodcastClick: (String) -> Unit,
     onOverflowClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -175,8 +230,12 @@ private fun FolderCoversGrid(
                     val itemIndex = rowIndex * columns + colIndex
                     if (itemIndex < slots.visibleShows.size) {
                         val podcast = slots.visibleShows[itemIndex]
+                        val isNew = remember(podcast, lastSeenEpisodes) {
+                            podcast.isLatestEpisodeNew(lastSeenEpisodes[podcast.id])
+                        }
                         DirectClickableShowCover(
                             podcast = podcast,
+                            hasNewEpisode = isNew,
                             onClick = { onPodcastClick(podcast.id) },
                             modifier = Modifier.weight(1f),
                         )
@@ -207,6 +266,7 @@ private fun FolderCoversGrid(
 @Composable
 private fun DirectClickableShowCover(
     podcast: Podcast,
+    hasNewEpisode: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -229,6 +289,9 @@ private fun DirectClickableShowCover(
                 ArtworkTitleFallback(title = podcast.title)
             },
         )
+        if (hasNewEpisode) {
+            NewEpisodeBadge()
+        }
     }
 }
 
@@ -319,35 +382,70 @@ private fun MiniCover(podcast: Podcast, modifier: Modifier = Modifier) {
 internal fun Compact1x1FolderCard(
     folder: SubscriptionFolder,
     podcasts: List<Podcast>,
-    onPodcastClick: (String) -> Unit,
-    onFolderClick: (String) -> Unit,
-    onFolderLongClick: (SubscriptionFolder) -> Unit,
+    actions: FolderCardActions,
     modifier: Modifier = Modifier,
+    isDragging: Boolean = false,
+    dragModifier: Modifier = Modifier,
 ) {
+    val lastSeenEpisodes = LocalLastSeenEpisodes.current
+    val hasAnyNew = remember(podcasts, lastSeenEpisodes) {
+        hasAnyFolderShowNew(podcasts, lastSeenEpisodes)
+    }
     val shape = RoundedCornerShape(14.dp)
+    val dragScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.04f else 1f,
+        label = "compactFolderDragScale",
+    )
+    val dragElevation by animateDpAsState(
+        targetValue = if (isDragging) 8.dp else 0.dp,
+        label = "compactFolderDragElevation",
+    )
 
-    Surface(
-        shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+    Box(
         modifier = modifier
+            .then(dragModifier)
             .fillMaxWidth()
-            .aspectRatio(1f),
+            .aspectRatio(1f)
+            .zIndex(if (isDragging) 1f else 0f)
+            .graphicsLayer {
+                scaleX = dragScale
+                scaleY = dragScale
+                this.shape = shape
+                clip = true
+            }
+            .shadow(elevation = dragElevation, shape = shape, clip = false),
     ) {
-        if (!folder.effectiveShowPodcastGrid) {
-            CompactFolderIconContent(
-                folder = folder,
-                podcastCount = podcasts.size,
-                onFolderClick = onFolderClick,
-                onFolderLongClick = onFolderLongClick,
-            )
-        } else {
-            CompactPodcastGridContent(
-                folder = folder,
-                podcasts = podcasts,
-                onPodcastClick = onPodcastClick,
-                onFolderClick = onFolderClick,
-                onFolderLongClick = onFolderLongClick,
+        Surface(
+            shape = shape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            border = if (hasAnyNew) {
+                BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.85f))
+            } else {
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            },
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            if (!folder.effectiveShowPodcastGrid) {
+                CompactFolderIconContent(
+                    folder = folder,
+                    podcastCount = podcasts.size,
+                    onFolderClick = actions.onFolderClick,
+                    onFolderLongClick = actions.onFolderLongClick,
+                )
+            } else {
+                CompactPodcastGridContent(
+                    folder = folder,
+                    podcasts = podcasts,
+                    onPodcastClick = actions.onPodcastClick,
+                    onFolderClick = actions.onFolderClick,
+                    onFolderLongClick = actions.onFolderLongClick,
+                )
+            }
+        }
+
+        if (hasAnyNew) {
+            NewEpisodeBadge(
+                modifier = Modifier.zIndex(2f),
             )
         }
     }

@@ -3,6 +3,8 @@ package cx.aswin.boxlore.feature.library.subscriptions
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
+import cx.aswin.boxlore.core.model.isLatestEpisodeNew
+import cx.aswin.boxlore.feature.library.SubscriptionSort
 
 /**
  * Slot allocation result for a folder card in the Subscriptions grid.
@@ -17,7 +19,10 @@ internal data class FolderSlots(
 }
 
 /**
- * Result of partitioning subscribed podcasts into folder members and unfiled shows.
+ * Result of partitioning subscribed podcasts into:
+ * 1. Pinned enlarged folders (pinned to top of the grid).
+ * 2. Compact 1×1 folders (can be placed in the grid).
+ * 3. Unfiled podcasts (podcasts that do not belong to any active folder).
  */
 internal data class PartitionedSubscriptionItems(
     val pinnedFolders: List<SubscriptionFolder>,
@@ -34,6 +39,63 @@ internal data class ShowsFolderItems(
     val compactFolders: List<SubscriptionFolder>,
     val podcastsByFolderId: Map<String, List<Podcast>>,
 )
+
+/**
+ * Unified item representation for the 1×1 slots in the Subscriptions grid,
+ * allowing 1×1 compact folders and unfiled podcasts to share the same drag-reorderable sequence.
+ */
+internal sealed class SubscriptionGridItem {
+    abstract val key: String
+
+    data class PodcastItem(
+        val podcast: Podcast,
+    ) : SubscriptionGridItem() {
+        override val key: String get() = podcast.id
+    }
+
+    data class FolderItem(
+        val folder: SubscriptionFolder,
+        val podcasts: List<Podcast>,
+    ) : SubscriptionGridItem() {
+        override val key: String get() = "folder:${folder.id}"
+    }
+}
+
+/**
+ * Builds the unified sequence of 1×1 grid items (compact folders and unfiled podcasts).
+ * When in Manual sort mode, items follow [manualOrder] with unplaced items appended.
+ */
+internal fun buildUnifiedGridItems(
+    compactFolders: List<SubscriptionFolder>,
+    unfiledPodcasts: List<Podcast>,
+    podcastsByFolderId: Map<String, List<Podcast>>,
+    manualOrder: List<String> = emptyList(),
+    isManualSort: Boolean = false,
+): List<SubscriptionGridItem> {
+    val podcastItems = unfiledPodcasts.map { SubscriptionGridItem.PodcastItem(it) }
+    val folderItems = compactFolders.map { folder ->
+        SubscriptionGridItem.FolderItem(folder, podcastsByFolderId[folder.id].orEmpty())
+    }
+
+    val allItems = folderItems + podcastItems
+    if (!isManualSort || manualOrder.isEmpty()) {
+        return allItems
+    }
+
+    val itemsByKey = allItems.associateBy { it.key }
+    val seen = LinkedHashSet<String>()
+    val result = ArrayList<SubscriptionGridItem>(allItems.size)
+
+    for (key in manualOrder) {
+        val item = itemsByKey[key] ?: continue
+        if (seen.add(key)) {
+            result.add(item)
+        }
+    }
+
+    allItems.filter { it.key !in seen }.forEach { result.add(it) }
+    return result
+}
 
 /**
  * Calculates the visible show covers and overflow shows for a given folder card display size.
@@ -69,26 +131,45 @@ internal fun calculateFolderSlots(
 }
 
 /**
- * Partitions subscribed podcasts into:
- * 1. Pinned enlarged folders (pinned to top of the grid).
- * 2. Compact 1×1 folders (can be placed in the grid).
- * 3. Unfiled podcasts (podcasts that do not belong to any active folder).
+ * Partitions subscribed podcasts into pinned enlarged folders, compact 1×1 folders, and unfiled shows.
+ * In-folder shows are automatically sorted to match the active list order of [podcasts].
+ * Pinned folders are sorted according to [sort] (e.g. freshest episode date for RecentlyUpdated, A-Z for Alphabetical).
  */
 internal fun partitionSubscribedShows(
     podcasts: List<Podcast>,
     folders: List<SubscriptionFolder>,
+    sort: SubscriptionSort? = null,
 ): PartitionedSubscriptionItems {
     val podcastsById = podcasts.associateBy { it.id }
 
     val podcastsByFolderId = folders.associate { folder ->
-        folder.id to folder.podcastIds.mapNotNull(podcastsById::get)
+        val memberIds = folder.podcastIds.toSet()
+        val sortedMembers = podcasts.filter { it.id in memberIds }
+        val missingMembers = folder.podcastIds.filter { it !in memberIds }.mapNotNull(podcastsById::get)
+        folder.id to (sortedMembers + missingMembers)
     }
 
     val filedPodcastIds = folders.flatMap { it.podcastIds }.toSet()
     val unfiledPodcasts = podcasts.filter { it.id !in filedPodcastIds }
 
-    val pinnedFolders = folders.filter { it.displaySize.isPinnedToTop }
-    val compactFolders = folders.filter { !it.displaySize.isPinnedToTop }
+    val pinnedFoldersRaw = folders.filter { it.displaySize.isPinnedToTop }
+    val compactFoldersRaw = folders.filter { !it.displaySize.isPinnedToTop }
+
+    val sortFolder: (SubscriptionFolder) -> Long = { folder ->
+        podcastsByFolderId[folder.id].orEmpty().maxOfOrNull { it.latestEpisode?.publishedDate ?: 0L } ?: 0L
+    }
+
+    val pinnedFolders = when (sort) {
+        SubscriptionSort.Alphabetical -> pinnedFoldersRaw.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        SubscriptionSort.RecentlyUpdated -> pinnedFoldersRaw.sortedByDescending(sortFolder)
+        else -> pinnedFoldersRaw
+    }
+
+    val compactFolders = when (sort) {
+        SubscriptionSort.Alphabetical -> compactFoldersRaw.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        SubscriptionSort.RecentlyUpdated -> compactFoldersRaw.sortedByDescending(sortFolder)
+        else -> compactFoldersRaw
+    }
 
     return PartitionedSubscriptionItems(
         pinnedFolders = pinnedFolders,
@@ -97,6 +178,22 @@ internal fun partitionSubscribedShows(
         podcastsByFolderId = podcastsByFolderId,
     )
 }
+
+/**
+ * Returns true if any show within the overflow cluster has a new episode.
+ */
+internal fun hasFolderOverflowNew(
+    overflowShows: List<Podcast>,
+    lastSeenEpisodes: Map<String, String>,
+): Boolean = overflowShows.any { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) }
+
+/**
+ * Returns true if any show within the folder has a new episode.
+ */
+internal fun hasAnyFolderShowNew(
+    podcasts: List<Podcast>,
+    lastSeenEpisodes: Map<String, String>,
+): Boolean = podcasts.any { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) }
 
 /**
  * Filters folders by the selected genre chip.
