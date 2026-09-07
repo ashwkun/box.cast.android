@@ -226,13 +226,13 @@ private fun FolderCoversGrid(
                             modifier = Modifier.weight(1f),
                         )
                     } else if (itemIndex == slots.visibleShows.size && slots.hasOverflow) {
-                        val hasOverflowNew = remember(slots.overflowShows, lastSeenEpisodes) {
-                            hasFolderOverflowNew(slots.overflowShows, lastSeenEpisodes)
+                        val overflowNewCount = remember(slots.overflowShows, lastSeenEpisodes) {
+                            countFolderOverflowNew(slots.overflowShows, lastSeenEpisodes)
                         }
                         FolderOverflowSlotCard(
                             overflowShows = slots.overflowShows,
                             overflowCount = slots.overflowCount,
-                            hasNewEpisode = hasOverflowNew,
+                            newEpisodesCount = overflowNewCount,
                             onClick = onOverflowClick,
                             modifier = Modifier.weight(1f),
                         )
@@ -286,14 +286,15 @@ private fun DirectClickableShowCover(
 }
 
 /**
- * Overflow slot representing a 2×2 mini cluster of remaining shows with "+N" badge.
+ * Renders the overflow slot with a 2×2 mini collage, dark scrim, bold `+N` count,
+ * and an optional "N new episodes" chip below `+N` when unplayed new episodes exist.
  */
 @Composable
 private fun FolderOverflowSlotCard(
     overflowShows: List<Podcast>,
     overflowCount: Int,
     onClick: () -> Unit,
-    hasNewEpisode: Boolean = false,
+    newEpisodesCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -303,7 +304,7 @@ private fun FolderOverflowSlotCard(
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest)
             .then(
-                if (hasNewEpisode) {
+                if (newEpisodesCount > 0) {
                     Modifier.border(
                         BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)),
                         shape,
@@ -345,24 +346,62 @@ private fun FolderOverflowSlotCard(
             }
         }
 
-        // Dark scrim + bold count
+        // Dark scrim + bold count and new episodes chip
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.55f)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "+$overflowCount",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = GoogleSansWeight.bold,
-                color = Color.White,
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            ) {
+                Text(
+                    text = "+$overflowCount",
+                    style = if (newEpisodesCount > 0) {
+                        MaterialTheme.typography.titleMedium
+                    } else {
+                        MaterialTheme.typography.titleLarge
+                    },
+                    fontWeight = GoogleSansWeight.bold,
+                    color = Color.White,
+                )
+                if (newEpisodesCount > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    OverflowNewEpisodesChip(newCount = newEpisodesCount)
+                }
+            }
         }
+    }
+}
 
-        if (hasNewEpisode) {
-            NewEpisodeBadge()
-        }
+@Composable
+private fun OverflowNewEpisodesChip(
+    newCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    val text = if (newCount == 1) "1 new episode" else "$newCount new episodes"
+    Surface(
+        shape = RoundedCornerShape(100.dp),
+        color = MaterialTheme.colorScheme.primary,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 7.5.sp,
+                fontWeight = GoogleSansWeight.bold,
+                letterSpacing = 0.2.sp,
+                lineHeight = 9.sp,
+            ),
+            color = MaterialTheme.colorScheme.onPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
     }
 }
 

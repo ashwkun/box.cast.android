@@ -6,6 +6,7 @@ import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.feature.library.subscriptions.buildUnifiedGridItems
 import cx.aswin.boxlore.feature.library.subscriptions.calculateFolderSlots
+import cx.aswin.boxlore.feature.library.subscriptions.countFolderOverflowNew
 import cx.aswin.boxlore.feature.library.subscriptions.filterFoldersByGenre
 import cx.aswin.boxlore.feature.library.subscriptions.hasAnyFolderShowNew
 import cx.aswin.boxlore.feature.library.subscriptions.hasFolderOverflowNew
@@ -353,9 +354,13 @@ class SubscriptionFolderLayoutLogicTest {
         // Overflow shows detection
         val overflowWithNew = listOf(showWithoutNew, showWithNew)
         val overflowWithoutNew = listOf(showWithoutNew)
+        val overflowWithMultipleNew = listOf(showWithNew, showWithNew.copy(id = "p-new2"), showWithoutNew)
 
         assertTrue(hasFolderOverflowNew(overflowWithNew, lastSeenEpisodes))
         assertFalse(hasFolderOverflowNew(overflowWithoutNew, lastSeenEpisodes))
+        assertEquals(1, countFolderOverflowNew(overflowWithNew, lastSeenEpisodes))
+        assertEquals(0, countFolderOverflowNew(overflowWithoutNew, lastSeenEpisodes))
+        assertEquals(2, countFolderOverflowNew(overflowWithMultipleNew, lastSeenEpisodes))
 
         // Any folder show detection (for 1x1 compact folders)
         assertTrue(hasAnyFolderShowNew(listOf(showWithNew), lastSeenEpisodes))

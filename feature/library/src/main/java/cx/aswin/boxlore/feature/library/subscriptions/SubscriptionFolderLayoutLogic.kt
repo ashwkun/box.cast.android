@@ -180,12 +180,20 @@ internal fun partitionSubscribedShows(
 }
 
 /**
+ * Returns the count of shows within the overflow cluster that have a new episode.
+ */
+internal fun countFolderOverflowNew(
+    overflowShows: List<Podcast>,
+    lastSeenEpisodes: Map<String, String>,
+): Int = overflowShows.count { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) }
+
+/**
  * Returns true if any show within the overflow cluster has a new episode.
  */
 internal fun hasFolderOverflowNew(
     overflowShows: List<Podcast>,
     lastSeenEpisodes: Map<String, String>,
-): Boolean = overflowShows.any { it.isLatestEpisodeNew(lastSeenEpisodes[it.id]) }
+): Boolean = countFolderOverflowNew(overflowShows, lastSeenEpisodes) > 0
 
 /**
  * Returns true if any show within the folder has a new episode.
