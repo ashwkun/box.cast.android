@@ -1,34 +1,49 @@
 package cx.aswin.boxlore.feature.library
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import cx.aswin.boxlore.core.designsystem.icon.GenreSuggestion
 import cx.aswin.boxlore.core.designsystem.icon.buildFolderSuggestionsWithLibrary
 import cx.aswin.boxlore.core.designsystem.icon.filterGenreSuggestions
 import cx.aswin.boxlore.core.designsystem.icon.findExactGenreIconKey
+import cx.aswin.boxlore.core.designsystem.theme.ExpressiveShapes
+import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 
@@ -44,6 +59,7 @@ internal data class FolderEditFormState(
     val effectiveLinkedGenre: String?,
     val suggestedGenres: List<String>,
     val filteredSuggestions: List<GenreSuggestion>,
+    val isAutoOrganizeEnabled: Boolean = false,
 )
 
 internal data class FolderEditFormActions(
@@ -59,6 +75,7 @@ internal data class FolderEditFormActions(
     val onSave: () -> Unit,
     val onClose: () -> Unit,
     val onDelete: (() -> Unit)?,
+    val onAutoOrganizeClick: (() -> Unit)? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,6 +83,8 @@ internal data class FolderEditFormActions(
 fun FolderEditSheet(
     initialFolder: SubscriptionFolder? = null,
     suggestedGenres: List<String> = emptyList(),
+    isAutoOrganizeEnabled: Boolean = false,
+    onAutoOrganizeClick: (() -> Unit)? = null,
     onDismissRequest: () -> Unit,
     onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
     onDelete: (() -> Unit)? = null,
@@ -74,6 +93,8 @@ fun FolderEditSheet(
     val (formState, formActions) = rememberFolderEditStateAndActions(
         initialFolder = initialFolder,
         suggestedGenres = suggestedGenres,
+        isAutoOrganizeEnabled = isAutoOrganizeEnabled,
+        onAutoOrganizeClick = onAutoOrganizeClick,
         onDismissRequest = onDismissRequest,
         onSave = onSave,
         onDelete = onDelete,
@@ -98,6 +119,8 @@ fun FolderEditSheet(
 private fun rememberFolderEditStateAndActions(
     initialFolder: SubscriptionFolder?,
     suggestedGenres: List<String>,
+    isAutoOrganizeEnabled: Boolean,
+    onAutoOrganizeClick: (() -> Unit)?,
     onDismissRequest: () -> Unit,
     onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
     onDelete: (() -> Unit)?,
@@ -149,6 +172,7 @@ private fun rememberFolderEditStateAndActions(
         effectiveLinkedGenre = effectiveLinkedGenre,
         suggestedGenres = suggestedGenres,
         filteredSuggestions = filteredSuggestions,
+        isAutoOrganizeEnabled = isAutoOrganizeEnabled,
     )
 
     val fields = remember(initialFolder) {
@@ -167,6 +191,7 @@ private fun rememberFolderEditStateAndActions(
         fields = fields,
         allFolderSuggestions = allFolderSuggestions,
         focusManager = focusManager,
+        onAutoOrganizeClick = onAutoOrganizeClick,
         onDismissRequest = onDismissRequest,
         onSave = onSave,
         onDelete = onDelete,
@@ -189,6 +214,7 @@ private fun rememberFolderEditFormActions(
     fields: FolderEditFormFields,
     allFolderSuggestions: List<GenreSuggestion>,
     focusManager: FocusManager,
+    onAutoOrganizeClick: (() -> Unit)?,
     onDismissRequest: () -> Unit,
     onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
     onDelete: (() -> Unit)?,
@@ -250,6 +276,7 @@ private fun rememberFolderEditFormActions(
     },
     onClose = onDismissRequest,
     onDelete = onDelete,
+    onAutoOrganizeClick = onAutoOrganizeClick,
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -270,19 +297,18 @@ internal fun FolderEditSheetContent(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                FolderEditTopBar(
-                    isEditing = state.isEditing,
-                    canSave = state.canSave,
-                    onClose = actions.onClose,
-                    onDelete = actions.onDelete,
-                    onSave = actions.onSave,
-                )
+            FolderEditTopBar(
+                isEditing = state.isEditing,
+                canSave = state.canSave,
+                onClose = actions.onClose,
+                onDelete = actions.onDelete,
+                onSave = actions.onSave,
+            )
 
-                FolderBetaFeedbackNotice()
+            if (!state.isEditing && !state.isAutoOrganizeEnabled && actions.onAutoOrganizeClick != null) {
+                AutoOrganizeSlimNudge(
+                    onClick = actions.onAutoOrganizeClick,
+                )
             }
 
             FolderIdentityHeader(
@@ -336,6 +362,91 @@ internal fun FolderEditSheetContent(
                     onSelectLinkedGenre = actions.onSelectLinkedGenre,
                 ),
             )
+
+            FolderBetaFeedbackNotice()
+        }
+    }
+}
+
+@Composable
+private fun AutoOrganizeSlimNudge(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(17.dp),
+                        )
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(
+                        text = "Auto-organize library",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = GoogleSansWeight.bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "Group shows by genre automatically",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Surface(
+                onClick = onClick,
+                shape = ExpressiveShapes.Pill,
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "Auto",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = GoogleSansWeight.bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
         }
     }
 }

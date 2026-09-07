@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
@@ -27,9 +26,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -147,13 +143,13 @@ internal fun FolderBetaFeedbackNotice(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -217,9 +213,9 @@ internal fun FolderIdentityHeader(
         shape = RoundedCornerShape(16.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.Words,
@@ -310,8 +306,8 @@ internal fun FolderIconPickerRow(
 
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
@@ -524,12 +520,12 @@ private fun FolderSizeCard(
     val borderColor = if (isSelected) {
         MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
     }
     val containerColor = if (isSelected) {
         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
     } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
+        MaterialTheme.colorScheme.surfaceContainer
     }
 
     Surface(
@@ -577,19 +573,17 @@ internal fun FolderCompactCoverStyleCard(
     val isGridSelected = showPodcastGrid || !hasIcon
     val iconVector = GenreIcons.iconOrFallback(selectedIconKey, null)
 
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(
                 text = "1×1 Cover style",
@@ -644,14 +638,14 @@ private fun CoverStyleOptionTab(
         color = if (isSelected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
         } else {
-            MaterialTheme.colorScheme.surfaceContainer
+            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
         },
         border = BorderStroke(
             width = if (isSelected) 1.5.dp else 1.dp,
             color = if (isSelected) {
                 MaterialTheme.colorScheme.primary
             } else {
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
             },
         ),
     ) {
@@ -704,8 +698,8 @@ internal fun FolderOrganizationCard(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         modifier = modifier.fillMaxWidth(),
     ) {
         Column(
@@ -732,28 +726,6 @@ internal fun FolderOrganizationCard(
                     suggestedGenres = state.suggestedGenres,
                     linkedGenre = state.linkedGenre,
                     onSelectLinkedGenre = state.onSelectLinkedGenre,
-                )
-            }
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.Sort,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = "Tip: You can auto-organize your entire library into genre folders from the Sort menu in the top bar.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

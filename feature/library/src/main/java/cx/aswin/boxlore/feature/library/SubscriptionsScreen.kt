@@ -547,6 +547,12 @@ fun SubscriptionsScreen(
                 FolderEditSheet(
                     initialFolder = editingFolder,
                     suggestedGenres = suggestedGenres,
+                    isAutoOrganizeEnabled = autoOrganizeFolders,
+                    onAutoOrganizeClick = {
+                        showFolderEditSheet = false
+                        editingFolder = null
+                        pendingAutoOrganizeTarget = true
+                    },
                     onDismissRequest = {
                         showFolderEditSheet = false
                         editingFolder = null
