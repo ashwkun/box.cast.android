@@ -58,5 +58,15 @@ enum class FolderDisplaySize(
         dimensionsLabel = "3×3",
         title = "Showcase",
         subtitle = "Max 3×3 • Full grid",
-    ),
+    );
+
+    val isPinnedToTop: Boolean
+        get() = this != COMPACT
+
+    val placementLabel: String
+        get() = if (this == COMPACT) {
+            "Can be placed anywhere in the grid"
+        } else {
+            "Pinned to the top of the page"
+        }
 }

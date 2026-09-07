@@ -433,4 +433,24 @@ class FolderEditLogicTest {
         onNameChange("comedy")
         assertEquals("star", selectedIconKey) // Preserves manual choice
     }
+
+    @Test
+    fun folderDisplaySize_placementProperties() {
+        assertFalse(FolderDisplaySize.COMPACT.isPinnedToTop)
+        assertEquals("Can be placed anywhere in the grid", FolderDisplaySize.COMPACT.placementLabel)
+
+        val nonCompactSizes = listOf(
+            FolderDisplaySize.WIDE,
+            FolderDisplaySize.FEATURED,
+            FolderDisplaySize.LARGE,
+            FolderDisplaySize.SHELF,
+            FolderDisplaySize.PANEL,
+            FolderDisplaySize.SHOWCASE,
+        )
+
+        nonCompactSizes.forEach { size ->
+            assertTrue(size.isPinnedToTop)
+            assertEquals("Pinned to the top of the page", size.placementLabel)
+        }
+    }
 }

@@ -118,4 +118,24 @@ class SubscriptionFolderTest {
         )
         assertFalse(iconFolderWithoutGrid.effectiveShowPodcastGrid)
     }
+
+    @Test
+    fun `placement properties differentiate compact and pinned sizes`() {
+        assertFalse(FolderDisplaySize.COMPACT.isPinnedToTop)
+        assertEquals("Can be placed anywhere in the grid", FolderDisplaySize.COMPACT.placementLabel)
+
+        val pinnedSizes = listOf(
+            FolderDisplaySize.WIDE,
+            FolderDisplaySize.FEATURED,
+            FolderDisplaySize.LARGE,
+            FolderDisplaySize.SHELF,
+            FolderDisplaySize.PANEL,
+            FolderDisplaySize.SHOWCASE,
+        )
+
+        pinnedSizes.forEach { size ->
+            assertTrue(size.isPinnedToTop, "Expected ${size.name} to be pinned to top")
+            assertEquals("Pinned to the top of the page", size.placementLabel)
+        }
+    }
 }
