@@ -79,6 +79,7 @@ import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionSortSheet
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionsTabSelectorFab
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionsTabSelectorFabHeight
 import cx.aswin.boxlore.feature.library.subscriptions.extractDistinctGenres
+import cx.aswin.boxlore.feature.library.subscriptions.resolveSortedFolderShows
 import kotlinx.coroutines.launch
 
 val LocalLastSeenEpisodes = compositionLocalOf<Map<String, String>> { emptyMap() }
@@ -506,10 +507,21 @@ fun SubscriptionsScreen(
 
             val activeFolder = folders.find { it.id == activeFolderId }
             if (activeFolder != null) {
-                val allPodcasts = (uiState as? LibraryUiState.Success)?.subscribedPodcasts.orEmpty()
-                val activeFolderShows = remember(activeFolder, allPodcasts) {
-                    val podcastsById = allPodcasts.associateBy { it.id }
-                    activeFolder.podcastIds.mapNotNull(podcastsById::get)
+                val allPodcasts = successState?.subscribedPodcasts.orEmpty()
+                val activeFolderShows = remember(
+                    activeFolder,
+                    allPodcasts,
+                    intraFolderSort,
+                    successState?.currentSort,
+                    successState?.smartOrderIds,
+                ) {
+                    resolveSortedFolderShows(
+                        folder = activeFolder,
+                        podcasts = allPodcasts,
+                        intraFolderSort = intraFolderSort,
+                        sort = successState?.currentSort,
+                        smartOrderIds = successState?.smartOrderIds.orEmpty(),
+                    )
                 }
                 SubscriptionFolderDialog(
                     folder = activeFolder,

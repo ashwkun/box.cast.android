@@ -14,6 +14,7 @@ import cx.aswin.boxlore.feature.library.subscriptions.filterFoldersByGenre
 import cx.aswin.boxlore.feature.library.subscriptions.hasAnyFolderShowNew
 import cx.aswin.boxlore.feature.library.subscriptions.hasFolderOverflowNew
 import cx.aswin.boxlore.feature.library.subscriptions.partitionSubscribedShows
+import cx.aswin.boxlore.feature.library.subscriptions.resolveSortedFolderShows
 import cx.aswin.boxlore.feature.library.subscriptions.truncateCompactFolderName
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -531,5 +532,70 @@ class SubscriptionFolderLayoutLogicTest {
             intraFolderSort = FolderIntraSort.Inherit,
         )
         assertEquals(listOf("p-b", "p-c", "p-a"), inheritAlpha.podcastsByFolderId["f-test"]?.map { it.id })
+    }
+
+    @Test
+    fun `resolveSortedFolderShows matches partitionSubscribedShows order in SmartRank and other sorts`() {
+        val pA = mockPodcast("p-a", title = "Zebra", latestPubDate = 1000L)
+        val pB = mockPodcast("p-b", title = "Apple", latestPubDate = 9000L)
+        val pC = mockPodcast("p-c", title = "Mango", latestPubDate = 5000L)
+        val podcasts = listOf(pA, pB, pC)
+        val folder = SubscriptionFolder(
+            id = "f-test",
+            name = "Test Folder",
+            displaySize = FolderDisplaySize.SHELF,
+            podcastIds = listOf("p-c", "p-a", "p-b"), // DB insertion/manual order: C, A, B
+        )
+        val smartOrder = listOf("p-a", "p-c", "p-b") // Smart rank order: A, C, B
+
+        // 1. In SmartRank mode (inheriting SubscriptionSort.SmartRank)
+        val smartPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder),
+            sort = SubscriptionSort.SmartRank,
+            intraFolderSort = FolderIntraSort.Inherit,
+            smartOrderIds = smartOrder,
+        )
+        val resolvedSmartShows = resolveSortedFolderShows(
+            folder = folder,
+            podcasts = podcasts,
+            intraFolderSort = FolderIntraSort.Inherit,
+            sort = SubscriptionSort.SmartRank,
+            smartOrderIds = smartOrder,
+        )
+        assertEquals(listOf("p-a", "p-c", "p-b"), resolvedSmartShows.map { it.id })
+        assertEquals(smartPartition.podcastsByFolderId["f-test"]?.map { it.id }, resolvedSmartShows.map { it.id })
+
+        // 2. In Alphabetical mode
+        val alphaPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder),
+            sort = SubscriptionSort.Alphabetical,
+            intraFolderSort = FolderIntraSort.Inherit,
+        )
+        val resolvedAlphaShows = resolveSortedFolderShows(
+            folder = folder,
+            podcasts = podcasts,
+            intraFolderSort = FolderIntraSort.Inherit,
+            sort = SubscriptionSort.Alphabetical,
+        )
+        assertEquals(listOf("p-b", "p-c", "p-a"), resolvedAlphaShows.map { it.id })
+        assertEquals(alphaPartition.podcastsByFolderId["f-test"]?.map { it.id }, resolvedAlphaShows.map { it.id })
+
+        // 3. In RecentlyUpdated mode
+        val recentPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder),
+            sort = SubscriptionSort.RecentlyUpdated,
+            intraFolderSort = FolderIntraSort.Inherit,
+        )
+        val resolvedRecentShows = resolveSortedFolderShows(
+            folder = folder,
+            podcasts = podcasts,
+            intraFolderSort = FolderIntraSort.Inherit,
+            sort = SubscriptionSort.RecentlyUpdated,
+        )
+        assertEquals(listOf("p-b", "p-c", "p-a"), resolvedRecentShows.map { it.id })
+        assertEquals(recentPartition.podcastsByFolderId["f-test"]?.map { it.id }, resolvedRecentShows.map { it.id })
     }
 }

@@ -218,7 +218,32 @@ internal fun partitionSubscribedShows(
     )
 }
 
-private fun resolveEffectiveIntraSort(
+/**
+ * Resolves and sorts member shows belonging to a [folder] according to [intraFolderSort] and [sort],
+ * matching the exact order displayed in the folder preview slots in the subscriptions grid.
+ */
+internal fun resolveSortedFolderShows(
+    folder: SubscriptionFolder,
+    podcasts: List<Podcast>,
+    intraFolderSort: FolderIntraSort = FolderIntraSort.Inherit,
+    sort: SubscriptionSort? = null,
+    smartOrderIds: List<String> = emptyList(),
+): List<Podcast> {
+    val podcastsById = podcasts.associateBy { it.id }
+    val effectiveIntraSort = resolveEffectiveIntraSort(intraFolderSort, sort)
+    val smartRankMap = if (smartOrderIds.isNotEmpty()) {
+        smartOrderIds.mapIndexed { index, id -> id to index }.toMap()
+    } else {
+        podcasts.mapIndexed { index, pod -> pod.id to index }.toMap()
+    }
+    val memberIds = folder.podcastIds.toSet()
+    val members = podcasts.filter { it.id in memberIds }
+    val missingMembers = folder.podcastIds.filter { it !in memberIds }.mapNotNull(podcastsById::get)
+    val allMembers = members + missingMembers
+    return sortFolderMembers(allMembers, effectiveIntraSort, smartRankMap, folder)
+}
+
+internal fun resolveEffectiveIntraSort(
     intraFolderSort: FolderIntraSort,
     sort: SubscriptionSort?,
 ): FolderIntraSort =
@@ -235,7 +260,7 @@ private fun resolveEffectiveIntraSort(
         intraFolderSort
     }
 
-private fun sortFolderMembers(
+internal fun sortFolderMembers(
     allMembers: List<Podcast>,
     effectiveIntraSort: FolderIntraSort,
     smartRankMap: Map<String, Int>,
@@ -380,22 +405,6 @@ internal fun filterFoldersByGenre(
     }
 }
 
-private fun genreTokenMatches(
-    candidate: String?,
-    selectedGenre: String,
-    resolvedLabel: String,
-    resolvedValue: String,
-): Boolean {
-    if (candidate == null) return false
-    val trimmed = candidate.trim()
-    val isTechSynonym = (selectedGenre.equals("Tech", ignoreCase = true) && trimmed.equals("Technology", ignoreCase = true)) ||
-        (selectedGenre.equals("Technology", ignoreCase = true) && trimmed.equals("Tech", ignoreCase = true))
-    return trimmed.equals(selectedGenre, ignoreCase = true) ||
-        trimmed.equals(resolvedValue, ignoreCase = true) ||
-        trimmed.equals(resolvedLabel, ignoreCase = true) ||
-        isTechSynonym
-}
-
 private fun folderMatchesGenre(
     folder: SubscriptionFolder,
     selectedGenre: String,
@@ -403,15 +412,28 @@ private fun folderMatchesGenre(
     resolvedValue: String,
     podcastsById: Map<String, Podcast>,
 ): Boolean {
-    val nameMatches = genreTokenMatches(folder.name, selectedGenre, resolvedLabel, resolvedValue)
-    val genreMatches = genreTokenMatches(folder.linkedGenre, selectedGenre, resolvedLabel, resolvedValue)
+    val matchesToken: (String?) -> Boolean = { candidate ->
+        if (candidate == null) {
+            false
+        } else {
+            val trimmed = candidate.trim()
+            val isTechSynonym = (selectedGenre.equals("Tech", ignoreCase = true) && trimmed.equals("Technology", ignoreCase = true)) ||
+                (selectedGenre.equals("Technology", ignoreCase = true) && trimmed.equals("Tech", ignoreCase = true))
+            trimmed.equals(selectedGenre, ignoreCase = true) ||
+                trimmed.equals(resolvedValue, ignoreCase = true) ||
+                trimmed.equals(resolvedLabel, ignoreCase = true) ||
+                isTechSynonym
+        }
+    }
+    val nameMatches = matchesToken(folder.name)
+    val genreMatches = matchesToken(folder.linkedGenre)
     if (nameMatches || genreMatches) return true
 
     return folder.podcastIds.any { podId ->
         val pod = podcastsById[podId] ?: return@any false
-        pod.effectiveGenre.split(",")
+        val genreListMatches = pod.effectiveGenre.split(",")
             .map { it.trim() }
-            .any { genreTokenMatches(it, selectedGenre, resolvedLabel, resolvedValue) } ||
-            genreTokenMatches(pod.genre, selectedGenre, resolvedLabel, resolvedValue)
+            .any(matchesToken)
+        genreListMatches || matchesToken(pod.genre)
     }
 }

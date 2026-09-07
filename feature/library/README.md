@@ -99,7 +99,7 @@ src/main/java/cx/aswin/boxlore/feature/library/
 - `SubscriptionFilterLogicTest` covers genre extract/filter (including hybrid custom tag frequency-first priority over catalog genres), custom icon resolution, sort labels, and chronological header buckets.
 - `DownloadModelsTest` covers download entity mapping, size/date formatting, and long-press multi-select (`longPressDownloadSelection`).
 - `FolderEditLogicTest` covers `FolderDisplaySize` placement properties (`isPinnedToTop`, `placementLabel`), optional icon fallback, genre quick-fill token extraction, auto-sync linked genre fallback, and `FakeFolderRepository` lifecycle.
-- `SubscriptionFolderLayoutLogicTest` covers folder slot allocation (visible covers + overflow count) across all display sizes, subscription partitioning into pinned, compact, and unfiled groups, genre-filtered folder visibility, in-folder sort matching, pinned and compact folder sort ordering, unified grid reorder item generation, and dual folder/overflow NEW episode badge logic (`hasFolderOverflowNew`, `hasAnyFolderShowNew`).
+- `SubscriptionFolderLayoutLogicTest` covers folder slot allocation (visible covers + overflow count) across all display sizes, subscription partitioning into pinned, compact, and unfiled groups, genre-filtered folder visibility, in-folder sort matching and dialog show resolution (`resolveSortedFolderShows`), pinned and compact folder sort ordering, unified grid reorder item generation, and dual folder/overflow NEW episode badge logic (`hasFolderOverflowNew`, `hasAnyFolderShowNew`).
 
 ```bash
 ./gradlew :feature:library:testDebugUnitTest
