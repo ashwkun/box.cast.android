@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streamlined JSON library restore with real-time show-by-show progress reporting and active wavy loader animation throughout feed downloads. ([#1050](https://github.com/boxcreate/boxlore/pull/1050)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Refactored post-restore notification card to a single dynamic button that triggers the system runtime permission dialog and refreshes on resume. ([#1050](https://github.com/boxcreate/boxlore/pull/1050)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Reset custom tags and icons to default catalog genres when unsubscribing from a show. ([#1055](https://github.com/boxcreate/boxlore/pull/1055)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
+- Prompt Material 3 confirmation dialog before removing downloaded episodes across Podcast Info, Episode Info, Expanded Player, and Downloaded Episodes screen (#1061). ([#1064](https://github.com/boxcreate/boxlore/pull/1064)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 
 <!-- readme-copy:start pr=1019
 ### Critical
@@ -148,6 +149,11 @@ readme-copy:end pr=1055 -->
 - **Custom Podcast Tags & Icons**: Assign custom tags and expressive icons to any subscribed show, seamlessly cross-linking them with your folders and filter chips.
 - **Full Backup & Restore**: Export and restore your complete library configuration—including folder definitions, show memberships, sorting preferences, and custom tags—with 100% fidelity.
 readme-copy:end pr=1059 -->
+
+<!-- readme-copy:start pr=1064
+### Improvements
+- Added a confirmation prompt when removing downloaded episodes to prevent accidental deletions.
+readme-copy:end pr=1064 -->
 ## [v0.0.24] - 2026-08-30
 
 ### Added

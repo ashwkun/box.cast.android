@@ -87,6 +87,7 @@ The app uses your listening activity—such as what you play, skip, and like—t
 </ul>
 <b>⚡ Improvements:</b>
 <ul align="left">
+<li>Added a confirmation prompt when removing downloaded episodes to prevent accidental deletions. <a href="https://github.com/boxcreate/boxlore/pull/1064"><img src="https://img.shields.io/badge/PR-1064-6750A4?style=flat-square" alt="PR #1064" height="18"/></a></li>
 <li>Added custom podcast tags and icons for subscribed shows in boxlore, with live chip preview, keyword suggestions, and priority filtering in Subscriptions. <a href="https://github.com/boxcreate/boxlore/pull/1055"><img src="https://img.shields.io/badge/PR-1055-6750A4?style=flat-square" alt="PR #1055" height="18"/></a></li>
 <li>Added real-time show progress and active animated loader when restoring library backups. <a href="https://github.com/boxcreate/boxlore/pull/1050"><img src="https://img.shields.io/badge/PR-1050-6750A4?style=flat-square" alt="PR #1050" height="18"/></a></li>
 <li>Streamlined notification permission prompt after backup restore to a single tap. <a href="https://github.com/boxcreate/boxlore/pull/1050"><img src="https://img.shields.io/badge/PR-1050-6750A4?style=flat-square" alt="PR #1050" height="18"/></a></li>
