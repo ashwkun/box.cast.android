@@ -548,10 +548,10 @@ fun SubscriptionsScreen(
                     initialFolder = editingFolder,
                     suggestedGenres = suggestedGenres,
                     isAutoOrganizeEnabled = autoOrganizeFolders,
-                    onAutoOrganizeClick = {
+                    onAutoOrganizeChange = { target ->
                         showFolderEditSheet = false
                         editingFolder = null
-                        pendingAutoOrganizeTarget = true
+                        pendingAutoOrganizeTarget = target
                     },
                     onDismissRequest = {
                         showFolderEditSheet = false

@@ -75,7 +75,7 @@ internal data class FolderEditFormActions(
     val onSave: () -> Unit,
     val onClose: () -> Unit,
     val onDelete: (() -> Unit)?,
-    val onAutoOrganizeClick: (() -> Unit)? = null,
+    val onAutoOrganizeChange: ((Boolean) -> Unit)? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,7 +84,7 @@ fun FolderEditSheet(
     initialFolder: SubscriptionFolder? = null,
     suggestedGenres: List<String> = emptyList(),
     isAutoOrganizeEnabled: Boolean = false,
-    onAutoOrganizeClick: (() -> Unit)? = null,
+    onAutoOrganizeChange: ((Boolean) -> Unit)? = null,
     onDismissRequest: () -> Unit,
     onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
     onDelete: (() -> Unit)? = null,
@@ -94,7 +94,7 @@ fun FolderEditSheet(
         initialFolder = initialFolder,
         suggestedGenres = suggestedGenres,
         isAutoOrganizeEnabled = isAutoOrganizeEnabled,
-        onAutoOrganizeClick = onAutoOrganizeClick,
+        onAutoOrganizeChange = onAutoOrganizeChange,
         onDismissRequest = onDismissRequest,
         onSave = onSave,
         onDelete = onDelete,
@@ -120,7 +120,7 @@ private fun rememberFolderEditStateAndActions(
     initialFolder: SubscriptionFolder?,
     suggestedGenres: List<String>,
     isAutoOrganizeEnabled: Boolean,
-    onAutoOrganizeClick: (() -> Unit)?,
+    onAutoOrganizeChange: ((Boolean) -> Unit)?,
     onDismissRequest: () -> Unit,
     onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
     onDelete: (() -> Unit)?,
@@ -191,7 +191,7 @@ private fun rememberFolderEditStateAndActions(
         fields = fields,
         allFolderSuggestions = allFolderSuggestions,
         focusManager = focusManager,
-        onAutoOrganizeClick = onAutoOrganizeClick,
+        onAutoOrganizeChange = onAutoOrganizeChange,
         onDismissRequest = onDismissRequest,
         onSave = onSave,
         onDelete = onDelete,
@@ -214,7 +214,7 @@ private fun rememberFolderEditFormActions(
     fields: FolderEditFormFields,
     allFolderSuggestions: List<GenreSuggestion>,
     focusManager: FocusManager,
-    onAutoOrganizeClick: (() -> Unit)?,
+    onAutoOrganizeChange: ((Boolean) -> Unit)?,
     onDismissRequest: () -> Unit,
     onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
     onDelete: (() -> Unit)?,
@@ -276,7 +276,7 @@ private fun rememberFolderEditFormActions(
     },
     onClose = onDismissRequest,
     onDelete = onDelete,
-    onAutoOrganizeClick = onAutoOrganizeClick,
+    onAutoOrganizeChange = onAutoOrganizeChange,
 )
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -305,9 +305,10 @@ internal fun FolderEditSheetContent(
                 onSave = actions.onSave,
             )
 
-            if (!state.isEditing && !state.isAutoOrganizeEnabled && actions.onAutoOrganizeClick != null) {
+            if (!state.isEditing && actions.onAutoOrganizeChange != null) {
                 AutoOrganizeSlimNudge(
-                    onClick = actions.onAutoOrganizeClick,
+                    isActive = state.isAutoOrganizeEnabled,
+                    onClick = { actions.onAutoOrganizeChange.invoke(!state.isAutoOrganizeEnabled) },
                 )
             }
 
@@ -360,6 +361,8 @@ internal fun FolderEditSheetContent(
                     linkedGenre = state.effectiveLinkedGenre ?: state.nameText.trim(),
                     suggestedGenres = state.suggestedGenres,
                     onSelectLinkedGenre = actions.onSelectLinkedGenre,
+                    autoOrganize = state.isAutoOrganizeEnabled,
+                    onAutoOrganizeChange = actions.onAutoOrganizeChange,
                 ),
             )
 
@@ -370,6 +373,7 @@ internal fun FolderEditSheetContent(
 
 @Composable
 private fun AutoOrganizeSlimNudge(
+    isActive: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -410,13 +414,17 @@ private fun AutoOrganizeSlimNudge(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(
-                        text = "Auto-organize library",
+                        text = if (isActive) "Auto-organize is active" else "Auto-organize library",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = GoogleSansWeight.bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = "Group shows by genre automatically",
+                        text = if (isActive) {
+                            "Library automatically grouped by genre"
+                        } else {
+                            "Group shows by genre automatically"
+                        },
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -434,7 +442,7 @@ private fun AutoOrganizeSlimNudge(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = "Auto",
+                        text = if (isActive) "Manage" else "Auto",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = GoogleSansWeight.bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,

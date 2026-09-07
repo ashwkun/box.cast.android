@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -66,6 +69,8 @@ internal data class FolderOrganizationState(
     val linkedGenre: String,
     val suggestedGenres: List<String> = emptyList(),
     val onSelectLinkedGenre: ((String) -> Unit)? = null,
+    val autoOrganize: Boolean = false,
+    val onAutoOrganizeChange: ((Boolean) -> Unit)? = null,
 )
 
 @Composable
@@ -715,10 +720,18 @@ internal fun FolderOrganizationCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            AutoSyncRow(
-                autoSync = state.autoSync,
-                onAutoSyncChange = state.onAutoSyncChange,
-                linkedGenre = state.linkedGenre,
+            OrganizationSwitchRow(
+                icon = Icons.Rounded.Sync,
+                iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
+                title = "Auto-sync with genre",
+                subtitle = if (state.autoSync && state.linkedGenre.isNotBlank()) {
+                    "Shows tagged '${state.linkedGenre}' join automatically"
+                } else {
+                    "Automatically adds matching subscribed shows"
+                },
+                checked = state.autoSync,
+                onCheckedChange = state.onAutoSyncChange,
             )
 
             if (state.autoSync && state.suggestedGenres.isNotEmpty() && state.onSelectLinkedGenre != null) {
@@ -728,15 +741,39 @@ internal fun FolderOrganizationCard(
                     onSelectLinkedGenre = state.onSelectLinkedGenre,
                 )
             }
+
+            if (state.onAutoOrganizeChange != null) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                )
+
+                OrganizationSwitchRow(
+                    icon = Icons.Rounded.AutoAwesome,
+                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    title = "Auto-organize library",
+                    subtitle = if (state.autoOrganize) {
+                        "Library automatically grouped by genre"
+                    } else {
+                        "Group all shows into genre folders automatically"
+                    },
+                    checked = state.autoOrganize,
+                    onCheckedChange = state.onAutoOrganizeChange,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun AutoSyncRow(
-    autoSync: Boolean,
-    onAutoSyncChange: (Boolean) -> Unit,
-    linkedGenre: String,
+private fun OrganizationSwitchRow(
+    icon: ImageVector,
+    iconContainerColor: Color,
+    iconTint: Color,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -750,14 +787,14 @@ private fun AutoSyncRow(
         ) {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.secondaryContainer,
+                color = iconContainerColor,
                 modifier = Modifier.size(30.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = Icons.Rounded.Sync,
+                        imageVector = icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        tint = iconTint,
                         modifier = Modifier.size(15.dp),
                     )
                 }
@@ -765,17 +802,13 @@ private fun AutoSyncRow(
 
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
-                    text = "Auto-sync with genre",
+                    text = title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = GoogleSansWeight.medium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = if (autoSync && linkedGenre.isNotBlank()) {
-                        "Shows tagged '$linkedGenre' join automatically"
-                    } else {
-                        "Automatically adds matching subscribed shows"
-                    },
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -783,8 +816,8 @@ private fun AutoSyncRow(
         }
 
         Switch(
-            checked = autoSync,
-            onCheckedChange = onAutoSyncChange,
+            checked = checked,
+            onCheckedChange = onCheckedChange,
         )
     }
 }
