@@ -112,6 +112,13 @@ class FolderEditLogicTest {
         override suspend fun syncLinkedGenres() {
             // No-op in test fake
         }
+
+        override suspend fun autoOrganizeSubscribedShows(
+            defaultDisplaySize: FolderDisplaySize,
+            showPodcastGrid: Boolean,
+        ) {
+            // No-op in test fake
+        }
     }
 
     @Test

@@ -247,8 +247,9 @@ class RoomFolderRepositoryTest {
 
     @Test
     fun autoSyncMatchesBothCatalogGenreAndCustomGenreTags() = runTest {
-        insertSubscribedPodcast("p-cat", "Tech Catalog", genre = "Technology", customGenre = "Favorites")
+        insertSubscribedPodcast("p-cat", "Tech Catalog", genre = "Technology")
         insertSubscribedPodcast("p-custom", "Tech Custom", genre = "Society", customGenre = "Technology")
+        insertSubscribedPodcast("p-other", "Tech Overridden", genre = "Technology", customGenre = "Favorites")
 
         val folder = repository.createFolder(
             name = "All Tech",
@@ -258,5 +259,6 @@ class RoomFolderRepositoryTest {
         assertEquals(2, folder.podcastCount)
         assertTrue(folder.podcastIds.contains("p-cat"))
         assertTrue(folder.podcastIds.contains("p-custom"))
+        assertFalse(folder.podcastIds.contains("p-other"))
     }
 }

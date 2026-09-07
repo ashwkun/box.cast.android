@@ -112,7 +112,11 @@ class LibraryViewModel(
 
     init {
         viewModelScope.launch {
-            folderRepository?.syncLinkedGenres()
+            if (userPreferencesRepository.autoOrganizeFoldersStream.first()) {
+                folderRepository?.autoOrganizeSubscribedShows()
+            } else {
+                folderRepository?.syncLinkedGenres()
+            }
         }
     }
 
@@ -306,9 +310,19 @@ class LibraryViewModel(
             initialValue = false
         )
 
-    fun setAutoOrganizeFolders(enabled: Boolean) {
+    fun setAutoOrganizeFolders(
+        enabled: Boolean,
+        displaySize: FolderDisplaySize = FolderDisplaySize.SHELF,
+        showPodcastGrid: Boolean = false,
+    ) {
         viewModelScope.launch {
             userPreferencesRepository.setAutoOrganizeFolders(enabled)
+            if (enabled) {
+                folderRepository?.autoOrganizeSubscribedShows(
+                    defaultDisplaySize = displaySize,
+                    showPodcastGrid = showPodcastGrid,
+                )
+            }
         }
     }
 

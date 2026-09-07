@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 class RoomFolderRepository(
     private val folderDao: FolderDao,
     private val podcastDao: PodcastDao,
+    private val resolveGenreIconKey: ((String) -> String?)? = null,
 ) : FolderRepository {
 
     override val folders: Flow<List<SubscriptionFolder>> =
@@ -195,14 +196,15 @@ class RoomFolderRepository(
         if (folders.isEmpty()) return
 
         val subscribed = podcastDao.getSubscribedPodcastsList()
-        val subscribedIds = subscribed.map { it.podcastId }.toSet()
         for (folder in folders) {
             val targetGenre = folder.linkedGenre?.trim()?.takeIf { it.isNotEmpty() } ?: folder.name.trim()
-            val matching = subscribed.filter { pod -> matchesGenre(pod, targetGenre) }.map { it.podcastId }
-            val currentValidIds = folderDao.getPodcastIdsForFolderList(folder.folderId).filter { it in subscribedIds }.toSet()
-            val newIds = (currentValidIds + matching).toList()
-            if (newIds.size != currentValidIds.size || currentValidIds.size != folderDao.getPodcastIdsForFolderList(folder.folderId).size) {
-                folderDao.setPodcastsForFolder(folder.folderId, newIds)
+            val matchingIds = subscribed
+                .filter { pod -> matchesGenre(pod, targetGenre) }
+                .map { it.podcastId }
+                .distinct()
+            val currentIds = folderDao.getPodcastIdsForFolderList(folder.folderId)
+            if (currentIds != matchingIds) {
+                folderDao.setPodcastsForFolder(folder.folderId, matchingIds)
             }
             if (folder.linkedGenre.isNullOrBlank() && PodcastGenres.canonicalize(folder.name) != null) {
                 folderDao.upsertFolder(folder.copy(linkedGenre = targetGenre))
@@ -210,15 +212,75 @@ class RoomFolderRepository(
         }
     }
 
-    private fun matchesGenre(pod: PodcastEntity, targetGenre: String): Boolean {
-        val candidates = listOfNotNull(
-            pod.customGenre?.takeIf { it.isNotBlank() },
-            pod.genre?.takeIf { it.isNotBlank() },
-        )
-        return candidates.any { genreField ->
-            genreField.split(",").any { token ->
-                isGenreTokenMatch(token, targetGenre)
+    override suspend fun autoOrganizeSubscribedShows(
+        defaultDisplaySize: FolderDisplaySize,
+        showPodcastGrid: Boolean,
+    ) {
+        val subscribed = podcastDao.getSubscribedPodcastsList()
+        if (subscribed.isEmpty()) return
+
+        val genreToPodcasts = mutableMapOf<String, MutableList<String>>()
+        for (pod in subscribed) {
+            val genreName = pod.customGenre?.trim()?.takeIf { it.isNotEmpty() }
+                ?: pod.genre?.split(",")?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+            if (!genreName.isNullOrBlank()) {
+                val canonical = PodcastGenres.canonicalize(genreName)
+                    ?: (if (genreName.equals("tech", ignoreCase = true)) "Technology" else genreName.replaceFirstChar { it.uppercase() })
+                genreToPodcasts.getOrPut(canonical) { mutableListOf() }.add(pod.podcastId)
             }
+        }
+
+        val existingFolders = folderDao.getAllFoldersList()
+
+        for ((genre, podcastIds) in genreToPodcasts) {
+            val existing = existingFolders.firstOrNull { f ->
+                val linked = f.linkedGenre
+                linked?.equals(genre, ignoreCase = true) == true ||
+                    isGenreTokenMatch(f.name, genre) ||
+                    (linked != null && isGenreTokenMatch(linked, genre))
+            }
+
+            if (existing != null) {
+                if (existing.linkedGenre.isNullOrBlank()) {
+                    folderDao.upsertFolder(existing.copy(linkedGenre = genre))
+                }
+                val currentIds = folderDao.getPodcastIdsForFolderList(existing.folderId)
+                val merged = (currentIds + podcastIds).distinct()
+                if (merged.size != currentIds.size) {
+                    folderDao.setPodcastsForFolder(existing.folderId, merged)
+                }
+            } else {
+                val folderId = UUID.randomUUID().toString()
+                val iconKey = defaultIconForGenre(genre)
+                val entity = FolderEntity(
+                    folderId = folderId,
+                    name = genre,
+                    icon = iconKey,
+                    displaySize = defaultDisplaySize,
+                    linkedGenre = genre,
+                    showPodcastGrid = showPodcastGrid,
+                    createdAt = System.currentTimeMillis(),
+                )
+                folderDao.upsertFolder(entity)
+                folderDao.setPodcastsForFolder(folderId, podcastIds.distinct())
+            }
+        }
+
+        syncLinkedGenres()
+    }
+
+    private fun defaultIconForGenre(genre: String): String? {
+        resolveGenreIconKey?.invoke(genre)?.let { return it }
+        val canonical = PodcastGenres.canonicalize(genre) ?: genre
+        return GENRE_DEFAULT_ICON_MAP[canonical.lowercase().trim()] ?: "folder"
+    }
+
+    private fun matchesGenre(pod: PodcastEntity, targetGenre: String): Boolean {
+        val effectiveGenre = pod.customGenre?.takeIf { it.isNotBlank() }
+            ?: pod.genre?.takeIf { it.isNotBlank() }
+            ?: return false
+        return effectiveGenre.split(",").any { token ->
+            isGenreTokenMatch(token, targetGenre)
         }
     }
 
@@ -242,5 +304,35 @@ class RoomFolderRepository(
             if (canonicalCandidate.equals(trimmedTarget, ignoreCase = true)) return true
         }
         return false
+    }
+
+    private companion object {
+        val GENRE_DEFAULT_ICON_MAP = mapOf(
+            "news" to "news",
+            "tech" to "tech",
+            "technology" to "tech",
+            "comedy" to "comedy",
+            "sports" to "sports",
+            "sport" to "sports",
+            "business" to "business",
+            "science" to "science",
+            "music" to "music",
+            "health" to "health",
+            "history" to "history",
+            "true crime" to "mic",
+            "crime" to "mic",
+            "tv & film" to "movie",
+            "film" to "movie",
+            "movies" to "movie",
+            "fiction" to "book",
+            "gaming" to "gaming",
+            "games" to "gaming",
+            "coding" to "code",
+            "code" to "code",
+            "ideas" to "bulb",
+            "philosophy" to "bulb",
+            "finance" to "finance",
+            "money" to "finance",
+        )
     }
 }

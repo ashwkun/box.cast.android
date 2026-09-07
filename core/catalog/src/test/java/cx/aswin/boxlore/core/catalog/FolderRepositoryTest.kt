@@ -153,4 +153,111 @@ class FolderRepositoryTest {
         assertNotNull(retrieved)
         org.junit.Assert.assertTrue(retrieved?.showPodcastGrid == true)
     }
+
+    @Test
+    fun autoOrganizeSubscribedShows_createsDefaultShelfFoldersAndPopulatesShows() = runTest {
+        insertPodcast("pod-1", "Laugh Out Loud", genre = "Comedy")
+        insertPodcast("pod-2", "Silicon Talk", genre = "Technology")
+        insertPodcast("pod-3", "Code Bytes", genre = "Technology")
+
+        repository.autoOrganizeSubscribedShows(
+            defaultDisplaySize = FolderDisplaySize.SHELF,
+            showPodcastGrid = false,
+        )
+
+        val folders = repository.getFolders()
+        assertEquals(2, folders.size)
+
+        val techFolder = folders.firstOrNull { it.name == "Technology" }
+        assertNotNull(techFolder)
+        assertEquals(FolderDisplaySize.SHELF, techFolder?.displaySize)
+        assertEquals(listOf("pod-2", "pod-3"), techFolder?.podcastIds?.sorted())
+        assertEquals("tech", techFolder?.icon)
+
+        val comedyFolder = folders.firstOrNull { it.name == "Comedy" }
+        assertNotNull(comedyFolder)
+        assertEquals(FolderDisplaySize.SHELF, comedyFolder?.displaySize)
+        assertEquals(listOf("pod-1"), comedyFolder?.podcastIds)
+        assertEquals("comedy", comedyFolder?.icon)
+    }
+
+    @Test
+    fun autoOrganizeSubscribedShows_preservesExistingGenreAndCustomFolders() = runTest {
+        insertPodcast("pod-1", "My Fav", genre = "Comedy")
+        insertPodcast("pod-2", "Tech News", genre = "Technology")
+
+        // 1. Existing custom non-genre folder
+        val custom = repository.createFolder(
+            name = "Favorites",
+            icon = "star",
+            displaySize = FolderDisplaySize.COMPACT,
+            podcastIds = listOf("pod-1"),
+        )
+
+        // 2. Existing genre folder with custom size
+        val existingTech = repository.createFolder(
+            name = "Technology",
+            icon = "custom_icon",
+            displaySize = FolderDisplaySize.PANEL,
+            linkedGenre = "Technology",
+        )
+
+        repository.autoOrganizeSubscribedShows()
+
+        val allFolders = repository.getFolders()
+        assertEquals(3, allFolders.size)
+
+        // Custom folder is 100% untouched
+        val retrievedCustom = repository.getFolder(custom.id)
+        assertNotNull(retrievedCustom)
+        assertEquals(FolderDisplaySize.COMPACT, retrievedCustom?.displaySize)
+        assertEquals("star", retrievedCustom?.icon)
+        assertEquals(listOf("pod-1"), retrievedCustom?.podcastIds)
+
+        // Existing tech folder kept its size and icon and gained pod-2
+        val retrievedTech = repository.getFolder(existingTech.id)
+        assertNotNull(retrievedTech)
+        assertEquals(FolderDisplaySize.PANEL, retrievedTech?.displaySize)
+        assertEquals("custom_icon", retrievedTech?.icon)
+        assertEquals(listOf("pod-2"), retrievedTech?.podcastIds)
+
+        // Comedy was auto-created
+        val comedy = allFolders.firstOrNull { it.name == "Comedy" }
+        assertNotNull(comedy)
+        assertEquals(listOf("pod-1"), comedy?.podcastIds)
+    }
+
+    @Test
+    fun syncLinkedGenres_movesShowWhenGenreChanges() = runTest {
+        val comedyFolder = repository.createFolder(
+            name = "Comedy Shows",
+            linkedGenre = "Comedy",
+        )
+        val techFolder = repository.createFolder(
+            name = "Tech Hub",
+            linkedGenre = "Tech",
+        )
+        val manualFolder = repository.createFolder(
+            name = "My Commute",
+            podcastIds = listOf("pod-1"),
+        )
+
+        insertPodcast("pod-1", "Dynamic Show", genre = "Comedy")
+
+        repository.syncLinkedGenres()
+
+        assertEquals(listOf("pod-1"), repository.getFolder(comedyFolder.id)?.podcastIds)
+        assertEquals(emptyList<String>(), repository.getFolder(techFolder.id)?.podcastIds)
+        assertEquals(listOf("pod-1"), repository.getFolder(manualFolder.id)?.podcastIds)
+
+        // User edits genre from Comedy to Tech
+        insertPodcast("pod-1", "Dynamic Show", genre = "Comedy", customGenre = "Tech")
+
+        repository.syncLinkedGenres()
+
+        // Removed from Comedy, added to Tech, preserved in manual folder
+        assertEquals(emptyList<String>(), repository.getFolder(comedyFolder.id)?.podcastIds)
+        assertEquals(listOf("pod-1"), repository.getFolder(techFolder.id)?.podcastIds)
+        assertEquals(listOf("pod-1"), repository.getFolder(manualFolder.id)?.podcastIds)
+    }
 }

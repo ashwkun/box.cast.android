@@ -1327,7 +1327,11 @@ class PodcastInfoViewModel(
                         )
                 }
             }
-            folderRepository?.syncLinkedGenres()
+            if (userPrefs.autoOrganizeFoldersStream.first()) {
+                folderRepository?.autoOrganizeSubscribedShows()
+            } else {
+                folderRepository?.syncLinkedGenres()
+            }
         }
     }
 

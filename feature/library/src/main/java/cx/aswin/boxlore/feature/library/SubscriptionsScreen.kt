@@ -64,6 +64,8 @@ import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.core.prefs.SubscriptionsTabStyle
+import cx.aswin.boxlore.feature.library.subscriptions.AutoOrganizeDisableDialog
+import cx.aswin.boxlore.feature.library.subscriptions.AutoOrganizeEnableDialog
 import cx.aswin.boxlore.feature.library.subscriptions.ContextMenuTarget
 import cx.aswin.boxlore.feature.library.subscriptions.ExpressiveTabSwitcher
 import cx.aswin.boxlore.feature.library.subscriptions.FolderDialogActions
@@ -142,6 +144,7 @@ fun SubscriptionsScreen(
         var confirmUnsubscribePodcast by remember { mutableStateOf<Podcast?>(null) }
         var tempFolderOrder by remember { mutableStateOf<List<String>>(emptyList()) }
         var tempRootOrder by remember { mutableStateOf<List<String>>(emptyList()) }
+        var pendingAutoOrganizeTarget by remember { mutableStateOf<Boolean?>(null) }
 
         val isFloatingTabs = subscriptionsTabStyle == SubscriptionsTabStyle.FLOATING
 
@@ -784,6 +787,32 @@ fun SubscriptionsScreen(
                 )
             }
 
+            if (pendingAutoOrganizeTarget == true) {
+                AutoOrganizeEnableDialog(
+                    onProceed = { displaySize, showPodcastGrid ->
+                        viewModel.setAutoOrganizeFolders(
+                            enabled = true,
+                            displaySize = displaySize,
+                            showPodcastGrid = showPodcastGrid,
+                        )
+                        pendingAutoOrganizeTarget = null
+                    },
+                    onCancel = {
+                        pendingAutoOrganizeTarget = null
+                    },
+                )
+            } else if (pendingAutoOrganizeTarget == false) {
+                AutoOrganizeDisableDialog(
+                    onProceed = {
+                        viewModel.setAutoOrganizeFolders(enabled = false)
+                        pendingAutoOrganizeTarget = null
+                    },
+                    onCancel = {
+                        pendingAutoOrganizeTarget = null
+                    },
+                )
+            }
+
             if (showSortSheet && successState != null) {
                 SubscriptionSortSheet(
                     config = SubscriptionSortConfig(
@@ -809,7 +838,9 @@ fun SubscriptionsScreen(
                         },
                         onFolderSortChange = viewModel::setFolderSort,
                         onIntraFolderSortChange = viewModel::setIntraFolderSort,
-                        onAutoOrganizeFoldersChange = viewModel::setAutoOrganizeFolders,
+                        onAutoOrganizeFoldersChange = { target ->
+                            pendingAutoOrganizeTarget = target
+                        },
                         onDismiss = { showSortSheet = false },
                     ),
                 )

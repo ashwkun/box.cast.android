@@ -210,6 +210,8 @@ class AppContainer(
                     podcastRepository.getPodcastDetails(id)?.feedUrl,
                 )
             },
+            folderRepository = folderRepository,
+            userPreferencesRepository = userPreferencesRepository,
         )
     }
 
@@ -227,6 +229,9 @@ class AppContainer(
         RoomFolderRepository(
             folderDao = database.folderDao(),
             podcastDao = database.podcastDao(),
+            resolveGenreIconKey = { genre ->
+                cx.aswin.boxlore.core.designsystem.icon.findExactGenreIconKey(genre)
+            },
         )
     }
 

@@ -27,4 +27,8 @@ interface FolderRepository {
     suspend fun removePodcastFromFolder(podcastId: String, folderId: String)
     suspend fun setPodcastsForFolder(folderId: String, podcastIds: List<String>)
     suspend fun syncLinkedGenres()
+    suspend fun autoOrganizeSubscribedShows(
+        defaultDisplaySize: FolderDisplaySize = FolderDisplaySize.SHELF,
+        showPodcastGrid: Boolean = false,
+    )
 }

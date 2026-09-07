@@ -4,17 +4,21 @@ import cx.aswin.boxlore.core.database.PodcastDao
 import cx.aswin.boxlore.core.database.PodcastEntity
 import cx.aswin.boxlore.core.domain.ports.LocalEpisodeCatalogPort
 import cx.aswin.boxlore.core.model.Podcast
+import cx.aswin.boxlore.core.prefs.UserPreferencesRepository
 import cx.aswin.boxlore.core.ranking.FeedbackTarget
 import cx.aswin.boxlore.core.ranking.RankingAction
 import cx.aswin.boxlore.core.ranking.RankingFeedbackRepository
 import cx.aswin.boxlore.core.rss.LocalEpisodeCatalogRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class SubscriptionRepository(
     private val podcastDao: PodcastDao,
     private val localEpisodeCatalog: LocalEpisodeCatalogPort? = null,
     private val lookupHttpsFeedUrl: (suspend (String) -> String?)? = null,
+    private val folderRepository: FolderRepository? = null,
+    private val userPreferencesRepository: UserPreferencesRepository? = null,
 ) {
     val subscribedPodcastIds: Flow<Set<String>> =
         podcastDao
@@ -101,6 +105,7 @@ class SubscriptionRepository(
                 ),
                 action = RankingAction.SUBSCRIBE,
             )
+            onSubscribed()
         }
     }
 
@@ -135,6 +140,7 @@ class SubscriptionRepository(
             ),
             action = RankingAction.UNSUBSCRIBE,
         )
+        folderRepository?.syncLinkedGenres()
     }
 
     suspend fun isSubscribed(podcastId: String): Boolean {
@@ -238,6 +244,19 @@ class SubscriptionRepository(
                 ),
                 action = RankingAction.SUBSCRIBE,
             )
+        }
+        if (isNewSubscription) {
+            onSubscribed()
+        }
+    }
+
+    private suspend fun onSubscribed() {
+        val repo = folderRepository ?: return
+        val isAutoOrganize = userPreferencesRepository?.autoOrganizeFoldersStream?.first() == true
+        if (isAutoOrganize) {
+            repo.autoOrganizeSubscribedShows()
+        } else {
+            repo.syncLinkedGenres()
         }
     }
 
