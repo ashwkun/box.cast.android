@@ -11,6 +11,7 @@ import cx.aswin.boxlore.feature.library.SubscriptionSort
  */
 enum class FolderInterSort(val label: String) {
     Inherit("Follow Shows"),
+    SmartRank("Smart Sort"),
     RecentlyUpdated("Recently Updated"),
     Alphabetical("A–Z"),
     MostShows("Most Shows"),
@@ -160,8 +161,8 @@ internal fun calculateFolderSlots(
 }
 
 /**
- * Partitions subscribed podcasts into pinned enlarged folders, compact 1×1 folders, and unfiled shows.
- * In-folder shows are sorted according to [intraFolderSort] (defaulting to follow [sort]).
+ * Partitions subscribed podcasts into pinned shelves, compact folders, and unfiled podcasts.
+ * Shows inside each folder are sorted according to [intraFolderSort] (defaulting to follow [sort]).
  * Pinned and compact folders are sorted according to [folderSort] (defaulting to follow [sort]).
  */
 internal fun partitionSubscribedShows(
@@ -170,16 +171,24 @@ internal fun partitionSubscribedShows(
     sort: SubscriptionSort? = null,
     folderSort: FolderInterSort = FolderInterSort.Inherit,
     intraFolderSort: FolderIntraSort = FolderIntraSort.Inherit,
+    smartOrderIds: List<String> = emptyList(),
 ): PartitionedSubscriptionItems {
     val podcastsById = podcasts.associateBy { it.id }
     val effectiveIntraSort = resolveEffectiveIntraSort(intraFolderSort, sort)
+
+    val smartRankMap = if (smartOrderIds.isNotEmpty()) {
+        smartOrderIds.mapIndexed { index, id -> id to index }.toMap()
+    } else {
+        podcasts.mapIndexed { index, pod -> pod.id to index }.toMap()
+    }
+    val totalPodcasts = if (smartOrderIds.isNotEmpty()) smartOrderIds.size else podcasts.size
 
     val podcastsByFolderId = folders.associate { folder ->
         val memberIds = folder.podcastIds.toSet()
         val members = podcasts.filter { it.id in memberIds }
         val missingMembers = folder.podcastIds.filter { it !in memberIds }.mapNotNull(podcastsById::get)
         val allMembers = members + missingMembers
-        folder.id to sortFolderMembers(allMembers, effectiveIntraSort, podcasts, folder)
+        folder.id to sortFolderMembers(allMembers, effectiveIntraSort, smartRankMap, folder)
     }
 
     val filedPodcastIds = folders.flatMap { it.podcastIds }.toSet()
@@ -190,11 +199,15 @@ internal fun partitionSubscribedShows(
         folders = folders.filter { it.displaySize.isPinnedToTop },
         effectiveInterSort = effectiveInterSort,
         podcastsByFolderId = podcastsByFolderId,
+        smartRankMap = smartRankMap,
+        totalPodcasts = totalPodcasts,
     )
     val compactFolders = sortFolders(
         folders = folders.filter { !it.displaySize.isPinnedToTop },
         effectiveInterSort = effectiveInterSort,
         podcastsByFolderId = podcastsByFolderId,
+        smartRankMap = smartRankMap,
+        totalPodcasts = totalPodcasts,
     )
 
     return PartitionedSubscriptionItems(
@@ -225,7 +238,7 @@ private fun resolveEffectiveIntraSort(
 private fun sortFolderMembers(
     allMembers: List<Podcast>,
     effectiveIntraSort: FolderIntraSort,
-    podcasts: List<Podcast>,
+    smartRankMap: Map<String, Int>,
     folder: SubscriptionFolder,
 ): List<Podcast> =
     when (effectiveIntraSort) {
@@ -234,8 +247,7 @@ private fun sortFolderMembers(
         FolderIntraSort.RecentlyUpdated ->
             allMembers.sortedByDescending { it.latestEpisode?.publishedDate ?: 0L }
         FolderIntraSort.SmartRank, FolderIntraSort.MostListened -> {
-            val indexMap = podcasts.mapIndexed { index, pod -> pod.id to index }.toMap()
-            allMembers.sortedBy { indexMap[it.id] ?: Int.MAX_VALUE }
+            allMembers.sortedBy { smartRankMap[it.id] ?: Int.MAX_VALUE }
         }
         FolderIntraSort.Manual -> {
             val manualMap = folder.podcastIds.mapIndexed { index, id -> id to index }.toMap()
@@ -250,27 +262,66 @@ private fun resolveEffectiveInterSort(
 ): FolderInterSort =
     if (folderSort == FolderInterSort.Inherit) {
         when (sort) {
+            SubscriptionSort.SmartRank -> FolderInterSort.SmartRank
             SubscriptionSort.Alphabetical -> FolderInterSort.Alphabetical
             SubscriptionSort.RecentlyUpdated -> FolderInterSort.RecentlyUpdated
+            SubscriptionSort.MostListened -> FolderInterSort.SmartRank
             else -> FolderInterSort.RecentlyUpdated
         }
     } else {
         folderSort
     }
 
+/**
+ * Calculates a folder's engagement score using the Decayed Top-3 (Diminishing Returns) strategy:
+ * Score = Top Show + (0.5 * 2nd Show) + (0.25 * 3rd Show).
+ *
+ * This avoids both the "hoarder bias" of unbounded sums and the "dilution penalty" of averages.
+ */
+internal fun calculateFolderSmartScore(
+    shows: List<Podcast>,
+    smartOrderMap: Map<String, Int>,
+    totalPodcasts: Int,
+): Double {
+    if (shows.isEmpty()) return 0.0
+    val total = if (totalPodcasts > 0) totalPodcasts.toDouble() else 1.0
+
+    val rankedScores = shows.mapNotNull { podcast ->
+        val rankIndex = smartOrderMap[podcast.id] ?: return@mapNotNull null
+        (total - rankIndex).coerceAtLeast(0.0) / total
+    }.sortedDescending()
+
+    val top1 = rankedScores.getOrNull(0) ?: 0.0
+    val top2 = rankedScores.getOrNull(1) ?: 0.0
+    val top3 = rankedScores.getOrNull(2) ?: 0.0
+
+    return top1 + (0.5 * top2) + (0.25 * top3)
+}
+
 private fun sortFolders(
     folders: List<SubscriptionFolder>,
     effectiveInterSort: FolderInterSort,
     podcastsByFolderId: Map<String, List<Podcast>>,
+    smartRankMap: Map<String, Int>,
+    totalPodcasts: Int,
 ): List<SubscriptionFolder> {
-    val sortFolder: (SubscriptionFolder) -> Long = { folder ->
+    val sortFolderByRecency: (SubscriptionFolder) -> Long = { folder ->
         podcastsByFolderId[folder.id].orEmpty().maxOfOrNull { it.latestEpisode?.publishedDate ?: 0L } ?: 0L
     }
     return when (effectiveInterSort) {
+        FolderInterSort.SmartRank -> {
+            folders.sortedWith(
+                compareByDescending<SubscriptionFolder> { folder ->
+                    val memberShows = podcastsByFolderId[folder.id].orEmpty()
+                    calculateFolderSmartScore(memberShows, smartRankMap, totalPodcasts)
+                }.thenByDescending(sortFolderByRecency)
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name },
+            )
+        }
         FolderInterSort.Alphabetical ->
             folders.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
         FolderInterSort.RecentlyUpdated ->
-            folders.sortedByDescending(sortFolder)
+            folders.sortedByDescending(sortFolderByRecency)
         FolderInterSort.MostShows ->
             folders.sortedByDescending { it.podcastIds.size }
         else -> folders
@@ -364,13 +415,3 @@ private fun folderMatchesGenre(
             genreTokenMatches(pod.genre, selectedGenre, resolvedLabel, resolvedValue)
     }
 }
-
-/**
- * Truncates a compact 1×1 folder display name if it exceeds [maxLength] characters, appending an ellipsis.
- */
-internal fun truncateCompactFolderName(name: String, maxLength: Int = 10): String =
-    if (name.length > maxLength) {
-        "${name.take(maxLength)}…"
-    } else {
-        name
-    }

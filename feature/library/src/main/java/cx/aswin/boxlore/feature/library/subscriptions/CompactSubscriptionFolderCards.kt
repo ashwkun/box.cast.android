@@ -451,3 +451,13 @@ private fun BoxScope.FolderFloatingBadge(
             .zIndex(10f),
     )
 }
+
+/**
+ * Truncates a compact 1×1 folder display name if it exceeds [maxLength] characters, appending an ellipsis.
+ */
+internal fun truncateCompactFolderName(name: String, maxLength: Int = 10): String =
+    if (name.length > maxLength) {
+        "${name.take(maxLength)}…"
+    } else {
+        name
+    }

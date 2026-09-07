@@ -8,6 +8,7 @@ import cx.aswin.boxlore.feature.library.subscriptions.FolderInterSort
 import cx.aswin.boxlore.feature.library.subscriptions.FolderIntraSort
 import cx.aswin.boxlore.feature.library.subscriptions.buildUnifiedGridItems
 import cx.aswin.boxlore.feature.library.subscriptions.calculateFolderSlots
+import cx.aswin.boxlore.feature.library.subscriptions.calculateFolderSmartScore
 import cx.aswin.boxlore.feature.library.subscriptions.countFolderOverflowNew
 import cx.aswin.boxlore.feature.library.subscriptions.filterFoldersByGenre
 import cx.aswin.boxlore.feature.library.subscriptions.hasAnyFolderShowNew
@@ -426,6 +427,62 @@ class SubscriptionFolderLayoutLogicTest {
             folderSort = FolderInterSort.MostShows,
         )
         assertEquals(listOf("f-b", "f-a"), mostShowsPartition.pinnedFolders.map { it.id })
+
+        // Inter-sort: SmartRank -> Decayed Top-3 score
+        // p-1 is rank 0 (score 1.0) -> folderA score = 1.0
+        // p-2 is rank 1 (score 0.667), p-3 is rank 2 (score 0.333) -> folderB score = 0.667 + 0.5*0.333 = 0.833
+        // So folderA (1.0) beats folderB (0.833)
+        val smartPartition = partitionSubscribedShows(
+            podcasts = podcasts, // order: p-1, p-2, p-3
+            folders = folders,
+            folderSort = FolderInterSort.SmartRank,
+        )
+        assertEquals(listOf("f-a", "f-b"), smartPartition.pinnedFolders.map { it.id })
+
+        // Inter-sort: Inherit with sort = SmartRank inherits SmartRank
+        val inheritSmartPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = folders,
+            sort = SubscriptionSort.SmartRank,
+            folderSort = FolderInterSort.Inherit,
+        )
+        assertEquals(listOf("f-a", "f-b"), inheritSmartPartition.pinnedFolders.map { it.id })
+    }
+
+    @Test
+    fun `calculateFolderSmartScore implements Decayed Top-3 diminishing returns`() {
+        val p1 = mockPodcast("p-1")
+        val p2 = mockPodcast("p-2")
+        val p3 = mockPodcast("p-3")
+        val p4 = mockPodcast("p-4")
+        val p5 = mockPodcast("p-5")
+
+        val rankMap = mapOf(
+            "p-1" to 0,
+            "p-2" to 1,
+            "p-3" to 2,
+            "p-4" to 3,
+            "p-5" to 4,
+        )
+        val total = 5
+
+        // Empty shows -> 0.0
+        assertEquals(0.0, calculateFolderSmartScore(emptyList(), rankMap, total), 0.001)
+
+        // 1 show at rank 0: score = (5 - 0) / 5 = 1.0 -> 1.0
+        assertEquals(1.0, calculateFolderSmartScore(listOf(p1), rankMap, total), 0.001)
+
+        // 2 shows: rank 1 (4/5 = 0.8) and rank 2 (3/5 = 0.6)
+        // Score = 0.8 + 0.5 * 0.6 = 1.1 (beats single show at rank 0!)
+        assertEquals(1.1, calculateFolderSmartScore(listOf(p2, p3), rankMap, total), 0.001)
+
+        // 3 shows: rank 1 (0.8), rank 2 (0.6), rank 3 (2/5 = 0.4)
+        // Score = 0.8 + 0.5 * 0.6 + 0.25 * 0.4 = 0.8 + 0.3 + 0.1 = 1.2
+        assertEquals(1.2, calculateFolderSmartScore(listOf(p2, p3, p4), rankMap, total), 0.001)
+
+        // 5 shows: rank 1, 2, 3, 4, 5
+        // Shows 4 and 5 beyond the top 3 contribute 0 (diminishing returns prevents hoarder runaway)
+        assertEquals(1.2, calculateFolderSmartScore(listOf(p2, p3, p4, p5), rankMap, total), 0.001)
     }
 
     @Test

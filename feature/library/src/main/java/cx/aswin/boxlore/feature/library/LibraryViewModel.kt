@@ -53,6 +53,7 @@ sealed interface LibraryUiState {
         val currentSort: SubscriptionSort = SubscriptionSort.SmartRank,
         val allHistory: List<ListeningHistoryEntity> = emptyList(),
         val manualOrder: List<String> = emptyList(),
+        val smartOrderIds: List<String> = emptyList(),
     ) : LibraryUiState
     data class Error(val message: String) : LibraryUiState
 }
@@ -357,27 +358,27 @@ class LibraryViewModel(
             }
         }
 
+        val podScoresMap = try {
+            adaptiveScorer.scorePodcasts(
+                podcasts = enrichedPodcasts.map { it.toScorable() },
+                history = allHistory,
+                objective = RankingObjective.YOUR_SHOWS,
+                surface = RankingSurface.LIBRARY,
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            emptyMap()
+        }
+
+        val smartRanked = SubscriptionSmartOrderLogic.sort(
+            podcasts = enrichedPodcasts,
+            scores = podScoresMap,
+        )
+
         // Apply sorting
         val sortedPodcasts = when (sort) {
-            SubscriptionSort.SmartRank -> {
-                val podScoresMap = try {
-                    adaptiveScorer.scorePodcasts(
-                        podcasts = enrichedPodcasts.map { it.toScorable() },
-                        history = allHistory,
-                        objective = RankingObjective.YOUR_SHOWS,
-                        surface = RankingSurface.LIBRARY,
-                    )
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (_: Exception) {
-                    emptyMap()
-                }
-
-                SubscriptionSmartOrderLogic.sort(
-                    podcasts = enrichedPodcasts,
-                    scores = podScoresMap,
-                )
-            }
+            SubscriptionSort.SmartRank -> smartRanked
             SubscriptionSort.RecentlyUpdated -> {
                 enrichedPodcasts.sortedByDescending { it.latestEpisode?.publishedDate ?: 0L }
             }
@@ -401,6 +402,7 @@ class LibraryViewModel(
             currentSort = sort,
             allHistory = allHistory,
             manualOrder = manualOrder,
+            smartOrderIds = smartRanked.map { it.id },
         )
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(

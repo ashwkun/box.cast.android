@@ -68,6 +68,7 @@ internal data class ShowsTabConfig(
     val manualOrder: List<String> = emptyList(),
     val folderSort: FolderInterSort = FolderInterSort.Inherit,
     val intraFolderSort: FolderIntraSort = FolderIntraSort.Inherit,
+    val smartOrderIds: List<String> = emptyList(),
 )
 
 private data class ShowsGridConfig(
@@ -110,13 +111,21 @@ private fun rememberShowsPartition(
     val filteredFolders = remember(folders, selectedGenre, podcasts) {
         filterFoldersByGenre(folders, selectedGenre, podcasts)
     }
-    return remember(distinctPodcasts, filteredFolders, config.sort, config.folderSort, config.intraFolderSort) {
+    return remember(
+        distinctPodcasts,
+        filteredFolders,
+        config.sort,
+        config.folderSort,
+        config.intraFolderSort,
+        config.smartOrderIds,
+    ) {
         partitionSubscribedShows(
             podcasts = distinctPodcasts,
             folders = filteredFolders,
             sort = config.sort,
             folderSort = config.folderSort,
             intraFolderSort = config.intraFolderSort,
+            smartOrderIds = config.smartOrderIds,
         )
     }
 }

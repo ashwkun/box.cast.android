@@ -386,6 +386,7 @@ fun SubscriptionsScreen(
                                             manualOrder = success.manualOrder,
                                             folderSort = folderSort,
                                             intraFolderSort = intraFolderSort,
+                                            smartOrderIds = success.smartOrderIds,
                                         ),
                                         actions = ShowsTabActions(
                                             onExploreClick = onExploreClick,

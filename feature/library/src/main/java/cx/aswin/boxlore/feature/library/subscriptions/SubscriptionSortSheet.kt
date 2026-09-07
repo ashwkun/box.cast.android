@@ -426,6 +426,7 @@ private fun formatShowsSortSummary(sort: SubscriptionSort): String = when (sort)
 
 private fun formatFolderInterSortSummary(folderSort: FolderInterSort, showText: String): String = when (folderSort) {
     FolderInterSort.Inherit -> "Follow Shows ($showText)"
+    FolderInterSort.SmartRank -> "Smart Sort"
     FolderInterSort.RecentlyUpdated -> "Recently Updated"
     FolderInterSort.Alphabetical -> "A–Z"
     FolderInterSort.MostShows -> "Most Shows"
