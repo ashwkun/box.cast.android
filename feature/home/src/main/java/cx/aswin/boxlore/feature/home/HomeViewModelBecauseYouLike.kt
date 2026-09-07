@@ -8,9 +8,12 @@ import cx.aswin.boxlore.core.ranking.CandidateSource
 import cx.aswin.boxlore.core.ranking.EpisodeRankingInput
 import cx.aswin.boxlore.core.ranking.RankingObjective
 import cx.aswin.boxlore.core.ranking.RankingSurface
+import cx.aswin.boxlore.feature.home.logic.BecauseYouLikeRotationLogic
 import cx.aswin.boxlore.feature.home.logic.HomeBecauseYouLikeLogic
 import cx.aswin.boxlore.feature.home.logic.PodcastAffinityLogic
 import cx.aswin.boxlore.feature.home.logic.toRecommendationPodcast
+import java.time.Clock
+import java.time.ZonedDateTime
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
@@ -21,6 +24,7 @@ internal suspend fun HomeViewModel.resolveFavoritePodcast(
     overriddenId: String?,
     subscriptions: List<Podcast>,
     historyList: List<HomeListeningHistoryItem>,
+    clock: Clock = Clock.systemDefaultZone(),
 ): Podcast? {
     val historySignals = historyList.map { HomeBecauseYouLikeLogic.toAffinitySignal(it) }
     if (overriddenId != null) {
@@ -52,38 +56,86 @@ internal suspend fun HomeViewModel.resolveFavoritePodcast(
             podcastImageMap = podcastImageMap,
         )
 
-    val topPodId =
-        PodcastAffinityLogic.topAffinityPodcastId(scores, lastPlayedMap)
-            ?: return null
+    val candidateIds =
+        BecauseYouLikeRotationLogic.filterEligibleCandidates(
+            scores = scores,
+            lastPlayedMap = lastPlayedMap,
+        )
+    if (candidateIds.isEmpty()) return null
 
-    val sub = subscriptions.find { it.id == topPodId }
-    if (sub != null) return sub
+    val candidatePodcasts = candidateIds.map { podId ->
+        subscriptions.find { it.id == podId }
+            ?: localCatalog.getLocalPodcast(podId)
+            ?: Podcast(
+                id = podId,
+                title = podcastNameMap[podId] ?: "Podcast",
+                artist = "",
+                imageUrl = podcastImageMap[podId] ?: "",
+                fallbackImageUrl = "",
+                description = "",
+            )
+    }
 
-    localCatalog.getLocalPodcast(topPodId)?.let { return it }
+    val now = ZonedDateTime.now(clock)
+    val dayPart = BecauseYouLikeRotationLogic.resolveDayPart(now.hour)
+    val epochDay = now.toLocalDate().toEpochDay()
 
-    return Podcast(
-        id = topPodId,
-        title = podcastNameMap[topPodId] ?: "Podcast",
-        artist = "",
-        imageUrl = podcastImageMap[topPodId] ?: "",
-        fallbackImageUrl = "",
-        description = "",
-    )
+    return BecauseYouLikeRotationLogic.selectRotatedAnchor(
+        candidates = candidatePodcasts,
+        dayPart = dayPart,
+        epochDay = epochDay,
+    ) ?: candidatePodcasts.firstOrNull()
 }
 
 // from private fun fetchBecauseYouLikeRecommendations
 internal fun HomeViewModel.fetchBecauseYouLikeRecommendations(
     podcast: Podcast,
     region: String,
+    forceRefresh: Boolean = false,
+    clock: Clock = Clock.systemDefaultZone(),
 ) {
     viewModelScope.launch {
+        val currentSlotKey = BecauseYouLikeRotationLogic.currentSlotKey(clock)
+
+        if (!forceRefresh &&
+            boxcastPrefs.getCachedBylPodcastId() == podcast.id &&
+            boxcastPrefs.getCachedBylSlot() == currentSlotKey
+        ) {
+            if (_becauseYouLikeRecommendations.value.isNotEmpty() && _becauseYouLikePodcasts.value.isNotEmpty()) {
+                android.util.Log.d(
+                    "HomeViewModel",
+                    "BYL cache hit in memory for ${podcast.id} in slot $currentSlotKey; skipping network fetch.",
+                )
+                return@launch
+            }
+            val cachedRecs = boxcastPrefs.getCachedBylRecommendationsJson()
+            val cachedPods = boxcastPrefs.getCachedBylPodcastsJson()
+            if (cachedRecs != null && cachedPods != null) {
+                try {
+                    val json = Json { ignoreUnknownKeys = true }
+                    _becauseYouLikeRecommendations.value = json.decodeFromString(cachedRecs)
+                    _becauseYouLikePodcasts.value = json.decodeFromString(cachedPods)
+                    android.util.Log.d(
+                        "HomeViewModel",
+                        "BYL disk cache restored for ${podcast.id} in slot $currentSlotKey; skipping network fetch.",
+                    )
+                    return@launch
+                } catch (e: Exception) {
+                    android.util.Log.w("HomeViewModel", "Failed to parse cached BYL recommendations", e)
+                }
+            }
+        }
+
         _isBecauseYouLikeLoading.value = true
         try {
             val title = podcast.title
             val desc = podcast.description ?: ""
             val id = podcast.id
 
-            android.util.Log.d("HomeViewModel", "Fetching because-you-like recommendations for: $title (ID: $id), region: $region")
+            android.util.Log.d(
+                "HomeViewModel",
+                "Fetching because-you-like recommendations for: $title (ID: $id), region: $region, slot: $currentSlotKey",
+            )
             val data =
                 podcastRepository.getBecauseYouLikeRecommendations(
                     podcastTitle = title,
@@ -122,6 +174,7 @@ internal fun HomeViewModel.fetchBecauseYouLikeRecommendations(
                     episodesJson = serializedEpisodes,
                     podcastsJson = serializedPodcasts,
                     podcastId = id,
+                    slotKey = currentSlotKey,
                 )
             } catch (ce: Exception) {
                 android.util.Log.e("HomeViewModel", "Failed to cache because-you-like recommendations", ce)
