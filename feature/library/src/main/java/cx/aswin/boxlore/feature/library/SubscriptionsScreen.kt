@@ -72,6 +72,7 @@ import cx.aswin.boxlore.feature.library.subscriptions.LatestTabContent
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsSortMenuItems
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabActions
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabContent
+import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionFolderDialog
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionsTabSelectorFab
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionsTabSelectorFabHeight
 import cx.aswin.boxlore.feature.library.subscriptions.extractDistinctGenres
@@ -114,6 +115,7 @@ fun SubscriptionsScreen(
         var showSortMenu by remember { mutableStateOf(false) }
         var showFolderEditSheet by remember { mutableStateOf(false) }
         var editingFolder by remember { mutableStateOf<cx.aswin.boxlore.core.model.SubscriptionFolder?>(null) }
+        var activeFolderId by rememberSaveable { mutableStateOf<String?>(null) }
 
         val isFloatingTabs = subscriptionsTabStyle == SubscriptionsTabStyle.FLOATING
 
@@ -140,6 +142,10 @@ fun SubscriptionsScreen(
                 isSearchActive = false
                 searchQuery = ""
             }
+        }
+
+        BackHandler(enabled = activeFolderId != null) {
+            activeFolderId = null
         }
 
         LaunchedEffect(isSearchActive) {
@@ -394,7 +400,7 @@ fun SubscriptionsScreen(
                                                 showFolderEditSheet = true
                                             },
                                             onFolderClick = { folderId ->
-                                                editingFolder = folders.find { it.id == folderId }
+                                                activeFolderId = folderId
                                             },
                                             onFolderLongClick = { folder ->
                                                 editingFolder = folder
@@ -494,6 +500,28 @@ fun SubscriptionsScreen(
                             showFolderEditSheet = false
                             editingFolder = null
                         }
+                    },
+                )
+            }
+
+            val activeFolder = folders.find { it.id == activeFolderId }
+            if (activeFolder != null) {
+                val allPodcasts = (uiState as? LibraryUiState.Success)?.subscribedPodcasts.orEmpty()
+                val activeFolderShows = remember(activeFolder, allPodcasts) {
+                    val podcastsById = allPodcasts.associateBy { it.id }
+                    activeFolder.podcastIds.mapNotNull(podcastsById::get)
+                }
+                SubscriptionFolderDialog(
+                    folder = activeFolder,
+                    podcasts = activeFolderShows,
+                    onDismissRequest = { activeFolderId = null },
+                    onPodcastClick = { podcastId ->
+                        activeFolderId = null
+                        onPodcastClick(podcastId)
+                    },
+                    onEditFolder = {
+                        editingFolder = activeFolder
+                        activeFolderId = null
                     },
                 )
             }

@@ -65,12 +65,7 @@ internal fun PinnedEnlargedFolderCard(
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = { onFolderClick(folder.id) },
-                onLongClick = { onFolderLongClick(folder) },
-            ),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier
@@ -78,9 +73,16 @@ internal fun PinnedEnlargedFolderCard(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // Header: Icon, Folder Name, Show Count, Chevron
+            // Header: Icon, Folder Name, Show Count, Chevron (Click to expand folder)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .combinedClickable(
+                        onClick = { onFolderClick(folder.id) },
+                        onLongClick = { onFolderLongClick(folder) },
+                    )
+                    .padding(vertical = 4.dp, horizontal = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
@@ -335,6 +337,7 @@ internal fun Compact1x1FolderCard(
                 podcasts = podcasts,
                 onPodcastClick = onPodcastClick,
                 onFolderClick = onFolderClick,
+                onFolderLongClick = onFolderLongClick,
             )
         }
     }
@@ -389,16 +392,22 @@ private fun CompactFolderIconContent(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CompactPodcastGridContent(
     folder: SubscriptionFolder,
     podcasts: List<Podcast>,
     onPodcastClick: (String) -> Unit,
     onFolderClick: (String) -> Unit,
+    onFolderLongClick: (SubscriptionFolder) -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .combinedClickable(
+                onClick = { onFolderClick(folder.id) },
+                onLongClick = { onFolderLongClick(folder) },
+            )
             .padding(5.dp),
     ) {
         Column(

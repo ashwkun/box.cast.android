@@ -174,4 +174,28 @@ class SubscriptionFolderLayoutLogicTest {
         assertTrue(techMatches.any { it.id == "f-1" })
         assertTrue(techMatches.any { it.id == "f-3" })
     }
+
+    @Test
+    fun `active folder show resolution preserves folder order and filters missing shows`() {
+        val p1 = mockPodcast("p-1", genre = "Tech")
+        val p2 = mockPodcast("p-2", genre = "Tech")
+        val allPodcasts = listOf(p1, p2)
+        val podcastsById = allPodcasts.associateBy { it.id }
+
+        val folder = SubscriptionFolder(
+            id = "f-1",
+            name = "Tech Favorites",
+            podcastIds = listOf("p-2", "p-999", "p-1"), // "p-999" is not subscribed/missing
+        )
+
+        val resolvedShows = folder.podcastIds.mapNotNull(podcastsById::get)
+        assertEquals(2, resolvedShows.size)
+        assertEquals("p-2", resolvedShows[0].id)
+        assertEquals("p-1", resolvedShows[1].id)
+
+        // Empty folder
+        val emptyFolder = SubscriptionFolder(id = "f-empty", name = "Empty", podcastIds = emptyList())
+        val emptyShows = emptyFolder.podcastIds.mapNotNull(podcastsById::get)
+        assertTrue(emptyShows.isEmpty())
+    }
 }

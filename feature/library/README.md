@@ -44,6 +44,8 @@ src/main/java/cx/aswin/boxlore/feature/library/
     HistorySuccessList.kt         — success-state LazyColumn (stats + timeline)
     HistoryTopBar.kt              — collapsible top app bar + overflow menu
   subscriptions/
+    SubscriptionFolderCards.kt    — Enlarged & compact folder card layouts with direct-clickable covers, overflow badge, and scroll-safe header clicks
+    SubscriptionFolderDialog.kt   — Centered floating dialog displaying folder shows in a 3-column grid with maximized viewing area
     SubscriptionTabs.kt           — Shows|New Episodes switcher; Explore-style genre pills with icons
     SubscriptionsFilterRow.kt     — horizontal filter chips row with dynamic custom genre & icon resolution
     SubscriptionsTabSelectorFab.kt — Floating segmented FAB pill indicator for Shows/New Episodes
