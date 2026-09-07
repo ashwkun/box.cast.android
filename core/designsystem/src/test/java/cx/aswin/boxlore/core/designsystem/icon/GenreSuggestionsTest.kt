@@ -2,6 +2,7 @@ package cx.aswin.boxlore.core.designsystem.icon
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -103,5 +104,72 @@ class GenreSuggestionsTest {
         assertEquals("My Dev Folder", combined[0].name)
         assertEquals("Gaming Squad", combined[1].name)
         assertEquals("gaming", combined[1].iconKey)
+    }
+
+    @Test
+    fun `findExactGenreIconKey matches exact genre names case-insensitively`() {
+        assertEquals("tech", findExactGenreIconKey("Tech"))
+        assertEquals("tech", findExactGenreIconKey("tech"))
+        assertEquals("comedy", findExactGenreIconKey("Comedy"))
+        assertEquals("comedy", findExactGenreIconKey("comedy"))
+        assertEquals("sports", findExactGenreIconKey("Sports"))
+        assertEquals("sports", findExactGenreIconKey("sports"))
+        assertEquals("gaming", findExactGenreIconKey("Gaming"))
+        assertEquals("gaming", findExactGenreIconKey("gaming"))
+        assertEquals("news", findExactGenreIconKey("News"))
+        assertEquals("news", findExactGenreIconKey("news"))
+        assertEquals("science", findExactGenreIconKey("Science"))
+        assertEquals("science", findExactGenreIconKey("science"))
+        assertEquals("music", findExactGenreIconKey("Music"))
+        assertEquals("music", findExactGenreIconKey("music"))
+        assertEquals("code", findExactGenreIconKey("Coding"))
+        assertEquals("finance", findExactGenreIconKey("Finance"))
+    }
+
+    @Test
+    fun `findExactGenreIconKey matches exact topic keywords case-insensitively`() {
+        // Sports keywords
+        assertEquals("sports", findExactGenreIconKey("football"))
+        assertEquals("sports", findExactGenreIconKey("soccer"))
+        assertEquals("sports", findExactGenreIconKey("sport"))
+
+        // Comedy keywords
+        assertEquals("comedy", findExactGenreIconKey("funny"))
+        assertEquals("comedy", findExactGenreIconKey("jokes"))
+        assertEquals("comedy", findExactGenreIconKey("humor"))
+
+        // Tech keywords
+        assertEquals("tech", findExactGenreIconKey("technology"))
+        assertEquals("tech", findExactGenreIconKey("ai"))
+        assertEquals("tech", findExactGenreIconKey("computers"))
+
+        // Science keywords
+        assertEquals("science", findExactGenreIconKey("space"))
+        assertEquals("science", findExactGenreIconKey("physics"))
+
+        // Finance / Business keywords
+        assertEquals("finance", findExactGenreIconKey("money"))
+        assertEquals("business", findExactGenreIconKey("investing"))
+        assertEquals("business", findExactGenreIconKey("startup"))
+    }
+
+    @Test
+    fun `findExactGenreIconKey matches direct GenreIcons keys and labels`() {
+        assertEquals("star", findExactGenreIconKey("star"))
+        assertEquals("fire", findExactGenreIconKey("fire"))
+        assertEquals("mic", findExactGenreIconKey("mic"))
+        assertEquals("headphones", findExactGenreIconKey("headphones"))
+        assertEquals("bulb", findExactGenreIconKey("ideas"))
+    }
+
+    @Test
+    fun `findExactGenreIconKey returns null for non-matching or partial strings`() {
+        assertNull(findExactGenreIconKey(""))
+        assertNull(findExactGenreIconKey("   "))
+        assertNull(findExactGenreIconKey("c"))
+        assertNull(findExactGenreIconKey("co"))
+        assertNull(findExactGenreIconKey("comed"))
+        assertNull(findExactGenreIconKey("te"))
+        assertNull(findExactGenreIconKey("some random uncataloged folder name"))
     }
 }

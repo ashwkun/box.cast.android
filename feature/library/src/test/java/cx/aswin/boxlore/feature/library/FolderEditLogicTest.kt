@@ -5,6 +5,7 @@ import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
 import cx.aswin.boxlore.core.designsystem.icon.GenreSuggestion
 import cx.aswin.boxlore.core.designsystem.icon.buildFolderSuggestionsWithLibrary
 import cx.aswin.boxlore.core.designsystem.icon.filterGenreSuggestions
+import cx.aswin.boxlore.core.designsystem.icon.findExactGenreIconKey
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
@@ -363,5 +364,73 @@ class FolderEditLogicTest {
         assertTrue(canSave(nameText))
         assertEquals("Tech", nameText)
         assertEquals("tech", selectedIconKey)
+    }
+
+    @Test
+    fun folderName_typingExactKeywordSwitchesIconAutomaticallyWithoutTap() {
+        val allFolderSuggestions = buildFolderSuggestionsWithLibrary(listOf("Tech", "Comedy"))
+        var nameText = ""
+        var selectedIconKey: String? = null
+        var isIconManuallySelected = false
+
+        fun onNameChange(newName: String) {
+            nameText = newName
+            val trimmed = newName.trim()
+            if (trimmed.isEmpty()) {
+                isIconManuallySelected = false
+                selectedIconKey = null
+            } else if (!isIconManuallySelected) {
+                val matchedKey = findExactGenreIconKey(trimmed, allFolderSuggestions)
+                if (matchedKey != null) {
+                    selectedIconKey = matchedKey
+                }
+            }
+        }
+
+        fun onSelectIcon(icon: String?) {
+            selectedIconKey = icon
+            isIconManuallySelected = true
+        }
+
+        // 1. Partial typing does not switch icon
+        onNameChange("c")
+        assertNull(selectedIconKey)
+        onNameChange("co")
+        assertNull(selectedIconKey)
+        onNameChange("comed")
+        assertNull(selectedIconKey)
+
+        // 2. Exact genre match automatically switches icon without tapping
+        onNameChange("comedy")
+        assertEquals("comedy", selectedIconKey)
+
+        // 3. Refining name to a multi-word phrase retains the matched genre icon
+        onNameChange("comedy shows")
+        assertEquals("comedy", selectedIconKey)
+
+        // 4. Clearing text resets icon to null
+        onNameChange("")
+        assertNull(selectedIconKey)
+        assertFalse(isIconManuallySelected)
+
+        // 5. Typing exact keyword for sports switches icon to sports
+        onNameChange("football")
+        assertEquals("sports", selectedIconKey)
+
+        // 6. Typing another keyword like "tech" switches to tech
+        onNameChange("tech")
+        assertEquals("tech", selectedIconKey)
+
+        // 7. Typing "technology" switches to tech icon
+        onNameChange("technology")
+        assertEquals("tech", selectedIconKey)
+
+        // 8. Manual icon selection locks icon so typing doesn't overwrite it
+        onSelectIcon("star")
+        assertEquals("star", selectedIconKey)
+        assertTrue(isIconManuallySelected)
+
+        onNameChange("comedy")
+        assertEquals("star", selectedIconKey) // Preserves manual choice
     }
 }

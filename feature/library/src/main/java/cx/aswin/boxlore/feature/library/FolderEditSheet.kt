@@ -18,16 +18,17 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import cx.aswin.boxlore.core.designsystem.icon.GenreSuggestion
 import cx.aswin.boxlore.core.designsystem.icon.buildFolderSuggestionsWithLibrary
 import cx.aswin.boxlore.core.designsystem.icon.filterGenreSuggestions
+import cx.aswin.boxlore.core.designsystem.icon.findExactGenreIconKey
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 
@@ -101,31 +102,29 @@ private fun rememberFolderEditStateAndActions(
     onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
     onDelete: (() -> Unit)?,
 ): Pair<FolderEditFormState, FolderEditFormActions> {
-    var nameText by remember(initialFolder) { mutableStateOf(initialFolder?.name ?: "") }
-    var selectedIconKey by remember(initialFolder) { mutableStateOf(initialFolder?.icon) }
-    var isIconManuallySelected by remember(initialFolder) {
-        mutableStateOf(initialFolder?.icon != null)
-    }
-    var selectedDisplaySize by remember(initialFolder) {
+    val nameState = remember(initialFolder) { mutableStateOf(initialFolder?.name ?: "") }
+    val iconState = remember(initialFolder) { mutableStateOf(initialFolder?.icon) }
+    val iconManualState = remember(initialFolder) { mutableStateOf(initialFolder?.icon != null) }
+    val displaySizeState = remember(initialFolder) {
         mutableStateOf(initialFolder?.displaySize ?: FolderDisplaySize.COMPACT)
     }
-    var showPodcastGrid by remember(initialFolder) {
+    val podcastGridState = remember(initialFolder) {
         mutableStateOf(initialFolder?.showPodcastGrid ?: false)
     }
-    var autoSyncGenre by remember(initialFolder) {
+    val autoSyncState = remember(initialFolder) {
         mutableStateOf(initialFolder?.isGenreLinked ?: false)
     }
-    var linkedGenreText by remember(initialFolder) {
+    val linkedGenreState = remember(initialFolder) {
         mutableStateOf(initialFolder?.linkedGenre ?: "")
     }
 
     val focusManager = LocalFocusManager.current
     val isEditing = initialFolder != null
-    val isTechnologyDisallowed = nameText.trim().equals("Technology", ignoreCase = true)
-    val canSave = nameText.trim().isNotEmpty() && !isTechnologyDisallowed
+    val isTechnologyDisallowed = nameState.value.trim().equals("Technology", ignoreCase = true)
+    val canSave = nameState.value.trim().isNotEmpty() && !isTechnologyDisallowed
 
-    val effectiveLinkedGenre = if (autoSyncGenre) {
-        linkedGenreText.trim().ifEmpty { nameText.trim() }
+    val effectiveLinkedGenre = if (autoSyncState.value) {
+        linkedGenreState.value.trim().ifEmpty { nameState.value.trim() }
     } else {
         null
     }
@@ -134,68 +133,118 @@ private fun rememberFolderEditStateAndActions(
         buildFolderSuggestionsWithLibrary(suggestedGenres)
     }
 
-    val filteredSuggestions = remember(nameText, allFolderSuggestions) {
-        filterGenreSuggestions(nameText, allFolderSuggestions)
+    val filteredSuggestions = remember(nameState.value, allFolderSuggestions) {
+        filterGenreSuggestions(nameState.value, allFolderSuggestions)
     }
 
     val formState = FolderEditFormState(
         isEditing = isEditing,
         canSave = canSave,
         isTechnologyDisallowed = isTechnologyDisallowed,
-        nameText = nameText,
-        selectedIconKey = selectedIconKey,
-        selectedDisplaySize = selectedDisplaySize,
-        showPodcastGrid = showPodcastGrid,
-        autoSyncGenre = autoSyncGenre,
+        nameText = nameState.value,
+        selectedIconKey = iconState.value,
+        selectedDisplaySize = displaySizeState.value,
+        showPodcastGrid = podcastGridState.value,
+        autoSyncGenre = autoSyncState.value,
         effectiveLinkedGenre = effectiveLinkedGenre,
         suggestedGenres = suggestedGenres,
         filteredSuggestions = filteredSuggestions,
     )
 
-    val formActions = FolderEditFormActions(
-        onNameChange = { nameText = it },
-        onSelectIcon = {
-            selectedIconKey = it
-            isIconManuallySelected = true
-            focusManager.clearFocus()
-        },
-        onSelectDisplaySize = { selectedDisplaySize = it },
-        onShowPodcastGridChange = { showPodcastGrid = it },
-        onAutoSyncChange = { enabled -> autoSyncGenre = enabled },
-        onSelectLinkedGenre = { genre ->
-            linkedGenreText = if (linkedGenreText.equals(genre, ignoreCase = true)) "" else genre
-        },
-        onSelectSuggestion = { suggestion ->
-            nameText = suggestion.name
-            selectedIconKey = suggestion.iconKey
-            isIconManuallySelected = true
-            focusManager.clearFocus()
-        },
-        onSwitchToTech = {
-            nameText = "Tech"
-            selectedIconKey = "tech"
-            isIconManuallySelected = true
-            focusManager.clearFocus()
-        },
-        onDone = { focusManager.clearFocus() },
-        onSave = {
-            focusManager.clearFocus()
-            val finalName = nameText.trim()
-            val finalIcon = selectedIconKey?.trim()?.takeIf { it.isNotEmpty() }
-            val finalLinked = if (autoSyncGenre) {
-                linkedGenreText.trim().ifEmpty { finalName }.takeIf { it.isNotEmpty() }
-            } else {
-                null
-            }
-            val finalShowPodcastGrid = if (finalIcon == null) true else showPodcastGrid
-            onSave(finalName, finalIcon, selectedDisplaySize, finalLinked, finalShowPodcastGrid)
-        },
-        onClose = onDismissRequest,
+    val fields = remember(initialFolder) {
+        FolderEditFormFields(
+            nameState = nameState,
+            iconState = iconState,
+            iconManualState = iconManualState,
+            displaySizeState = displaySizeState,
+            podcastGridState = podcastGridState,
+            autoSyncState = autoSyncState,
+            linkedGenreState = linkedGenreState,
+        )
+    }
+
+    val formActions = rememberFolderEditFormActions(
+        fields = fields,
+        allFolderSuggestions = allFolderSuggestions,
+        focusManager = focusManager,
+        onDismissRequest = onDismissRequest,
+        onSave = onSave,
         onDelete = onDelete,
     )
 
     return formState to formActions
 }
+
+private class FolderEditFormFields(
+    val nameState: MutableState<String>,
+    val iconState: MutableState<String?>,
+    val iconManualState: MutableState<Boolean>,
+    val displaySizeState: MutableState<FolderDisplaySize>,
+    val podcastGridState: MutableState<Boolean>,
+    val autoSyncState: MutableState<Boolean>,
+    val linkedGenreState: MutableState<String>,
+)
+
+private fun rememberFolderEditFormActions(
+    fields: FolderEditFormFields,
+    allFolderSuggestions: List<GenreSuggestion>,
+    focusManager: FocusManager,
+    onDismissRequest: () -> Unit,
+    onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
+    onDelete: (() -> Unit)?,
+): FolderEditFormActions = FolderEditFormActions(
+    onNameChange = { newName ->
+        fields.nameState.value = newName
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty()) {
+            fields.iconManualState.value = false
+            fields.iconState.value = null
+        } else if (!fields.iconManualState.value) {
+            val matchedKey = findExactGenreIconKey(trimmed, allFolderSuggestions)
+            if (matchedKey != null) {
+                fields.iconState.value = matchedKey
+            }
+        }
+    },
+    onSelectIcon = {
+        fields.iconState.value = it
+        fields.iconManualState.value = true
+        focusManager.clearFocus()
+    },
+    onSelectDisplaySize = { fields.displaySizeState.value = it },
+    onShowPodcastGridChange = { fields.podcastGridState.value = it },
+    onAutoSyncChange = { enabled -> fields.autoSyncState.value = enabled },
+    onSelectLinkedGenre = { genre ->
+        fields.linkedGenreState.value = if (fields.linkedGenreState.value.equals(genre, ignoreCase = true)) "" else genre
+    },
+    onSelectSuggestion = { suggestion ->
+        fields.nameState.value = suggestion.name
+        fields.iconState.value = suggestion.iconKey
+        fields.iconManualState.value = true
+        focusManager.clearFocus()
+    },
+    onSwitchToTech = {
+        fields.nameState.value = "Tech"
+        fields.iconState.value = "tech"
+        fields.iconManualState.value = true
+        focusManager.clearFocus()
+    },
+    onDone = { focusManager.clearFocus() },
+    onSave = {
+        focusManager.clearFocus()
+        val finalName = fields.nameState.value.trim()
+        val finalIcon = fields.iconState.value?.trim()?.takeIf { it.isNotEmpty() }
+        val finalLinked = if (fields.autoSyncState.value) {
+            fields.linkedGenreState.value.trim().ifEmpty { finalName }.takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
+        val finalShowPodcastGrid = if (finalIcon == null) true else fields.podcastGridState.value
+        onSave(finalName, finalIcon, fields.displaySizeState.value, finalLinked, finalShowPodcastGrid)
+    },
+    onClose = onDismissRequest,
+    onDelete = onDelete,
+)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
