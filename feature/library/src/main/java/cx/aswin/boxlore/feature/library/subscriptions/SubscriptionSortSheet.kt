@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Podcasts
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -101,9 +100,18 @@ internal fun SubscriptionSortSheet(
         ) {
             SheetHeader(onDismiss = actions.onDismiss)
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            DragRepositionTipBanner()
+            AutoOrganizeRow(
+                autoOrganize = config.autoOrganizeFolders,
+                onToggle = actions.onAutoOrganizeFoldersChange,
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -126,26 +134,9 @@ internal fun SubscriptionSortSheet(
                 onIntraFolderSortChange = actions.onIntraFolderSortChange,
             )
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            ActiveSortSummaryCard(
-                currentSort = config.currentSort,
-                folderSort = config.folderSort,
-                intraFolderSort = config.intraFolderSort,
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            AutoOrganizeRow(
-                autoOrganize = config.autoOrganizeFolders,
-                onToggle = actions.onAutoOrganizeFoldersChange,
-            )
+            DragRepositionTipBanner()
 
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -236,7 +227,7 @@ private fun DragRepositionTipBanner() {
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "You can drag and reorder shows outside folders directly in the grid. Inside any folder, you can also rearrange shows manually.",
+                    text = "You can drag and reorder folders at the top, shows outside folders directly in the grid, and shows inside any folder.",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, lineHeight = 16.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -416,77 +407,6 @@ private fun SortChip(
     )
 }
 
-private fun formatShowsSortSummary(sort: SubscriptionSort): String = when (sort) {
-    SubscriptionSort.SmartRank -> "Smart Rank"
-    SubscriptionSort.RecentlyUpdated -> "Recently Updated"
-    SubscriptionSort.Alphabetical -> "A–Z"
-    SubscriptionSort.MostListened -> "Most Listened"
-    SubscriptionSort.Manual -> "Manual Order"
-}
-
-private fun formatFolderInterSortSummary(folderSort: FolderInterSort, showText: String): String = when (folderSort) {
-    FolderInterSort.Inherit -> "Follow Shows ($showText)"
-    FolderInterSort.SmartRank -> "Smart Sort"
-    FolderInterSort.RecentlyUpdated -> "Recently Updated"
-    FolderInterSort.Alphabetical -> "A–Z"
-    FolderInterSort.MostShows -> "Most Shows"
-    FolderInterSort.Manual -> "Manual Order"
-}
-
-private fun formatFolderIntraSortSummary(intraSort: FolderIntraSort, showText: String): String = when (intraSort) {
-    FolderIntraSort.Inherit -> "Follow Shows ($showText)"
-    FolderIntraSort.SmartRank -> "Smart Rank"
-    FolderIntraSort.RecentlyUpdated -> "Recently Updated"
-    FolderIntraSort.Alphabetical -> "A–Z"
-    FolderIntraSort.MostListened -> "Most Listened"
-    FolderIntraSort.Manual -> "Folder Order"
-}
-
-@Composable
-private fun ActiveSortSummaryCard(
-    currentSort: SubscriptionSort,
-    folderSort: FolderInterSort,
-    intraFolderSort: FolderIntraSort,
-) {
-    val showText = formatShowsSortSummary(currentSort)
-    val folderText = formatFolderInterSortSummary(folderSort, showText)
-    val intraText = formatFolderIntraSortSummary(intraFolderSort, showText)
-
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(14.dp),
-                )
-                Text(
-                    text = "Current arrangement",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = GoogleSansWeight.bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Text(
-                text = "• Shows outside folders: $showText\n• Folders at top: $folderText\n• Shows inside folders: $intraText",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, lineHeight = 17.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
 @Composable
 private fun AutoOrganizeRow(
     autoOrganize: Boolean,
@@ -505,7 +425,7 @@ private fun AutoOrganizeRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = "Automatically place newly subscribed shows into matching genre folders.",
+                text = "Automatically create and group existing shows into genre folders now, and organize new subscriptions going forward.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
