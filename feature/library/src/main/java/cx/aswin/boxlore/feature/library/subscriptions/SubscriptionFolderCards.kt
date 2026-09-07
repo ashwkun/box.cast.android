@@ -79,7 +79,7 @@ internal fun PinnedEnlargedFolderCard(
     modifier: Modifier = Modifier,
 ) {
     val lastSeenEpisodes = LocalLastSeenEpisodes.current
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(16.dp)
     val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
     val slots = calculateFolderSlots(podcasts, folder.displaySize)
 
@@ -97,8 +97,8 @@ internal fun PinnedEnlargedFolderCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             PinnedFolderHeader(
                 folder = folder,
@@ -139,52 +139,54 @@ private fun PinnedFolderHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
             .combinedClickable(
                 onClick = { onFolderClick(folder.id) },
                 onLongClick = { onFolderLongClick(folder) },
             )
-            .padding(vertical = 4.dp, horizontal = 2.dp),
+            .padding(horizontal = 2.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-            modifier = Modifier.size(32.dp),
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = folderIcon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
+            Icon(
+                imageVector = folderIcon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp),
+            )
 
-        Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(6.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = folder.name,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = GoogleSansWeight.bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
+
+            Spacer(modifier = Modifier.width(4.dp))
+
             Text(
-                text = if (podcastsCount == 1) "1 show" else "$podcastsCount shows",
+                text = "•  " + if (podcastsCount == 1) "1 show" else "$podcastsCount shows",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
             )
         }
+
+        Spacer(modifier = Modifier.width(6.dp))
 
         Icon(
             imageVector = Icons.Rounded.ChevronRight,
             contentDescription = "Open folder",
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(16.dp),
         )
     }
 }
@@ -747,26 +749,26 @@ private fun EmptyFolderPlaceholder(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(72.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .height(52.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.35f))
             .clickable(onClick = onAddShowsClick)
-            .padding(12.dp),
+            .padding(8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Icon(
                 imageVector = Icons.Rounded.FolderOpen,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
             )
             Text(
                 text = "Folder is empty • Tap to add shows",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = GoogleSansWeight.medium,
             )
