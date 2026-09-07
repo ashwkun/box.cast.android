@@ -224,3 +224,17 @@ object PodcastInfoEnrichLogic {
         return listOfNotNull(localEp, latestEp, refreshedEp).maxByOrNull { it.publishedDate }
     }
 }
+
+object PodcastInfoFolderSyncLogic {
+    suspend fun syncFoldersAfterGenreUpdate(
+        folderRepository: cx.aswin.boxlore.core.catalog.FolderRepository?,
+        autoOrganizeEnabled: Boolean,
+    ) {
+        if (folderRepository == null) return
+        if (autoOrganizeEnabled) {
+            folderRepository.autoOrganizeSubscribedShows()
+        } else {
+            folderRepository.syncLinkedGenres()
+        }
+    }
+}

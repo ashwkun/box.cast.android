@@ -21,8 +21,10 @@ import cx.aswin.boxlore.core.database.entities.QueueItem
         EpisodeSupplementItemEntity::class,
         LocalEpisodeFeedEntity::class,
         LocalEpisodeEntity::class,
+        FolderEntity::class,
+        PodcastFolderCrossRef::class,
     ],
-    version = 33,
+    version = 35,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -44,6 +46,8 @@ abstract class BoxLoreDatabase : RoomDatabase() {
     abstract fun downloadedEpisodeDao(): DownloadedEpisodeDao
 
     abstract fun queueDao(): QueueDao
+
+    abstract fun folderDao(): FolderDao
 
     fun listeningInsightsMaintenance(): ListeningInsightsMaintenance = ListeningInsightsMaintenance(this)
 
@@ -247,6 +251,27 @@ abstract class BoxLoreDatabase : RoomDatabase() {
                 }
             }
 
+        private val MIGRATION_33_34 =
+            object : Migration(33, 34) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    BoxLoreDatabaseMigrations.migrate33To34(db)
+                }
+            }
+
+        private val MIGRATION_34_35 =
+            object : Migration(34, 35) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    BoxLoreDatabaseMigrations.migrate34To35(db)
+                }
+            }
+
+        private val MIGRATION_33_35 =
+            object : Migration(33, 35) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    BoxLoreDatabaseMigrations.migrate33To35(db)
+                }
+            }
+
         @Volatile
         @Suppress("PropertyName")
         private var INSTANCE: BoxLoreDatabase? = null
@@ -310,6 +335,9 @@ abstract class BoxLoreDatabase : RoomDatabase() {
                         MIGRATION_30_31,
                         MIGRATION_31_32,
                         MIGRATION_32_33,
+                        MIGRATION_33_34,
+                        MIGRATION_34_35,
+                        MIGRATION_33_35,
                     ).fallbackToDestructiveMigration(dropAllTables = true) // For development simplicity on older versions
                     .build()
             INSTANCE = instance

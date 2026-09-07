@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 
 @Composable
-fun BoxScope.NewEpisodeBadge(modifier: Modifier = Modifier) {
+fun rememberNewEpisodeBadgeShimmerBrush(): Brush {
     // Slow shimmer animation across the NEW badge background (4 seconds loop)
     val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
     val shimmerOffset by infiniteTransition.animateFloat(
@@ -35,25 +35,30 @@ fun BoxScope.NewEpisodeBadge(modifier: Modifier = Modifier) {
         targetValue = 200f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            repeatMode = RepeatMode.Restart,
         ),
-        label = "shimmerOffset"
+        label = "shimmerOffset",
     )
 
     val baseColor = MaterialTheme.colorScheme.primary
     val shimmerColor = MaterialTheme.colorScheme.primaryContainer
 
-    val brush = remember(shimmerOffset, baseColor, shimmerColor) {
+    return remember(shimmerOffset, baseColor, shimmerColor) {
         Brush.linearGradient(
             colors = listOf(
                 baseColor,
                 shimmerColor,
-                baseColor
+                baseColor,
             ),
             start = Offset(shimmerOffset, 0f),
-            end = Offset(shimmerOffset + 80f, 0f)
+            end = Offset(shimmerOffset + 80f, 0f),
         )
     }
+}
+
+@Composable
+fun BoxScope.NewEpisodeBadge(modifier: Modifier = Modifier) {
+    val brush = rememberNewEpisodeBadgeShimmerBrush()
 
     Surface(
         shape = RoundedCornerShape(6.dp),
@@ -62,7 +67,7 @@ fun BoxScope.NewEpisodeBadge(modifier: Modifier = Modifier) {
         modifier = modifier
             .align(Alignment.TopEnd)
             .padding(top = 4.dp, end = 4.dp)
-            .background(brush, RoundedCornerShape(6.dp))
+            .background(brush, RoundedCornerShape(6.dp)),
     ) {
         Text(
             text = "NEW",
@@ -70,10 +75,10 @@ fun BoxScope.NewEpisodeBadge(modifier: Modifier = Modifier) {
                 fontSize = 7.sp,
                 fontWeight = GoogleSansWeight.extraBold,
                 letterSpacing = 0.5.sp,
-                lineHeight = 8.sp
+                lineHeight = 8.sp,
             ),
             color = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
         )
     }
 }

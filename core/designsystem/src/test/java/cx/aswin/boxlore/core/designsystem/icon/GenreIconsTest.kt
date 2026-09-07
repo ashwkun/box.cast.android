@@ -3,12 +3,15 @@ package cx.aswin.boxlore.core.designsystem.icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Newspaper
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class GenreIconsTest {
@@ -40,6 +43,8 @@ class GenreIconsTest {
     fun `defaultGenreIcon resolves common podcast genres`() {
         assertEquals(Icons.Rounded.Newspaper, GenreIcons.defaultGenreIcon("News"))
         assertEquals(Icons.Rounded.MusicNote, GenreIcons.defaultGenreIcon("Music"))
+        assertEquals(Icons.Rounded.Computer, GenreIcons.defaultGenreIcon("Technology"))
+        assertEquals(Icons.Rounded.Computer, GenreIcons.defaultGenreIcon("Tech"))
         assertEquals(GenreIcons.findIcon("art"), GenreIcons.defaultGenreIcon("Arts"))
         assertEquals(GenreIcons.findIcon("work"), GenreIcons.defaultGenreIcon("Startups"))
         assertEquals(Icons.Rounded.Category, GenreIcons.defaultGenreIcon("Unknown Genre"))
@@ -51,5 +56,32 @@ class GenreIconsTest {
         assertEquals(Icons.Rounded.Code, GenreIcons.iconOrFallback("code", "News"))
         assertEquals(Icons.Rounded.Newspaper, GenreIcons.iconOrFallback(null, "News"))
         assertEquals(Icons.Rounded.Category, GenreIcons.iconOrFallback(null, null))
+    }
+
+    @Test
+    fun `folderIconOrFallback returns explicit icon or falls back to folder vector`() {
+        assertEquals(Icons.Rounded.Code, GenreIcons.folderIconOrFallback("code"))
+        assertEquals(Icons.Rounded.Folder, GenreIcons.folderIconOrFallback(null))
+        assertEquals(Icons.Rounded.Folder, GenreIcons.folderIconOrFallback(""))
+        assertEquals(Icons.Rounded.Folder, GenreIcons.findIcon("folder"))
+    }
+
+    @Test
+    fun `suggestIcons returns matching icons for query`() {
+        assertTrue(GenreIcons.suggestIcons("").isEmpty())
+        val techMatches = GenreIcons.suggestIcons("tech")
+        assertTrue(techMatches.any { it.key == "tech" })
+        val musicMatches = GenreIcons.suggestIcons("music")
+        assertTrue(musicMatches.any { it.key == "music" })
+    }
+
+    @Test
+    fun `findExactGenreIconKey preserves exact matching and rejects partial multiword queries`() {
+        assertEquals("tech", findExactGenreIconKey("tech"))
+        assertEquals("tech", findExactGenreIconKey("Technology"))
+        assertEquals("music", findExactGenreIconKey("Music"))
+        assertNull(findExactGenreIconKey("Tech News"))
+        assertNull(findExactGenreIconKey("Random Multi Word"))
+        assertNull(findExactGenreIconKey(""))
     }
 }

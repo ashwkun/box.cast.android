@@ -4,17 +4,21 @@ import cx.aswin.boxlore.core.database.PodcastDao
 import cx.aswin.boxlore.core.database.PodcastEntity
 import cx.aswin.boxlore.core.domain.ports.LocalEpisodeCatalogPort
 import cx.aswin.boxlore.core.model.Podcast
+import cx.aswin.boxlore.core.prefs.UserPreferencesRepository
 import cx.aswin.boxlore.core.ranking.FeedbackTarget
 import cx.aswin.boxlore.core.ranking.RankingAction
 import cx.aswin.boxlore.core.ranking.RankingFeedbackRepository
 import cx.aswin.boxlore.core.rss.LocalEpisodeCatalogRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class SubscriptionRepository(
     private val podcastDao: PodcastDao,
     private val localEpisodeCatalog: LocalEpisodeCatalogPort? = null,
     private val lookupHttpsFeedUrl: (suspend (String) -> String?)? = null,
+    private val folderRepository: FolderRepository? = null,
+    private val userPreferencesRepository: UserPreferencesRepository? = null,
 ) {
     val subscribedPodcastIds: Flow<Set<String>> =
         podcastDao
@@ -31,6 +35,7 @@ class SubscriptionRepository(
             .getSubscribedPodcasts()
             .map { list -> list.map { it.toPodcast() } }
 
+    @Suppress("kotlin:S6619")
     suspend fun toggleSubscription(podcast: Podcast) {
         val existing = podcastDao.getPodcast(podcast.id)
         val linkedRss =
@@ -41,7 +46,7 @@ class SubscriptionRepository(
             }
         val activeEntity = linkedRss?.takeIf { it.isSubscribed } ?: existing
 
-        if (activeEntity != null && activeEntity.isSubscribed) {
+        if (activeEntity?.isSubscribed == true) {
             unsubscribeInternal(podcast, activeEntity, existing)
         } else {
             // Subscribe (Upsert to ensure we have data for offline/Jump Back In)
@@ -101,6 +106,7 @@ class SubscriptionRepository(
                 ),
                 action = RankingAction.SUBSCRIBE,
             )
+            onSubscribed()
         }
     }
 
@@ -135,6 +141,11 @@ class SubscriptionRepository(
             ),
             action = RankingAction.UNSUBSCRIBE,
         )
+        folderRepository?.removePodcastFromAllFolders(podcast.id)
+        if (target.podcastId != podcast.id) {
+            folderRepository?.removePodcastFromAllFolders(target.podcastId)
+        }
+        folderRepository?.syncLinkedGenres()
     }
 
     suspend fun isSubscribed(podcastId: String): Boolean {
@@ -178,10 +189,8 @@ class SubscriptionRepository(
                 imageUrl = podcast.imageUrl.takeIf { it.isNotEmpty() } ?: existing?.imageUrl ?: "",
                 description = podcast.description,
                 isSubscribed = true,
-                subscribedAt =
-                validRestoredSubscribedAt
-                    ?: existing?.takeIf { it.isSubscribed }?.subscribedAt
-                    ?: now,
+                subscribedAt = validRestoredSubscribedAt
+                    ?: if (existing?.isSubscribed == true) existing.subscribedAt else now,
                 genre = podcast.genre,
                 type = typeVal,
                 lastRefreshed = existing?.lastRefreshed ?: now,
@@ -224,6 +233,8 @@ class SubscriptionRepository(
                 linkedPodcastIndexId =
                 existing?.linkedPodcastIndexId
                     ?: podcast.linkedPodcastIndexId,
+                customGenre = existing?.customGenre ?: podcast.customGenre,
+                customGenreIcon = existing?.customGenreIcon ?: podcast.customGenreIcon,
             )
         podcastDao.upsert(entity)
         localEpisodeCatalog?.setUnsubscribedTtl(podcast.id, null)
@@ -238,6 +249,19 @@ class SubscriptionRepository(
                 ),
                 action = RankingAction.SUBSCRIBE,
             )
+        }
+        if (isNewSubscription && recordFeedback) {
+            onSubscribed()
+        }
+    }
+
+    private suspend fun onSubscribed() {
+        val repo = folderRepository ?: return
+        val isAutoOrganize = userPreferencesRepository?.autoOrganizeFoldersStream?.first() == true
+        if (isAutoOrganize) {
+            repo.autoOrganizeSubscribedShows()
+        } else {
+            repo.syncLinkedGenres()
         }
     }
 

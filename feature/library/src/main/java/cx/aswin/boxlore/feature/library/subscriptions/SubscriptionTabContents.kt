@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -29,49 +31,164 @@ import androidx.compose.ui.unit.dp
 import cx.aswin.boxlore.core.database.ListeningHistoryEntity
 import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.EpisodeStatus
+import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
+import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.feature.library.ExpressiveSolarSystemEmptyState
 import cx.aswin.boxlore.feature.library.LocalLastSeenEpisodes
 import cx.aswin.boxlore.feature.library.PlayAllFab
-import cx.aswin.boxlore.feature.library.logic.SubscriptionManualOrderLogic
+import cx.aswin.boxlore.feature.library.SubscriptionSort
 import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableLazyGridState
+import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
-private const val ShowsGenreHeaderKey = "shows_genre_header"
-private val ShowsBlockedReorderKeys = setOf(ShowsGenreHeaderKey)
+/** Callbacks for [ShowsTabContent], grouped to keep the composable parameter list small. */
+internal data class ShowsTabActions(
+    val onExploreClick: () -> Unit,
+    val onPodcastClick: (String) -> Unit,
+    val onPodcastLongClick: (Podcast) -> Unit = {},
+    val onReorder: (orderedIds: List<String>) -> Unit = {},
+    val onReorderFolders: (orderedFolderIds: List<String>) -> Unit = {},
+    val onNewFolderClick: (() -> Unit)? = null,
+    val onFolderClick: (String) -> Unit = {},
+    val onFolderLongClick: (SubscriptionFolder) -> Unit = {},
+) {
+    fun toFolderCardActions(): FolderCardActions = FolderCardActions(
+        onPodcastClick = onPodcastClick,
+        onFolderClick = onFolderClick,
+        onFolderLongClick = onFolderLongClick,
+    )
+}
+
+/** Configuration for [ShowsTabContent], grouped to keep the composable parameter list small. */
+internal data class ShowsTabConfig(
+    val isGridView: Boolean,
+    val canReorder: Boolean = false,
+    val reorderMode: ReorderMode = ReorderMode.Inactive,
+    val pinnedPodcastIds: Set<String> = emptySet(),
+    val sort: SubscriptionSort = SubscriptionSort.SmartRank,
+    val manualOrder: List<String> = emptyList(),
+    val folderSort: FolderInterSort = FolderInterSort.Inherit,
+    val folderManualOrder: List<String> = emptyList(),
+    val intraFolderSort: FolderIntraSort = FolderIntraSort.Inherit,
+    val smartOrderIds: List<String> = emptyList(),
+)
+
+private data class ShowsGridConfig(
+    val reorderMode: ReorderMode,
+    val pinnedPodcastIds: Set<String>,
+) {
+    val isFoldersReordering: Boolean get() = reorderMode is ReorderMode.Folders
+    val isRootReordering: Boolean get() = reorderMode is ReorderMode.RootShows
+}
+
+@Composable
+private fun rememberShowsPartition(
+    podcasts: List<Podcast>,
+    folders: List<SubscriptionFolder>,
+    selectedGenre: String,
+    config: ShowsTabConfig,
+): PartitionedSubscriptionItems {
+    val filteredPodcasts = remember(podcasts, selectedGenre) { filterPodcastsByGenre(podcasts, selectedGenre) }
+    val distinctPodcasts = remember(filteredPodcasts) { filteredPodcasts.distinctBy { it.id } }
+    val filteredFolders = remember(folders, selectedGenre, podcasts) {
+        filterFoldersByGenre(folders, selectedGenre, podcasts)
+    }
+    return remember(
+        distinctPodcasts,
+        filteredFolders,
+        config.sort,
+        config.folderSort,
+        config.folderManualOrder,
+        config.intraFolderSort,
+        config.smartOrderIds,
+    ) {
+        partitionSubscribedShows(
+            podcasts = distinctPodcasts,
+            folders = filteredFolders,
+            sort = config.sort,
+            folderSort = config.folderSort,
+            folderManualOrder = config.folderManualOrder,
+            intraFolderSort = config.intraFolderSort,
+            smartOrderIds = config.smartOrderIds,
+        )
+    }
+}
+
+@Composable
+private fun rememberOrderedFolderKeys(
+    folders: List<SubscriptionFolder>,
+    folderManualOrder: List<String>,
+): MutableState<List<String>> = remember(folders, folderManualOrder) {
+    mutableStateOf(
+        if (folderManualOrder.isNotEmpty()) {
+            val existing = folders.map { it.id }.toSet()
+            val ordered = folderManualOrder.filter { it in existing }
+            val remainder = folders.map { it.id }.filter { it !in ordered }
+            ordered + remainder
+        } else {
+            folders.map { it.id }
+        },
+    )
+}
 
 @Composable
 internal fun ShowsTabContent(
     podcasts: List<Podcast>,
-    onExploreClick: () -> Unit,
-    onPodcastClick: (String) -> Unit,
-    isGridView: Boolean,
-    canReorder: Boolean = false,
-    pinnedPodcastIds: Set<String> = emptySet(),
-    onReorder: (orderedIds: List<String>) -> Unit = {},
+    folders: List<SubscriptionFolder>,
+    config: ShowsTabConfig,
+    actions: ShowsTabActions,
 ) {
     if (podcasts.isEmpty()) {
         ExpressiveSolarSystemEmptyState(
             title = "No Subscriptions Yet",
             description = "Follow your favorite podcasts to see them here.",
             actionText = "Find Podcasts",
-            onExploreClick = onExploreClick,
+            onExploreClick = actions.onExploreClick,
         )
         return
     }
     val distinctGenres = remember(podcasts) { extractDistinctGenres(podcasts) }
     var selectedGenre by rememberSaveable { mutableStateOf("All") }
-    val filteredPodcasts = remember(podcasts, selectedGenre) { filterPodcastsByGenre(podcasts, selectedGenre) }
-    val distinctPodcasts = remember(filteredPodcasts) { filteredPodcasts.distinctBy { it.id } }
-    val reorderEnabled = canReorder && selectedGenre == "All"
-    val incomingIds = remember(distinctPodcasts) { distinctPodcasts.map { it.id } }
-    var orderedIds by remember { mutableStateOf(incomingIds) }
-    LaunchedEffect(incomingIds) {
-        orderedIds = incomingIds
+    LaunchedEffect(distinctGenres) {
+        val stillAvailable = selectedGenre.equals("All", ignoreCase = true) ||
+            distinctGenres.any { it.equals(selectedGenre, ignoreCase = true) }
+        if (!stillAvailable) selectedGenre = "All"
     }
-    val podcastsById = remember(distinctPodcasts) { distinctPodcasts.associateBy { it.id } }
-    val orderedPodcasts = orderedIds.mapNotNull(podcastsById::get)
+    val partition = rememberShowsPartition(podcasts, folders, selectedGenre, config)
+    val unfiledPodcasts = partition.unfiledPodcasts
+    val isFoldersReordering = config.reorderMode is ReorderMode.Folders
+    val isRootReordering = config.reorderMode is ReorderMode.RootShows
+    val isManualSort = config.sort == SubscriptionSort.Manual
+
+    var orderedKeys by rememberShowsOrderedKeys(
+        unfiledPodcasts = unfiledPodcasts,
+        manualOrder = config.manualOrder,
+        isManualSort = isManualSort,
+        isRootReordering = isRootReordering,
+    )
+    val orderedPodcasts = remember(orderedKeys, unfiledPodcasts, isManualSort, isRootReordering) {
+        resolveOrderedPodcasts(
+            unfiledPodcasts = unfiledPodcasts,
+            orderedKeys = orderedKeys,
+            isManualSort = isManualSort,
+            isRootReordering = isRootReordering,
+        )
+    }
+
+    var orderedFolderKeys by rememberOrderedFolderKeys(folders, config.folderManualOrder)
+
+    val onMove = rememberShowsMoveHandler(
+        isFoldersReordering = isFoldersReordering,
+        isRootReordering = isRootReordering,
+        orderedFolderKeys = orderedFolderKeys,
+        onFolderKeysChange = { orderedFolderKeys = it },
+        orderedKeys = orderedKeys,
+        onKeysChange = { orderedKeys = it },
+        actions = actions,
+    )
 
     val genreChips: @Composable () -> Unit = {
         SubscriptionGenreChips(
@@ -82,53 +199,101 @@ internal fun ShowsTabContent(
             },
             distinctGenres = distinctGenres,
             podcasts = podcasts,
-            contentPadding = PaddingValues(horizontal = if (isGridView) 0.dp else 16.dp),
+            contentPadding = PaddingValues(horizontal = if (config.isGridView) 0.dp else 16.dp),
+            onNewFolderClick = actions.onNewFolderClick,
         )
     }
 
-    val applyReorder: (String, String) -> Unit = { fromId, toId ->
-        if (reorderEnabled) {
-            val moved =
-                SubscriptionManualOrderLogic.moveVisible(
-                    ids = orderedIds,
-                    fromId = fromId,
-                    toId = toId,
-                    blockedKeys = ShowsBlockedReorderKeys,
-                )
-            if (moved != null) {
-                orderedIds = moved
-                onReorder(moved)
-            }
-        }
-    }
+    val folderItems = rememberShowsFolderItems(
+        partition = partition,
+        orderedFolderKeys = orderedFolderKeys,
+        isFoldersReordering = isFoldersReordering,
+        folderSort = config.folderSort,
+    )
 
-    if (isGridView) {
+    val gridConfig = ShowsGridConfig(
+        reorderMode = config.reorderMode,
+        pinnedPodcastIds = config.pinnedPodcastIds,
+    )
+
+    if (config.isGridView) {
         ShowsReorderableGrid(
+            folderItems = folderItems,
             orderedPodcasts = orderedPodcasts,
-            reorderEnabled = reorderEnabled,
-            pinnedPodcastIds = pinnedPodcastIds,
-            onPodcastClick = onPodcastClick,
-            onMove = applyReorder,
+            gridConfig = gridConfig,
+            actions = actions,
+            onMove = onMove,
             genreChips = genreChips,
         )
     } else {
         ShowsReorderableList(
             orderedPodcasts = orderedPodcasts,
-            reorderEnabled = reorderEnabled,
-            pinnedPodcastIds = pinnedPodcastIds,
-            onPodcastClick = onPodcastClick,
-            onMove = applyReorder,
+            folderItems = folderItems,
+            gridConfig = gridConfig,
+            actions = actions,
+            onMove = onMove,
             genreChips = genreChips,
         )
     }
 }
 
+private fun LazyGridScope.folderGridItems(
+    folderItems: ShowsFolderItems,
+    gridConfig: ShowsGridConfig,
+    reorderableGridState: ReorderableLazyGridState,
+    folderActions: FolderCardActions,
+) {
+    items(
+        items = folderItems.folders,
+        key = { "folder_${it.id}" },
+        span = { folder ->
+            if (folder.displaySize == FolderDisplaySize.COMPACT) {
+                GridItemSpan(1)
+            } else {
+                GridItemSpan(maxLineSpan)
+            }
+        },
+    ) { folder ->
+        val folderShows = folderItems.podcastsByFolderId[folder.id].orEmpty()
+        ReorderableItem(
+            reorderableGridState,
+            key = "folder_${folder.id}",
+            enabled = gridConfig.isFoldersReordering,
+        ) { isDragging ->
+            val dragModifier = if (gridConfig.isFoldersReordering) {
+                Modifier.longPressDraggableHandle()
+            } else {
+                Modifier
+            }
+            if (folder.displaySize == FolderDisplaySize.COMPACT) {
+                Compact1x1FolderCard(
+                    folder = folder,
+                    podcasts = folderShows,
+                    actions = folderActions,
+                    isDragging = isDragging,
+                    dragModifier = dragModifier,
+                    isReordering = gridConfig.isFoldersReordering,
+                )
+            } else {
+                PinnedEnlargedFolderCard(
+                    folder = folder,
+                    podcasts = folderShows,
+                    actions = folderActions,
+                    isDragging = isDragging,
+                    dragModifier = dragModifier,
+                    isReordering = gridConfig.isFoldersReordering,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ShowsReorderableGrid(
+    folderItems: ShowsFolderItems,
     orderedPodcasts: List<Podcast>,
-    reorderEnabled: Boolean,
-    pinnedPodcastIds: Set<String>,
-    onPodcastClick: (String) -> Unit,
+    gridConfig: ShowsGridConfig,
+    actions: ShowsTabActions,
     onMove: (fromId: String, toId: String) -> Unit,
     genreChips: @Composable () -> Unit,
 ) {
@@ -139,6 +304,8 @@ private fun ShowsReorderableGrid(
             val toId = to.key as? String ?: return@rememberReorderableLazyGridState
             onMove(fromId, toId)
         }
+    val folderActions = remember(actions) { actions.toFolderCardActions() }
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         state = gridState,
@@ -157,21 +324,45 @@ private fun ShowsReorderableGrid(
                 genreChips()
             }
         }
-        items(items = orderedPodcasts, key = { it.id }) { podcast ->
+
+        folderGridItems(
+            folderItems = folderItems,
+            gridConfig = gridConfig,
+            reorderableGridState = reorderableGridState,
+            folderActions = folderActions,
+        )
+
+        // Shows outside folders (unfiled podcasts)
+        items(
+            items = orderedPodcasts,
+            key = { it.id },
+            span = { GridItemSpan(1) },
+        ) { podcast ->
             val lastSeenEpisodes = LocalLastSeenEpisodes.current
             ReorderableItem(
                 reorderableGridState,
                 key = podcast.id,
-                enabled = reorderEnabled,
+                enabled = gridConfig.isRootReordering,
             ) { isDragging ->
+                val onCardClick: (() -> Unit)? = if (gridConfig.isRootReordering) {
+                    null
+                } else {
+                    { actions.onPodcastClick(podcast.id) }
+                }
+                val onCardLongClick: (() -> Unit)? = if (gridConfig.isRootReordering) {
+                    null
+                } else {
+                    { actions.onPodcastLongClick(podcast) }
+                }
                 SubscriptionGridCard(
                     podcast = podcast,
                     lastSeenId = lastSeenEpisodes[podcast.id],
-                    onClick = { onPodcastClick(podcast.id) },
-                    isPinned = podcast.id in pinnedPodcastIds,
+                    onClick = onCardClick,
+                    onLongClick = onCardLongClick,
+                    isPinned = podcast.id in gridConfig.pinnedPodcastIds,
                     isDragging = isDragging,
-                    dragModifier =
-                    if (reorderEnabled) {
+                    modifier =
+                    if (gridConfig.isRootReordering) {
                         Modifier.longPressDraggableHandle()
                     } else {
                         Modifier
@@ -185,9 +376,9 @@ private fun ShowsReorderableGrid(
 @Composable
 private fun ShowsReorderableList(
     orderedPodcasts: List<Podcast>,
-    reorderEnabled: Boolean,
-    pinnedPodcastIds: Set<String>,
-    onPodcastClick: (String) -> Unit,
+    folderItems: ShowsFolderItems,
+    gridConfig: ShowsGridConfig,
+    actions: ShowsTabActions,
     onMove: (fromId: String, toId: String) -> Unit,
     genreChips: @Composable () -> Unit,
 ) {
@@ -198,6 +389,8 @@ private fun ShowsReorderableList(
             val toId = to.key as? String ?: return@rememberReorderableLazyListState
             onMove(fromId, toId)
         }
+    val folderActions = remember(actions) { actions.toFolderCardActions() }
+
     LazyColumn(
         state = listState,
         contentPadding = PaddingValues(bottom = 180.dp, top = 8.dp),
@@ -213,26 +406,94 @@ private fun ShowsReorderableList(
                 genreChips()
             }
         }
-        items(items = orderedPodcasts, key = { it.id }) { podcast ->
-            ReorderableItem(
-                reorderableListState,
-                key = podcast.id,
-                enabled = reorderEnabled,
-            ) { isDragging ->
-                SubscriptionListRow(
-                    podcast = podcast,
-                    onClick = { onPodcastClick(podcast.id) },
-                    isPinned = podcast.id in pinnedPodcastIds,
-                    isDragging = isDragging,
-                    dragModifier =
-                    if (reorderEnabled) {
-                        Modifier.longPressDraggableHandle()
-                    } else {
-                        Modifier
-                    },
-                )
-            }
+        items(
+            items = folderItems.folders,
+            key = { "list_folder_${it.id}" },
+        ) { folder ->
+            ShowsListFolderItem(
+                folder = folder,
+                folderShows = folderItems.podcastsByFolderId[folder.id].orEmpty(),
+                reorderableListState = reorderableListState,
+                isFoldersReordering = gridConfig.isFoldersReordering,
+                folderActions = folderActions,
+            )
         }
+        items(items = orderedPodcasts, key = { it.id }) { podcast ->
+            ShowsListPodcastItem(
+                podcast = podcast,
+                reorderableListState = reorderableListState,
+                isRootReordering = gridConfig.isRootReordering,
+                isPinned = podcast.id in gridConfig.pinnedPodcastIds,
+                actions = actions,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LazyItemScope.ShowsListFolderItem(
+    folder: SubscriptionFolder,
+    folderShows: List<Podcast>,
+    reorderableListState: ReorderableLazyListState,
+    isFoldersReordering: Boolean,
+    folderActions: FolderCardActions,
+) {
+    ReorderableItem(
+        reorderableListState,
+        key = "list_folder_${folder.id}",
+        enabled = isFoldersReordering,
+    ) { isDragging ->
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .then(if (isFoldersReordering) Modifier.longPressDraggableHandle() else Modifier),
+        ) {
+            PinnedEnlargedFolderCard(
+                folder = folder,
+                podcasts = folderShows,
+                actions = folderActions,
+                isDragging = isDragging,
+                isReordering = isFoldersReordering,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LazyItemScope.ShowsListPodcastItem(
+    podcast: Podcast,
+    reorderableListState: ReorderableLazyListState,
+    isRootReordering: Boolean,
+    isPinned: Boolean,
+    actions: ShowsTabActions,
+) {
+    ReorderableItem(
+        reorderableListState,
+        key = podcast.id,
+        enabled = isRootReordering,
+    ) { isDragging ->
+        val onRowClick: (() -> Unit)? = if (isRootReordering) {
+            null
+        } else {
+            { actions.onPodcastClick(podcast.id) }
+        }
+        val onRowLongClick: (() -> Unit)? = if (isRootReordering) {
+            null
+        } else {
+            { actions.onPodcastLongClick(podcast) }
+        }
+        SubscriptionListRow(
+            podcast = podcast,
+            onClick = onRowClick,
+            onLongClick = onRowLongClick,
+            isPinned = isPinned,
+            isDragging = isDragging,
+            dragModifier = if (isRootReordering) {
+                Modifier.longPressDraggableHandle()
+            } else {
+                Modifier
+            },
+        )
     }
 }
 
@@ -313,6 +574,11 @@ private fun LatestEpisodesList(
 ) {
     val distinctGenres = remember(episodePodcasts) { extractDistinctGenres(episodePodcasts) }
     var selectedGenre by rememberSaveable { mutableStateOf("All") }
+    LaunchedEffect(distinctGenres) {
+        val stillAvailable = selectedGenre.equals("All", ignoreCase = true) ||
+            distinctGenres.any { it.equals(selectedGenre, ignoreCase = true) }
+        if (!stillAvailable) selectedGenre = "All"
+    }
     val filteredEpisodePodcasts = remember(episodePodcasts, selectedGenre) {
         filterPodcastsByGenre(episodePodcasts, selectedGenre)
     }
@@ -366,32 +632,6 @@ private fun LatestEpisodesList(
             bottomPaddingOverride = config.playAllBottomPadding,
         )
     }
-}
-
-internal suspend fun scoreLatestIfNeeded(
-    useSmartRank: Boolean,
-    podcasts: List<Podcast>,
-    history: List<ListeningHistoryEntity>,
-    scoreEpisodes: suspend (List<Podcast>, List<ListeningHistoryEntity>) -> Map<String, Double>,
-): Map<String, Double> = if (useSmartRank) scoreEpisodes(podcasts, history) else emptyMap()
-
-internal fun sortLatestDisplayPodcasts(
-    podcasts: List<Podcast>,
-    useSmartRank: Boolean,
-    episodeScores: Map<String, Double>,
-): List<Podcast> = if (useSmartRank) {
-    podcasts.sortedByDescending { episodeScores[it.latestEpisode?.id] ?: 0.0 }
-} else {
-    podcasts.sortedByDescending { it.latestEpisode!!.publishedDate }
-}
-
-internal fun groupLatestByDateHeader(
-    podcasts: List<Podcast>,
-    useSmartRank: Boolean,
-): Map<String, List<Podcast>> = if (useSmartRank) {
-    emptyMap()
-} else {
-    podcasts.groupBy { getChronologicalHeader(it.latestEpisode!!.publishedDate) }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

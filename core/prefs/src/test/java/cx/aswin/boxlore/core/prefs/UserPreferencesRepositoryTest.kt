@@ -244,6 +244,17 @@ class UserPreferencesRepositoryTest {
     }
 
     @Test
+    fun subscriptionFolderManualOrderRoundTrip() = runTest {
+        assertEquals(emptyList<String>(), repository.subscriptionFolderManualOrderStream.first())
+
+        repository.setSubscriptionFolderManualOrder(listOf("folder-1", "folder-2", "folder-3"))
+        assertEquals(
+            listOf("folder-1", "folder-2", "folder-3"),
+            repository.subscriptionFolderManualOrderStream.first(),
+        )
+    }
+
+    @Test
     fun homeMixModeDefaultsPersistsAndSanitizes() = runTest {
         assertEquals("daily", repository.homeMixModeStream.first())
 

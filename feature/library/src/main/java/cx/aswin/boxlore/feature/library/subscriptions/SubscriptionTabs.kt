@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Badge
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -167,6 +168,7 @@ internal fun SubscriptionGenreChips(
     podcasts: List<cx.aswin.boxlore.core.model.Podcast> = emptyList(),
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
+    onNewFolderClick: (() -> Unit)? = null,
 ) {
     SubscriptionsFilterRow(
         selectedGenre = selectedGenre,
@@ -175,6 +177,7 @@ internal fun SubscriptionGenreChips(
         podcasts = podcasts,
         modifier = modifier,
         contentPadding = contentPadding,
+        onNewFolderClick = onNewFolderClick,
     )
 }
 
@@ -182,6 +185,8 @@ internal fun SubscriptionGenreChips(
 internal fun ShowsSortMenuItems(
     currentSort: SubscriptionSort,
     onSortChange: (SubscriptionSort) -> Unit,
+    autoOrganizeFolders: Boolean = false,
+    onAutoOrganizeFoldersChange: ((Boolean) -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     ShowsSortOption(
@@ -224,6 +229,21 @@ internal fun ShowsSortMenuItems(
             onDismiss()
         }
     )
+    if (onAutoOrganizeFoldersChange != null) {
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        DropdownMenuItem(
+            text = { Text("Auto-organize into folders") },
+            onClick = {
+                onAutoOrganizeFoldersChange(!autoOrganizeFolders)
+                onDismiss()
+            },
+            trailingIcon = {
+                if (autoOrganizeFolders) {
+                    Icon(Icons.Rounded.Check, contentDescription = "Selected")
+                }
+            }
+        )
+    }
 }
 
 @Composable

@@ -77,4 +77,49 @@ class LibraryBackupManualOrderPinsTest {
         assertEquals("classic", parsed.navigationStyle)
         assertEquals("soft", parsed.fontRoundness)
     }
+
+    @Test
+    fun `gson round trips folder sorts and manual order`() {
+        val prefs =
+            GlobalPreferencesBackup(
+                subscriptionFolderSort = "Manual",
+                subscriptionIntraFolderSort = "Alphabetical",
+                subscriptionFolderManualOrder = listOf("folder-1", "folder-2"),
+                autoOrganizeFolders = true,
+            )
+        val parsed = gson.fromJson(gson.toJson(prefs), GlobalPreferencesBackup::class.java)
+        assertEquals("Manual", parsed.subscriptionFolderSort)
+        assertEquals("Alphabetical", parsed.subscriptionIntraFolderSort)
+        assertEquals(listOf("folder-1", "folder-2"), parsed.subscriptionFolderManualOrder)
+        assertEquals(true, parsed.autoOrganizeFolders)
+    }
+
+    @Test
+    fun `gson round trips BoxLoreBackup with folders`() {
+        val backup =
+            BoxLoreBackup(
+                version = 6,
+                subscriptions = emptyList(),
+                history = emptyList(),
+                folders = listOf(
+                    SubscriptionFolderBackup(
+                        id = "folder-tech",
+                        name = "Tech",
+                        icon = "tech",
+                        displaySize = "SHELF",
+                        linkedGenre = "Tech",
+                        showPodcastGrid = true,
+                        podcastIds = listOf("pod-1", "pod-2"),
+                    ),
+                ),
+            )
+        val parsed = gson.fromJson(gson.toJson(backup), BoxLoreBackup::class.java)
+        assertEquals(6, parsed.version)
+        org.junit.jupiter.api.Assertions.assertNotNull(parsed.folders)
+        assertEquals(1, parsed.folders?.size)
+        val folder = parsed.folders?.first()
+        assertEquals("folder-tech", folder?.id)
+        assertEquals("Tech", folder?.name)
+        assertEquals(listOf("pod-1", "pod-2"), folder?.podcastIds)
+    }
 }

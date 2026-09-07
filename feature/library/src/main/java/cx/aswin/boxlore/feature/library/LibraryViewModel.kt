@@ -2,13 +2,16 @@ package cx.aswin.boxlore.feature.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import cx.aswin.boxlore.core.catalog.FolderRepository
 import cx.aswin.boxlore.core.catalog.SharedAppDependenciesHolder
 import cx.aswin.boxlore.core.catalog.SubscriptionRepository
 import cx.aswin.boxlore.core.database.ListeningHistoryEntity
 import cx.aswin.boxlore.core.database.toScorable
 import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.EpisodeStatus
+import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
+import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.core.playback.PlaybackRepository
 import cx.aswin.boxlore.core.playback.addToQueue
 import cx.aswin.boxlore.core.playback.addToQueueNext
@@ -22,6 +25,8 @@ import cx.aswin.boxlore.core.ranking.RankingObjective
 import cx.aswin.boxlore.core.ranking.RankingSurface
 import cx.aswin.boxlore.feature.library.logic.SubscriptionManualOrderLogic
 import cx.aswin.boxlore.feature.library.logic.SubscriptionSmartOrderLogic
+import cx.aswin.boxlore.feature.library.subscriptions.FolderInterSort
+import cx.aswin.boxlore.feature.library.subscriptions.FolderIntraSort
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,7 +51,9 @@ sealed interface LibraryUiState {
         val downloadedEpisodes: List<cx.aswin.boxlore.core.database.DownloadedEpisodeEntity> = emptyList(),
         val recentHistory: List<ListeningHistoryEntity> = emptyList(),
         val currentSort: SubscriptionSort = SubscriptionSort.SmartRank,
-        val allHistory: List<ListeningHistoryEntity> = emptyList()
+        val allHistory: List<ListeningHistoryEntity> = emptyList(),
+        val manualOrder: List<String> = emptyList(),
+        val smartOrderIds: List<String> = emptyList(),
     ) : LibraryUiState
     data class Error(val message: String) : LibraryUiState
 }
@@ -57,6 +64,7 @@ class LibraryViewModel(
     private val downloadRepository: cx.aswin.boxlore.core.downloads.DownloadRepository,
     private val userPreferencesRepository: cx.aswin.boxlore.core.prefs.UserPreferencesRepository,
     private val adaptiveScorer: AdaptiveCandidateScorer,
+    private val folderRepository: FolderRepository? = null,
 ) : ViewModel() {
 
     val lastSeenEpisodes: StateFlow<Map<String, String>> = userPreferencesRepository.lastSeenEpisodesStream
@@ -92,6 +100,126 @@ class LibraryViewModel(
 
     fun setShowSortOrder(sortOrder: ShowSortOrder) {
         _showSortOrder.value = sortOrder
+    }
+
+    val folders: StateFlow<List<SubscriptionFolder>> =
+        folderRepository?.folders
+            ?.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = emptyList(),
+            ) ?: MutableStateFlow<List<SubscriptionFolder>>(emptyList()).asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            if (userPreferencesRepository.autoOrganizeFoldersStream.first()) {
+                folderRepository?.autoOrganizeSubscribedShows()
+            } else {
+                folderRepository?.syncLinkedGenres()
+            }
+        }
+    }
+
+    fun createFolder(
+        name: String,
+        icon: String?,
+        displaySize: FolderDisplaySize,
+        linkedGenre: String?,
+        showPodcastGrid: Boolean = false,
+        podcastIds: List<String> = emptyList(),
+    ) {
+        viewModelScope.launch {
+            folderRepository?.createFolder(
+                name = name,
+                icon = icon,
+                displaySize = displaySize,
+                linkedGenre = linkedGenre,
+                showPodcastGrid = showPodcastGrid,
+                podcastIds = podcastIds,
+            )
+        }
+    }
+
+    fun createFolderAndMovePodcast(
+        name: String,
+        icon: String?,
+        displaySize: FolderDisplaySize,
+        linkedGenre: String?,
+        showPodcastGrid: Boolean = false,
+        podcastId: String,
+        fromFolderId: String? = null,
+    ) {
+        viewModelScope.launch {
+            val created = folderRepository?.createFolder(
+                name = name,
+                icon = icon,
+                displaySize = displaySize,
+                linkedGenre = linkedGenre,
+                showPodcastGrid = showPodcastGrid,
+                podcastIds = listOf(podcastId),
+            )
+            if (created != null && fromFolderId != null) {
+                folderRepository.removePodcastFromFolder(podcastId, fromFolderId)
+            }
+        }
+    }
+
+    fun updateFolder(folder: SubscriptionFolder) {
+        viewModelScope.launch {
+            folderRepository?.updateFolder(folder)
+        }
+    }
+
+    fun deleteFolder(folderId: String) {
+        viewModelScope.launch {
+            folderRepository?.deleteFolder(folderId)
+        }
+    }
+
+    fun addPodcastToFolder(podcastId: String, folderId: String) {
+        viewModelScope.launch {
+            folderRepository?.addPodcastToFolder(podcastId, folderId)
+        }
+    }
+
+    fun removePodcastFromFolder(podcastId: String, folderId: String) {
+        viewModelScope.launch {
+            folderRepository?.removePodcastFromFolder(podcastId, folderId)
+        }
+    }
+
+    fun setFolderShows(folderId: String, podcastIds: List<String>) {
+        viewModelScope.launch {
+            folderRepository?.setPodcastsForFolder(folderId, podcastIds)
+        }
+    }
+
+    fun movePodcastToFolder(podcastId: String, fromFolderId: String?, toFolderId: String) {
+        viewModelScope.launch {
+            if (fromFolderId != null) {
+                folderRepository?.removePodcastFromFolder(podcastId, fromFolderId)
+            }
+            folderRepository?.addPodcastToFolder(podcastId, toFolderId)
+        }
+    }
+
+    fun unsubscribe(podcast: Podcast) {
+        viewModelScope.launch {
+            subscriptionRepository.toggleSubscription(podcast)
+            if (!subscriptionRepository.isSubscribed(podcast.id)) {
+                userPreferencesRepository.removePodcastIdFromManualOrderAndPins(podcast.id)
+            }
+        }
+    }
+
+    fun reorderFolderShows(folderId: String, orderedPodcastIds: List<String>) {
+        viewModelScope.launch {
+            folderRepository?.setPodcastsForFolder(folderId, orderedPodcastIds)
+            val currentIntraSort = userPreferencesRepository.subscriptionIntraFolderSortStream.first()
+            if (currentIntraSort != FolderIntraSort.Manual.name) {
+                userPreferencesRepository.setSubscriptionIntraFolderSort(FolderIntraSort.Manual.name)
+            }
+        }
     }
 
     private val subscriptionSort = userPreferencesRepository.subscriptionSortStream
@@ -202,6 +330,87 @@ class LibraryViewModel(
         }
     }
 
+    val autoOrganizeFolders: StateFlow<Boolean> = userPreferencesRepository.autoOrganizeFoldersStream
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false
+        )
+
+    fun setAutoOrganizeFolders(
+        enabled: Boolean,
+        displaySize: FolderDisplaySize? = null,
+        showPodcastGrid: Boolean = false,
+    ) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAutoOrganizeFolders(enabled)
+            if (enabled) {
+                folderRepository?.autoOrganizeSubscribedShows(
+                    defaultDisplaySize = displaySize,
+                    showPodcastGrid = showPodcastGrid,
+                )
+            }
+        }
+    }
+
+    val folderSort: StateFlow<FolderInterSort> = userPreferencesRepository.subscriptionFolderSortStream
+        .map { sortName ->
+            try {
+                FolderInterSort.valueOf(sortName)
+            } catch (_: Exception) {
+                FolderInterSort.Inherit
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = FolderInterSort.Inherit,
+        )
+
+    fun setFolderSort(sort: FolderInterSort) {
+        viewModelScope.launch {
+            userPreferencesRepository.setSubscriptionFolderSort(sort.name)
+        }
+    }
+
+    val folderManualOrder: StateFlow<List<String>> = userPreferencesRepository.subscriptionFolderManualOrderStream
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    fun reorderFolders(orderedFolderIds: List<String>) {
+        if (orderedFolderIds.isEmpty()) return
+        viewModelScope.launch {
+            userPreferencesRepository.setSubscriptionFolderManualOrder(orderedFolderIds)
+            val currentFolderSort = userPreferencesRepository.subscriptionFolderSortStream.first()
+            if (currentFolderSort != FolderInterSort.Manual.name) {
+                userPreferencesRepository.setSubscriptionFolderSort(FolderInterSort.Manual.name)
+            }
+        }
+    }
+
+    val intraFolderSort: StateFlow<FolderIntraSort> = userPreferencesRepository.subscriptionIntraFolderSortStream
+        .map { sortName ->
+            try {
+                FolderIntraSort.valueOf(sortName)
+            } catch (_: Exception) {
+                FolderIntraSort.Inherit
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = FolderIntraSort.Inherit,
+        )
+
+    fun setIntraFolderSort(sort: FolderIntraSort) {
+        viewModelScope.launch {
+            userPreferencesRepository.setSubscriptionIntraFolderSort(sort.name)
+        }
+    }
+
     // Combine subscriptions, liked episodes, downloads, AND listening history
     // so we can enrich each podcast's latestEpisode with play status
     val uiState: StateFlow<LibraryUiState> = combine(
@@ -251,27 +460,27 @@ class LibraryViewModel(
             }
         }
 
+        val podScoresMap = try {
+            adaptiveScorer.scorePodcasts(
+                podcasts = enrichedPodcasts.map { it.toScorable() },
+                history = allHistory,
+                objective = RankingObjective.YOUR_SHOWS,
+                surface = RankingSurface.LIBRARY,
+            )
+        } catch (error: CancellationException) {
+            throw error
+        } catch (_: Exception) {
+            emptyMap()
+        }
+
+        val smartRanked = SubscriptionSmartOrderLogic.sort(
+            podcasts = enrichedPodcasts,
+            scores = podScoresMap,
+        )
+
         // Apply sorting
         val sortedPodcasts = when (sort) {
-            SubscriptionSort.SmartRank -> {
-                val podScoresMap = try {
-                    adaptiveScorer.scorePodcasts(
-                        podcasts = enrichedPodcasts.map { it.toScorable() },
-                        history = allHistory,
-                        objective = RankingObjective.YOUR_SHOWS,
-                        surface = RankingSurface.LIBRARY,
-                    )
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (_: Exception) {
-                    emptyMap()
-                }
-
-                SubscriptionSmartOrderLogic.sort(
-                    podcasts = enrichedPodcasts,
-                    scores = podScoresMap,
-                )
-            }
+            SubscriptionSort.SmartRank -> smartRanked
             SubscriptionSort.RecentlyUpdated -> {
                 enrichedPodcasts.sortedByDescending { it.latestEpisode?.publishedDate ?: 0L }
             }
@@ -293,7 +502,9 @@ class LibraryViewModel(
             downloadedEpisodes = downloads,
             recentHistory = allHistory.filter { !it.isManualCompletion && !it.isBulkCompletion }.take(3),
             currentSort = sort,
-            allHistory = allHistory
+            allHistory = allHistory,
+            manualOrder = manualOrder,
+            smartOrderIds = smartRanked.map { it.id },
         )
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(
@@ -324,6 +535,9 @@ class LibraryViewModel(
 
     fun onScreenResume() {
         SharedAppDependenciesHolder.instance?.subscriptionForegroundSync?.requestRefresh()
+        viewModelScope.launch {
+            folderRepository?.syncLinkedGenres()
+        }
         if (sessionStartTime == 0L) {
             sessionStartTime = System.currentTimeMillis()
             hasTrackedExit = false

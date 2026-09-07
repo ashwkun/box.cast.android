@@ -8,7 +8,9 @@ Owns shared Compose visual primitives: theme, typography, shapes, motion, loader
 
 - `BoxLoreTheme` and theme helpers such as expressive shapes, motion, typography, and dynamic color utilities. `resolveBoxLoreColorScheme` / `resolveBoxLoreChromeColors` / `darkThemeFromConfig` expose the same Appearance ColorScheme as ARGB for non-Compose chrome (home-screen widgets). Custom `theme_brand` may be a named seed, `#RRGGBB` (Material 3 palette from that seed), or `exact:#RRGGBB` (pins primary to that RGB; not recommended for readability). `Modifier.expressiveClickable` has a long-press overload (`onLongClick`) used by Downloads multi-select. Pass `shape` so press-shrink stays rounded; `pressScaleEnabled = false` while a drag overlay owns scale.
 - Shared components including `OptimizedImage` (optional `errorContent` for blank/failed art), loaders, `PillFilterChip` (onboarding/Explore genre pills), `BoxLoreLogo` (optional `height` for hero vs chrome sizes), player-control primitives used by UI modules, floating 3+1 navigation chrome, bottom-content clearance helpers, sleep-timer chrome, and the non-dismissible `RepairProgressPopup` for app-shell foreground repair status.
-- `icon.GenreIcons`: Rich icon palette and resolution helpers for custom podcast genre tags and subscription filter chips. Maps icon keys to Material Rounded icons (`all`, `findIcon`, `defaultGenreIcon`, `iconOrFallback`).
+- `icon.GenreIcons`: Rich icon palette and resolution helpers for custom podcast genre tags, subscription folders, and filter chips. Maps icon keys to Material Rounded icons (`all`, `findIcon`, `defaultGenreIcon`, `iconOrFallback`, `defaultFolderIcon`, `folderIconOrFallback`).
+- `icon.GenreSuggestions`: Real-time keyword-driven suggestions and fuzzy ranking helpers (`GenreSuggestion`, `ALL_GENRE_SUGGESTIONS`, `filterGenreSuggestions`, `findSuggestedIcons`, `buildFolderSuggestionsWithLibrary`, `buildGenreSuggestionsWithFolders`) for genre tagging and folder creation with library prioritization.
+- `icon.GenreExactMatchResolver`: Exact case-insensitive matching (`findExactGenreIconKey`) that auto-switches folder icons in real time as the user types matching genre names or topic keywords without waiting for manual chip or grid taps.
 - `PredictiveBackWrapper` peeks the NavHost (scale 1.0 → 0.9) during system Back. Progress always returns to rest after commit or cancel so a Back that replaces the start destination (cold-start Subscriptions → Home) does not leave Home scaled down.
 - Shared discovery poster cards: `FeedMediaCard`, `CuratedEpisodeCard`, `EqualHeightPosterGrid`, and `FeedPosterSpacing` (Home “Based on Your Taste” and Explore For You).
 - `ProgressiveSearchScrollLogic` decides when a progressive Find-a-show list should pin to the top (query change, new top hit, or Matches header). Used by onboarding search and Explore Find-a-show; Ask anything does not use it.
@@ -56,6 +58,7 @@ src/main/res/
 - `ThemeBrandTokensTest` covers brand seed, contrast helper, and scheme-resolution behavior.
 - `ProgressiveSearchScrollLogicTest` covers pin-to-top when catalog hits prepend over local matches.
 - `LazyListKeyPolicyTest` covers safe deduplication, key prefixing, blank ID fallbacks, and duplicate collision disambiguation.
+- `GenreIconsTest` and `GenreSuggestionsTest` cover icon lookup, keyword scoring, library priority ranking, and suggestion composition.
 - `PredictiveBackPeekTest` covers rest progress after a predictive-back gesture (scale must return to 1).
 - Screenshot goldens (optional local Roborazzi) live in feature modules (see `:feature:home`).
 

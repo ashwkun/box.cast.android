@@ -1,0 +1,141 @@
+package cx.aswin.boxlore.core.model
+
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+
+class SubscriptionFolderTest {
+
+    @Test
+    fun `default values allow iconless folder with compact size`() {
+        val folder = SubscriptionFolder(
+            id = "folder-1",
+            name = "Tech Shows",
+        )
+
+        assertEquals("folder-1", folder.id)
+        assertEquals("Tech Shows", folder.name)
+        assertNull(folder.icon)
+        assertFalse(folder.hasIcon)
+        assertEquals(FolderDisplaySize.COMPACT, folder.displaySize)
+        assertNull(folder.linkedGenre)
+        assertFalse(folder.isGenreLinked)
+        assertEquals(0, folder.podcastCount)
+        assertTrue(folder.podcastIds.isEmpty())
+    }
+
+    @Test
+    fun `folder with icon and linked genre reflects helper properties`() {
+        val folder = SubscriptionFolder(
+            id = "folder-2",
+            name = "Comedy Highlights",
+            icon = "comedy",
+            displaySize = FolderDisplaySize.FEATURED,
+            linkedGenre = "Comedy",
+            podcastCount = 3,
+            podcastIds = listOf("pod-1", "pod-2", "pod-3"),
+        )
+
+        assertEquals("comedy", folder.icon)
+        assertTrue(folder.hasIcon)
+        assertEquals(FolderDisplaySize.FEATURED, folder.displaySize)
+        assertEquals("Comedy", folder.linkedGenre)
+        assertTrue(folder.isGenreLinked)
+        assertEquals(3, folder.podcastCount)
+        assertEquals(3, folder.podcastIds.size)
+    }
+
+    @Test
+    fun `blank icon treated as not having icon`() {
+        val folder = SubscriptionFolder(
+            id = "folder-3",
+            name = "News",
+            icon = "   ",
+        )
+
+        assertFalse(folder.hasIcon)
+    }
+
+    @Test
+    fun `folder supports wide and large 2x3 max display sizes`() {
+        val wideFolder = SubscriptionFolder(
+            id = "folder-4",
+            name = "Wide Section",
+            displaySize = FolderDisplaySize.WIDE,
+        )
+        assertEquals(FolderDisplaySize.WIDE, wideFolder.displaySize)
+        assertEquals(2, wideFolder.displaySize.spanCols)
+        assertEquals(1, wideFolder.displaySize.spanRows)
+        assertEquals("2×1", wideFolder.displaySize.dimensionsLabel)
+
+        val largeFolder = SubscriptionFolder(
+            id = "folder-5",
+            name = "Large 2x3 Section",
+            displaySize = FolderDisplaySize.LARGE,
+        )
+        assertEquals(FolderDisplaySize.LARGE, largeFolder.displaySize)
+        assertEquals(2, largeFolder.displaySize.spanCols)
+        assertEquals(3, largeFolder.displaySize.spanRows)
+        assertEquals("2×3", largeFolder.displaySize.dimensionsLabel)
+
+        val showcaseFolder = SubscriptionFolder(
+            id = "folder-6",
+            name = "Showcase 3x3 Section",
+            displaySize = FolderDisplaySize.SHOWCASE,
+        )
+        assertEquals(FolderDisplaySize.SHOWCASE, showcaseFolder.displaySize)
+        assertEquals(3, showcaseFolder.displaySize.spanCols)
+        assertEquals(3, showcaseFolder.displaySize.spanRows)
+        assertEquals("3×3", showcaseFolder.displaySize.dimensionsLabel)
+    }
+
+    @Test
+    fun `effectiveShowPodcastGrid respects showPodcastGrid and icon presence`() {
+        val iconlessFolder = SubscriptionFolder(
+            id = "f-1",
+            name = "Iconless",
+            icon = null,
+            showPodcastGrid = false,
+        )
+        // Iconless folders always default to showing the podcast grid
+        assertTrue(iconlessFolder.effectiveShowPodcastGrid)
+
+        val iconFolderWithGrid = SubscriptionFolder(
+            id = "f-2",
+            name = "With Icon Grid",
+            icon = "tech",
+            showPodcastGrid = true,
+        )
+        assertTrue(iconFolderWithGrid.effectiveShowPodcastGrid)
+
+        val iconFolderWithoutGrid = SubscriptionFolder(
+            id = "f-3",
+            name = "With Icon Single",
+            icon = "tech",
+            showPodcastGrid = false,
+        )
+        assertFalse(iconFolderWithoutGrid.effectiveShowPodcastGrid)
+    }
+
+    @Test
+    fun `placement properties differentiate compact and pinned sizes`() {
+        assertFalse(FolderDisplaySize.COMPACT.isPinnedToTop)
+        assertEquals("Can be placed anywhere in the grid", FolderDisplaySize.COMPACT.placementLabel)
+
+        val pinnedSizes = listOf(
+            FolderDisplaySize.WIDE,
+            FolderDisplaySize.FEATURED,
+            FolderDisplaySize.LARGE,
+            FolderDisplaySize.SHELF,
+            FolderDisplaySize.PANEL,
+            FolderDisplaySize.SHOWCASE,
+        )
+
+        pinnedSizes.forEach { size ->
+            assertTrue(size.isPinnedToTop, "Expected ${size.name} to be pinned to top")
+            assertEquals("Pinned to the top of the page", size.placementLabel)
+        }
+    }
+}

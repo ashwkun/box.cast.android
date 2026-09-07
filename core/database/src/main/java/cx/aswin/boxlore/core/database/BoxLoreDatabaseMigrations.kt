@@ -255,4 +255,84 @@ object BoxLoreDatabaseMigrations {
         db.execSQL("ALTER TABLE podcasts ADD COLUMN customGenre TEXT")
         db.execSQL("ALTER TABLE podcasts ADD COLUMN customGenreIcon TEXT")
     }
+
+    fun migrate33To34(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS folders (
+                folderId TEXT NOT NULL PRIMARY KEY,
+                name TEXT NOT NULL,
+                icon TEXT,
+                displaySize TEXT NOT NULL,
+                linkedGenre TEXT,
+                createdAt INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS podcast_folder_cross_ref (
+                podcastId TEXT NOT NULL,
+                folderId TEXT NOT NULL,
+                PRIMARY KEY(podcastId, folderId),
+                FOREIGN KEY(folderId) REFERENCES folders(folderId) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_podcast_folder_cross_ref_folderId ON podcast_folder_cross_ref(folderId)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_podcast_folder_cross_ref_podcastId ON podcast_folder_cross_ref(podcastId)",
+        )
+    }
+
+    fun migrate34To35(db: SupportSQLiteDatabase) {
+        val cursor = db.query("PRAGMA table_info(folders)")
+        var hasColumn = false
+        cursor.use {
+            val nameIndex = it.getColumnIndex("name")
+            while (it.moveToNext()) {
+                if (nameIndex != -1 && it.getString(nameIndex) == "showPodcastGrid") {
+                    hasColumn = true
+                    break
+                }
+            }
+        }
+        if (!hasColumn) {
+            db.execSQL("ALTER TABLE folders ADD COLUMN showPodcastGrid INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    fun migrate33To35(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS folders (
+                folderId TEXT NOT NULL PRIMARY KEY,
+                name TEXT NOT NULL,
+                icon TEXT,
+                displaySize TEXT NOT NULL,
+                linkedGenre TEXT,
+                showPodcastGrid INTEGER NOT NULL DEFAULT 0,
+                createdAt INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS podcast_folder_cross_ref (
+                podcastId TEXT NOT NULL,
+                folderId TEXT NOT NULL,
+                PRIMARY KEY(podcastId, folderId),
+                FOREIGN KEY(folderId) REFERENCES folders(folderId) ON UPDATE NO ACTION ON DELETE CASCADE
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_podcast_folder_cross_ref_folderId ON podcast_folder_cross_ref(folderId)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS index_podcast_folder_cross_ref_podcastId ON podcast_folder_cross_ref(podcastId)",
+        )
+    }
 }

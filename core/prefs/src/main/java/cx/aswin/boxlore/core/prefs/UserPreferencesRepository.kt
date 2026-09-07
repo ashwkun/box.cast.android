@@ -539,6 +539,34 @@ class UserPreferencesRepository(context: Context,) {
         }
     }
 
+    val subscriptionFolderSortStream: Flow<String> =
+        dataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }.map { preferences ->
+                preferences[Keys.SUBSCRIPTION_FOLDER_SORT] ?: "Inherit"
+            }.distinctUntilChanged()
+
+    suspend fun setSubscriptionFolderSort(sort: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SUBSCRIPTION_FOLDER_SORT] = sort
+        }
+    }
+
+    val subscriptionIntraFolderSortStream: Flow<String> =
+        dataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }.map { preferences ->
+                preferences[Keys.SUBSCRIPTION_INTRA_FOLDER_SORT] ?: "Inherit"
+            }.distinctUntilChanged()
+
+    suspend fun setSubscriptionIntraFolderSort(sort: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SUBSCRIPTION_INTRA_FOLDER_SORT] = sort
+        }
+    }
+
     val subscriptionManualOrderStream: Flow<List<String>> =
         dataStore.data
             .catch { exception ->
@@ -550,6 +578,20 @@ class UserPreferencesRepository(context: Context,) {
     suspend fun setSubscriptionManualOrder(ids: List<String>) {
         dataStore.edit { preferences ->
             preferences[Keys.SUBSCRIPTION_MANUAL_ORDER] = PreferenceIdList.encode(ids)
+        }
+    }
+
+    val subscriptionFolderManualOrderStream: Flow<List<String>> =
+        dataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }.map { preferences ->
+                PreferenceIdList.decode(preferences[Keys.SUBSCRIPTION_FOLDER_MANUAL_ORDER])
+            }.distinctUntilChanged()
+
+    suspend fun setSubscriptionFolderManualOrder(ids: List<String>) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SUBSCRIPTION_FOLDER_MANUAL_ORDER] = PreferenceIdList.encode(ids)
         }
     }
 
@@ -1225,6 +1267,20 @@ class UserPreferencesRepository(context: Context,) {
     suspend fun setHideCompletedInSubs(hide: Boolean) {
         dataStore.edit { preferences ->
             preferences[Keys.HIDE_COMPLETED_IN_SUBS] = hide
+        }
+    }
+
+    val autoOrganizeFoldersStream: Flow<Boolean> =
+        dataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }.map { preferences ->
+                preferences[Keys.AUTO_ORGANIZE_FOLDERS_ENABLED] ?: false
+            }.distinctUntilChanged()
+
+    suspend fun setAutoOrganizeFolders(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.AUTO_ORGANIZE_FOLDERS_ENABLED] = enabled
         }
     }
 

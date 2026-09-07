@@ -196,4 +196,34 @@ class PodcastGenreSuggestionsTest {
         assertFalse(starIcons.isEmpty())
         assertTrue(starIcons.any { it.key == "star" })
     }
+
+    @Test
+    fun `buildGenreSuggestionsWithFolders adds custom folder names at the front`() {
+        val folders = listOf("Deep Dive", "My Daily Brief", "Tech")
+        val combined = buildGenreSuggestionsWithFolders(folders)
+
+        // "Tech" already exists in catalog, so it shouldn't duplicate
+        val techCount = combined.count { it.name.equals("Tech", ignoreCase = true) }
+        assertEquals(1, techCount)
+
+        // "Deep Dive" and "My Daily Brief" should appear at the top
+        assertTrue(combined.any { it.name == "Deep Dive" })
+        assertTrue(combined.any { it.name == "My Daily Brief" })
+        assertEquals("Deep Dive", combined[0].name)
+        assertEquals("My Daily Brief", combined[1].name)
+    }
+
+    @Test
+    fun `buildGenreSuggestionsWithFolders with empty folders returns base suggestions`() {
+        val combined = buildGenreSuggestionsWithFolders(emptyList())
+        assertEquals(ALL_GENRE_SUGGESTIONS.size, combined.size)
+    }
+
+    @Test
+    fun `buildGenreSuggestionsWithFolders resolves smart icon for recognized keyword in folder name`() {
+        val folders = listOf("Morning Tech News")
+        val combined = buildGenreSuggestionsWithFolders(folders)
+        val techFolder = combined.first { it.name == "Morning Tech News" }
+        assertEquals("tech", techFolder.iconKey)
+    }
 }

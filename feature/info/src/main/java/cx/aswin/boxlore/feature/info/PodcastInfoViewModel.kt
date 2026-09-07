@@ -20,6 +20,7 @@ import cx.aswin.boxlore.core.playback.toggleLike
 import cx.aswin.boxlore.core.playback.togglePlayPause
 import cx.aswin.boxlore.core.prefs.HomePinnedShows
 import cx.aswin.boxlore.feature.info.logic.PodcastInfoAsyncResultLogic
+import cx.aswin.boxlore.feature.info.logic.PodcastInfoFolderSyncLogic
 import cx.aswin.boxlore.feature.info.logic.PodcastInfoPullRefreshLogic
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -62,6 +63,7 @@ class PodcastInfoViewModel(
     private val queueManager = deps.queueManager
     private val localCatalog = deps.localCatalog
     private val subscriptionForegroundSync = deps.subscriptionForegroundSync
+    private val folderRepository = deps.folderRepository
     private val entryPoint = routeArgs.entryPoint
     private val genreFilter = routeArgs.genreFilter
     private val scrollDepth = routeArgs.scrollDepth
@@ -69,6 +71,14 @@ class PodcastInfoViewModel(
     private val supplementSupport = PodcastInfoSupplementSupport(repository, episodeSupplementPort)
     private val customGenreMutex = Mutex()
     private val _uiState = MutableStateFlow<PodcastInfoUiState>(PodcastInfoUiState.Loading)
+
+    val folderNames: StateFlow<List<String>> =
+        folderRepository?.folderNames
+            ?.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = emptyList(),
+            ) ?: MutableStateFlow(emptyList())
 
     private var currentPodcastId: String = ""
     private val _currentPodcastIdFlow = MutableStateFlow("")
@@ -1318,6 +1328,10 @@ class PodcastInfoViewModel(
                         )
                 }
             }
+            PodcastInfoFolderSyncLogic.syncFoldersAfterGenreUpdate(
+                folderRepository = folderRepository,
+                autoOrganizeEnabled = userPrefs.autoOrganizeFoldersStream.first(),
+            )
         }
     }
 
