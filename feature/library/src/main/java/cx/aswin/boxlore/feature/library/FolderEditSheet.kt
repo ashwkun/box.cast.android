@@ -270,13 +270,20 @@ internal fun FolderEditSheetContent(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            FolderEditTopBar(
-                isEditing = state.isEditing,
-                canSave = state.canSave,
-                onClose = actions.onClose,
-                onDelete = actions.onDelete,
-                onSave = actions.onSave,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                FolderEditTopBar(
+                    isEditing = state.isEditing,
+                    canSave = state.canSave,
+                    onClose = actions.onClose,
+                    onDelete = actions.onDelete,
+                    onSave = actions.onSave,
+                )
+
+                FolderBetaFeedbackNotice()
+            }
 
             FolderIdentityHeader(
                 nameText = state.nameText,
