@@ -71,4 +71,60 @@ class TranscriptRepositoryTest {
         assertEquals(1, segments.size)
         assertTrue(segments[0].startMs < segments[0].endMs, "Start time should be before end time after healing")
     }
+
+    @Test
+    fun testOfflineTranscriptLifecycle() {
+        val tempDir = java.nio.file.Files.createTempDirectory("tr_test").toFile()
+        try {
+            val mockContext = org.mockito.Mockito.mock(android.content.Context::class.java)
+            org.mockito.Mockito.`when`(mockContext.filesDir).thenReturn(tempDir)
+
+            val episodeId = "ep_trans_456"
+            org.junit.jupiter.api.Assertions.assertFalse(TranscriptOfflineStorage.hasOfflineTranscript(mockContext, episodeId))
+            assertTrue(TranscriptOfflineStorage.getOfflineTranscript(mockContext, episodeId).isEmpty())
+
+            val srt = """
+                1
+                00:00:01,000 --> 00:00:03,000
+                Offline subtitle test.
+            """.trimIndent()
+            val path = TranscriptOfflineStorage.saveOfflineTranscript(mockContext, episodeId, srt)
+
+            org.junit.jupiter.api.Assertions.assertNotNull(path)
+            assertTrue(TranscriptOfflineStorage.hasOfflineTranscript(mockContext, episodeId))
+
+            val loaded = TranscriptOfflineStorage.getOfflineTranscript(mockContext, episodeId)
+            assertEquals(1, loaded.size)
+            assertEquals("Offline subtitle test.", loaded[0].text)
+
+            TranscriptOfflineStorage.deleteOfflineTranscript(mockContext, episodeId)
+            org.junit.jupiter.api.Assertions.assertFalse(TranscriptOfflineStorage.hasOfflineTranscript(mockContext, episodeId))
+            assertTrue(TranscriptOfflineStorage.getOfflineTranscript(mockContext, episodeId).isEmpty())
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun testGetTranscriptFromLocalFile() = kotlinx.coroutines.test.runTest {
+        val tempFile = java.io.File.createTempFile("transcript", ".srt")
+        try {
+            val srt = """
+                1
+                00:00:02,000 --> 00:00:05,000
+                Local file subtitle.
+            """.trimIndent()
+            tempFile.writeText(srt)
+
+            val fromPath = TranscriptRepository.getTranscript(tempFile.absolutePath)
+            assertEquals(1, fromPath.size)
+            assertEquals("Local file subtitle.", fromPath[0].text)
+
+            val fromUri = TranscriptRepository.getTranscript("file://${tempFile.absolutePath}")
+            assertEquals(1, fromUri.size)
+            assertEquals("Local file subtitle.", fromUri[0].text)
+        } finally {
+            tempFile.delete()
+        }
+    }
 }

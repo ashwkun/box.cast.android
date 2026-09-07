@@ -80,6 +80,26 @@ class CompletedDownloadItemsTest {
         assertEquals(item.podcast.imageUrl, item.episode.podcastImageUrl)
     }
 
+    @Test
+    fun `maps chapters and transcript paths to completed episode`() {
+        val item =
+            CompletedDownloadItems
+                .from(
+                    listOf(
+                        row(
+                            id = "ep_ch_tr",
+                            publishedDate = 100L,
+                        ).copy(
+                            chaptersUrl = "/downloads/chapters_ep.json",
+                            transcriptUrl = "/downloads/transcript_ep.srt",
+                        ),
+                    ),
+                ).single()
+
+        assertEquals("/downloads/chapters_ep.json", item.episode.chaptersUrl)
+        assertEquals("/downloads/transcript_ep.srt", item.episode.transcriptUrl)
+    }
+
     private fun row(
         id: String,
         podcastId: String = "pod-$id",

@@ -43,6 +43,8 @@ internal object CompletedDownloadItems {
                 podcastId = podcastId,
                 duration = (durationMs / MILLIS_PER_SECOND).toInt(),
                 publishedDate = publishedDate,
+                chaptersUrl = chaptersUrl,
+                transcriptUrl = transcriptUrl,
             )
         return CompletedDownloadItem(
             episode = episode,

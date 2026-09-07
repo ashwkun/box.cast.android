@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cx.aswin.boxlore.core.catalog.ChapterRepository
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.AutoTranscriptState
 import cx.aswin.boxlore.core.model.Episode
@@ -205,8 +206,11 @@ internal fun FullPlayerSecondaryControls(
             model.state.sleepAtEndOfEpisode
         ),
         availability = SecondaryAvailabilityState(
-            hasChapters = !model.episode.chaptersUrl.isNullOrEmpty() || model.state.currentChapters.isNotEmpty(),
-            hasTranscript = model.state.currentTranscript.isNotEmpty(),
+            hasChapters = !model.episode.chaptersUrl.isNullOrEmpty() ||
+                model.state.currentChapters.isNotEmpty() ||
+                ChapterRepository.hasChaptersInDescription(model.episode.description),
+            hasTranscript = model.state.currentTranscript.isNotEmpty() ||
+                !model.episode.transcriptUrl.isNullOrEmpty(),
             isTranscriptVisible = ui.showInlineTranscript,
             isChaptersLoading = model.state.isChaptersLoading,
             autoTranscriptState = model.state.autoTranscriptState,

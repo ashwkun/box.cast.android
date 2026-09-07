@@ -41,16 +41,38 @@ object ChapterRepository {
     }
 
     suspend fun getChapters(chaptersUrl: String): List<Chapter> = withContext(Dispatchers.IO) {
-        val normalizedUrl = normalizeUrl(chaptersUrl)
+        val normalizedUrl = if (chaptersUrl.startsWith("/") || chaptersUrl.startsWith("file:")) {
+            chaptersUrl
+        } else {
+            normalizeUrl(chaptersUrl)
+        }
         // Return cached if available
         cache[normalizedUrl]?.let { return@withContext it }
 
         try {
-            val json = URL(normalizedUrl).readText()
-            val root = JSONObject(json)
-            val chaptersArray = root.optJSONArray("chapters") ?: return@withContext emptyList()
+            val json = when {
+                chaptersUrl.startsWith("/") -> java.io.File(chaptersUrl).readText()
+                chaptersUrl.startsWith("file://") -> java.io.File(chaptersUrl.removePrefix("file://")).readText()
+                chaptersUrl.startsWith("file:") -> java.io.File(chaptersUrl.removePrefix("file:")).readText()
+                else -> URL(normalizedUrl).readText()
+            }
+            val chapters = parseChaptersFromJson(json)
+            if (chapters.isNotEmpty()) {
+                cache[normalizedUrl] = chapters
+            }
+            chapters
+        } catch (e: Exception) {
+            android.util.Log.w("ChapterRepo", "Failed to fetch chapters: $normalizedUrl", e)
+            emptyList()
+        }
+    }
 
-            val chapters = (0 until chaptersArray.length()).map { i ->
+    fun parseChaptersFromJson(json: String): List<Chapter> {
+        return try {
+            val root = JSONObject(json)
+            val chaptersArray = root.optJSONArray("chapters") ?: return emptyList()
+
+            (0 until chaptersArray.length()).map { i ->
                 val obj = chaptersArray.getJSONObject(i)
                 val recsArray = obj.optJSONArray("relatedEpisodes")
                 val related = recsArray?.let { arr ->
@@ -80,13 +102,26 @@ object ChapterRepository {
                     relatedEpisodes = related
                 )
             }.sortedBy { it.startTime }
-
-            cache[normalizedUrl] = chapters
-            chapters
         } catch (e: Exception) {
-            android.util.Log.w("ChapterRepo", "Failed to fetch chapters: $normalizedUrl", e)
+            android.util.Log.w("ChapterRepo", "Failed to parse chapters JSON", e)
             emptyList()
         }
+    }
+
+    fun chaptersToJson(chapters: List<Chapter>): String {
+        val root = JSONObject()
+        root.put("version", "1.2.0")
+        val array = org.json.JSONArray()
+        for (ch in chapters) {
+            val obj = JSONObject()
+            obj.put("startTime", ch.startTime)
+            obj.put("title", ch.title)
+            ch.img?.let { obj.put("img", it) }
+            ch.url?.let { obj.put("url", it) }
+            array.put(obj)
+        }
+        root.put("chapters", array)
+        return root.toString()
     }
 
     fun setCachedChapters(key: String, chapters: List<Chapter>) {
@@ -98,6 +133,9 @@ object ChapterRepository {
     fun clearCache() {
         cache.clear()
     }
+
+    fun hasChaptersInDescription(htmlDescription: String?): Boolean =
+        parseChaptersFromDescription(htmlDescription).isNotEmpty()
 
     /**
      * Parses chapter timestamps from the episode description.
