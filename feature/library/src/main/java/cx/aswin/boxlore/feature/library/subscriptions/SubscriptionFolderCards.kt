@@ -451,7 +451,6 @@ internal fun Compact1x1FolderCard(
                     folder = folder,
                     podcasts = podcasts,
                     lastSeenEpisodes = lastSeenEpisodes,
-                    hasOverflowNew = hasOverflowNew,
                     actions = actions,
                 )
             }
@@ -518,7 +517,6 @@ private fun CompactPodcastGridContent(
     folder: SubscriptionFolder,
     podcasts: List<Podcast>,
     lastSeenEpisodes: Map<String, String>,
-    hasOverflowNew: Boolean,
     actions: FolderCardActions,
 ) {
     val pod0 = podcasts.getOrNull(0)
@@ -601,9 +599,6 @@ private fun CompactPodcastGridContent(
                             fontWeight = GoogleSansWeight.bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
-                        if (hasOverflowNew) {
-                            NewEpisodeBadge()
-                        }
                     }
                 } else {
                     MiniPodcastSlot(
