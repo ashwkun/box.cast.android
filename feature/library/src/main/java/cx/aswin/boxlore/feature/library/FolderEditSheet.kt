@@ -25,7 +25,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
-import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
+import cx.aswin.boxlore.core.designsystem.icon.GenreSuggestion
+import cx.aswin.boxlore.core.designsystem.icon.buildFolderSuggestionsWithLibrary
+import cx.aswin.boxlore.core.designsystem.icon.filterGenreSuggestions
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 
@@ -39,6 +41,7 @@ internal data class FolderEditFormState(
     val autoSyncGenre: Boolean,
     val effectiveLinkedGenre: String?,
     val suggestedGenres: List<String>,
+    val filteredSuggestions: List<GenreSuggestion>,
 )
 
 internal data class FolderEditFormActions(
@@ -48,7 +51,7 @@ internal data class FolderEditFormActions(
     val onShowPodcastGridChange: (Boolean) -> Unit,
     val onAutoSyncChange: (Boolean) -> Unit,
     val onSelectLinkedGenre: (String) -> Unit,
-    val onSelectSuggestedGenre: (String) -> Unit,
+    val onSelectSuggestion: (GenreSuggestion) -> Unit,
     val onDone: () -> Unit,
     val onSave: () -> Unit,
     val onClose: () -> Unit,
@@ -124,6 +127,14 @@ private fun rememberFolderEditStateAndActions(
         null
     }
 
+    val allFolderSuggestions = remember(suggestedGenres) {
+        buildFolderSuggestionsWithLibrary(suggestedGenres)
+    }
+
+    val filteredSuggestions = remember(nameText, allFolderSuggestions) {
+        filterGenreSuggestions(nameText, allFolderSuggestions)
+    }
+
     val formState = FolderEditFormState(
         isEditing = isEditing,
         canSave = canSave,
@@ -134,6 +145,7 @@ private fun rememberFolderEditStateAndActions(
         autoSyncGenre = autoSyncGenre,
         effectiveLinkedGenre = effectiveLinkedGenre,
         suggestedGenres = suggestedGenres,
+        filteredSuggestions = filteredSuggestions,
     )
 
     val formActions = FolderEditFormActions(
@@ -149,13 +161,10 @@ private fun rememberFolderEditStateAndActions(
         onSelectLinkedGenre = { genre ->
             linkedGenreText = if (linkedGenreText.equals(genre, ignoreCase = true)) "" else genre
         },
-        onSelectSuggestedGenre = { genre ->
-            nameText = genre
-            if (!isIconManuallySelected) {
-                val matchedIcon = GenreIcons.findIcon(genre) ?: GenreIcons.defaultGenreIcon(genre)
-                val item = GenreIcons.all.firstOrNull { it.icon == matchedIcon }
-                selectedIconKey = item?.key
-            }
+        onSelectSuggestion = { suggestion ->
+            nameText = suggestion.name
+            selectedIconKey = suggestion.iconKey
+            isIconManuallySelected = true
             focusManager.clearFocus()
         },
         onDone = { focusManager.clearFocus() },
@@ -211,10 +220,12 @@ internal fun FolderEditSheetContent(
                 onDone = actions.onDone,
             )
 
-            if (state.suggestedGenres.isNotEmpty()) {
+            if (state.filteredSuggestions.isNotEmpty()) {
                 FolderQuickFillChipsRow(
-                    genres = state.suggestedGenres,
-                    onSelectGenre = actions.onSelectSuggestedGenre,
+                    suggestions = state.filteredSuggestions,
+                    queryText = state.nameText,
+                    hasLibraryGenres = state.suggestedGenres.isNotEmpty(),
+                    onSelectSuggestion = actions.onSelectSuggestion,
                 )
             }
 

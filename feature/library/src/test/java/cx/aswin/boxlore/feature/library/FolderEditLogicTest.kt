@@ -2,6 +2,9 @@ package cx.aswin.boxlore.feature.library
 
 import cx.aswin.boxlore.core.catalog.FolderRepository
 import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
+import cx.aswin.boxlore.core.designsystem.icon.GenreSuggestion
+import cx.aswin.boxlore.core.designsystem.icon.buildFolderSuggestionsWithLibrary
+import cx.aswin.boxlore.core.designsystem.icon.filterGenreSuggestions
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
@@ -293,5 +296,46 @@ class FolderEditLogicTest {
 
         // Must dynamically evaluate to "Technology", NOT "T"
         assertEquals("Technology", effectiveLinkedGenre)
+    }
+
+    @Test
+    fun folderSuggestions_prioritizeLibraryGenresAndFilterByKeyword() {
+        val libraryGenres = listOf("Tech", "Comedy")
+        val allFolderSuggestions = buildFolderSuggestionsWithLibrary(libraryGenres)
+
+        // When query is blank, library genres are at the top
+        val blankFiltered = filterGenreSuggestions("", allFolderSuggestions)
+        assertEquals("Tech", blankFiltered[0].name)
+        assertTrue(blankFiltered[0].isFromLibrary)
+        assertEquals("Comedy", blankFiltered[1].name)
+        assertTrue(blankFiltered[1].isFromLibrary)
+
+        // Real-time keyword filter: typing "ai" matches Tech/Technology
+        val aiMatches = filterGenreSuggestions("ai", allFolderSuggestions)
+        assertTrue(aiMatches.isNotEmpty())
+        assertTrue(aiMatches.any { it.name == "Tech" || it.name == "Technology" })
+
+        // Real-time keyword filter: typing "jokes" matches Comedy
+        val jokesMatches = filterGenreSuggestions("jokes", allFolderSuggestions)
+        assertTrue(jokesMatches.isNotEmpty())
+        assertEquals("Comedy", jokesMatches.first().name)
+    }
+
+    @Test
+    fun folderSuggestions_selectingChipSetsNameAndPresetIcon() {
+        val allFolderSuggestions = buildFolderSuggestionsWithLibrary(listOf("Tech", "Comedy"))
+        var nameText = ""
+        var selectedIconKey: String? = null
+
+        fun onSelectSuggestion(suggestion: GenreSuggestion) {
+            nameText = suggestion.name
+            selectedIconKey = suggestion.iconKey
+        }
+
+        val comedySuggestion = allFolderSuggestions.first { it.name == "Comedy" }
+        onSelectSuggestion(comedySuggestion)
+
+        assertEquals("Comedy", nameText)
+        assertEquals("comedy", selectedIconKey)
     }
 }

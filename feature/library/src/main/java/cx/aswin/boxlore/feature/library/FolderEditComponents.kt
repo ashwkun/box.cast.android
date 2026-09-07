@@ -48,6 +48,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import cx.aswin.boxlore.core.designsystem.components.PillFilterChip
 import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
+import cx.aswin.boxlore.core.designsystem.icon.GenreSuggestion
 import cx.aswin.boxlore.core.designsystem.theme.ExpressiveShapes
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.FolderDisplaySize
@@ -324,18 +325,26 @@ private fun FolderIconTile(
 
 @Composable
 internal fun FolderQuickFillChipsRow(
-    genres: List<String>,
-    onSelectGenre: (String) -> Unit,
+    suggestions: List<GenreSuggestion>,
+    queryText: String,
+    hasLibraryGenres: Boolean,
+    onSelectSuggestion: (GenreSuggestion) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (genres.isEmpty()) return
+    if (suggestions.isEmpty()) return
+
+    val headerText = if (queryText.isBlank()) {
+        if (hasLibraryGenres) "Suggested from your library" else "Suggested folders"
+    } else {
+        "Matching suggestions (${suggestions.size})"
+    }
 
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
-            text = "Quick fill from your library",
+            text = headerText,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = GoogleSansWeight.medium,
@@ -345,13 +354,16 @@ internal fun FolderQuickFillChipsRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            items(genres, key = { it }) { genre ->
-                val icon = GenreIcons.iconOrFallback(null, genre)
+            items(
+                items = suggestions,
+                key = { "${it.name}_${it.iconKey}_${it.isFromLibrary}" },
+            ) { suggestion ->
+                val isSelected = queryText.trim().equals(suggestion.name, ignoreCase = true)
                 PillFilterChip(
-                    label = genre,
-                    icon = icon,
-                    selected = false,
-                    onClick = { onSelectGenre(genre) },
+                    label = suggestion.name,
+                    icon = suggestion.icon,
+                    selected = isSelected,
+                    onClick = { onSelectSuggestion(suggestion) },
                 )
             }
         }
