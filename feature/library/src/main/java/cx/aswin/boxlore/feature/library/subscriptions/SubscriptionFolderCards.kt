@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import cx.aswin.boxlore.core.designsystem.components.NewEpisodeBadge
 import cx.aswin.boxlore.core.designsystem.components.OptimizedImage
+import cx.aswin.boxlore.core.designsystem.components.rememberNewEpisodeBadgeShimmerBrush
 import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.Podcast
@@ -382,19 +383,21 @@ private fun OverflowNewEpisodesChip(
     newCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val text = if (newCount == 1) "1 new episode" else "$newCount new episodes"
+    val text = if (newCount == 1) "1 NEW EPISODE" else "$newCount NEW EPISODES"
+    val shape = RoundedCornerShape(100.dp)
+    val brush = rememberNewEpisodeBadgeShimmerBrush()
     Surface(
-        shape = RoundedCornerShape(100.dp),
-        color = MaterialTheme.colorScheme.primary,
+        shape = shape,
+        color = Color.Transparent,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)),
-        modifier = modifier,
+        modifier = modifier.background(brush, shape),
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 7.5.sp,
                 fontWeight = GoogleSansWeight.bold,
-                letterSpacing = 0.2.sp,
+                letterSpacing = 0.3.sp,
                 lineHeight = 9.sp,
             ),
             color = MaterialTheme.colorScheme.onPrimary,
@@ -699,13 +702,16 @@ private fun MiniPodcastSlot(
 private fun BoxScope.MiniNewEpisodeBadge(
     modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedCornerShape(3.dp)
+    val brush = rememberNewEpisodeBadgeShimmerBrush()
     Surface(
-        shape = RoundedCornerShape(3.dp),
-        color = MaterialTheme.colorScheme.primary,
+        shape = shape,
+        color = Color.Transparent,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.surface),
         modifier = modifier
             .align(Alignment.TopEnd)
-            .padding(top = 2.dp, end = 2.dp),
+            .padding(top = 2.dp, end = 2.dp)
+            .background(brush, shape),
     ) {
         Text(
             text = "NEW",
