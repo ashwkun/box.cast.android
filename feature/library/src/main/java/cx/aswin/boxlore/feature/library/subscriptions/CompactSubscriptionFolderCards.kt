@@ -325,6 +325,9 @@ private fun CompactFolderTitlePill(
     modifier: Modifier = Modifier,
 ) {
     val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
+    val displayName = remember(folder.name) {
+        truncateCompactFolderName(folder.name)
+    }
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -356,7 +359,7 @@ private fun CompactFolderTitlePill(
             )
             Spacer(modifier = Modifier.width(3.dp))
             Text(
-                text = folder.name,
+                text = displayName,
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontSize = 9.sp,
                     lineHeight = 11.sp,
