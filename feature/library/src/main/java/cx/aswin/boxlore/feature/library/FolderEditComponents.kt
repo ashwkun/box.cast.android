@@ -1,7 +1,6 @@
 package cx.aswin.boxlore.feature.library
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -24,11 +22,14 @@ import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,17 +43,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import cx.aswin.boxlore.core.designsystem.components.PillFilterChip
-import cx.aswin.boxlore.core.designsystem.icon.GenreIconItem
 import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
 import cx.aswin.boxlore.core.designsystem.theme.ExpressiveShapes
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.FolderDisplaySize
+
+internal val SelectableFolderSizes = listOf(
+    FolderDisplaySize.COMPACT,
+    FolderDisplaySize.SHELF,
+    FolderDisplaySize.PANEL,
+    FolderDisplaySize.SHOWCASE,
+)
+
+internal data class FolderOrganizationState(
+    val autoSync: Boolean,
+    val onAutoSyncChange: (Boolean) -> Unit,
+    val autoOrganizeLibrary: Boolean,
+    val onAutoOrganizeLibraryChange: (Boolean) -> Unit,
+    val linkedGenre: String,
+    val suggestedGenres: List<String> = emptyList(),
+    val onSelectLinkedGenre: ((String) -> Unit)? = null,
+)
 
 @Composable
 internal fun FolderEditTopBar(
@@ -125,71 +141,242 @@ internal fun FolderEditTopBar(
 }
 
 @Composable
-internal fun FolderNameInputField(
+internal fun FolderIdentityHeader(
     nameText: String,
     onNameChange: (String) -> Unit,
     iconKey: String?,
+    isIconPickerExpanded: Boolean,
+    onToggleIconPicker: () -> Unit,
     onDone: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    OutlinedTextField(
-        value = nameText,
-        onValueChange = onNameChange,
-        label = { Text("Folder name") },
-        placeholder = { Text("e.g. Daily Tech, Comedy, Deep Dives") },
-        singleLine = true,
-        leadingIcon = {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(28.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = GenreIcons.folderIconOrFallback(iconKey),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(16.dp),
-                    )
-                }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Surface(
+            onClick = onToggleIconPicker,
+            shape = RoundedCornerShape(18.dp),
+            color = if (isIconPickerExpanded) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHigh
+            },
+            border = BorderStroke(
+                width = if (isIconPickerExpanded) 2.dp else 1.dp,
+                color = if (isIconPickerExpanded) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                },
+            ),
+            modifier = Modifier.size(56.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = GenreIcons.folderIconOrFallback(iconKey),
+                    contentDescription = "Choose folder icon",
+                    tint = if (isIconPickerExpanded) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    modifier = Modifier.size(26.dp),
+                )
+
+                Icon(
+                    imageVector = if (isIconPickerExpanded) {
+                        Icons.Rounded.KeyboardArrowUp
+                    } else {
+                        Icons.Rounded.KeyboardArrowDown
+                    },
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .size(14.dp)
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 2.dp, end = 2.dp),
+                )
             }
-        },
-        trailingIcon = {
-            if (nameText.isNotEmpty()) {
-                IconButton(onClick = { onNameChange("") }) {
-                    Icon(
-                        imageVector = Icons.Rounded.Clear,
-                        contentDescription = "Clear name",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        }
+
+        OutlinedTextField(
+            value = nameText,
+            onValueChange = onNameChange,
+            label = { Text("Folder name") },
+            placeholder = { Text("e.g. Daily Tech, Comedy, Science") },
+            singleLine = true,
+            trailingIcon = {
+                if (nameText.isNotEmpty()) {
+                    IconButton(onClick = { onNameChange("") }) {
+                        Icon(
+                            imageVector = Icons.Rounded.Clear,
+                            contentDescription = "Clear name",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
-            }
-        },
+            },
+            shape = RoundedCornerShape(16.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ),
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.Words,
+                imeAction = ImeAction.Done,
+            ),
+            keyboardActions = KeyboardActions(onDone = { onDone() }),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+internal fun FolderIconPickerRow(
+    selectedIconKey: String?,
+    queryText: String,
+    onSelectIcon: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val suggestedIcons = remember(queryText) {
+        GenreIcons.suggestIcons(queryText)
+    }
+    val displayIcons = remember(suggestedIcons) {
+        val suggestedKeys = suggestedIcons.map { it.key }.toSet()
+        suggestedIcons + GenreIcons.all.filterNot { it.key in suggestedKeys }
+    }
+
+    val initialIndex = remember {
+        val matchIndex = displayIcons.indexOfFirst { it.key.equals(selectedIconKey, ignoreCase = true) }
+        if (matchIndex >= 0) matchIndex + 1 else 0
+    }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+
+    Surface(
         shape = RoundedCornerShape(16.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.Words,
-            imeAction = ImeAction.Done,
-        ),
-        keyboardActions = KeyboardActions(onDone = { onDone() }),
-        modifier = Modifier.fillMaxWidth(),
-    )
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Pick an icon",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = GoogleSansWeight.bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+
+                if (!selectedIconKey.isNullOrBlank()) {
+                    TextButton(
+                        onClick = { onSelectIcon(null) },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = "Reset to default",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+
+            LazyRow(
+                state = listState,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                item(key = "default_folder_icon") {
+                    FolderIconTile(
+                        icon = Icons.Rounded.Folder,
+                        label = "Default",
+                        isSelected = selectedIconKey.isNullOrBlank(),
+                        onClick = { onSelectIcon(null) },
+                    )
+                }
+
+                items(displayIcons, key = { it.key }) { item ->
+                    val isSelected = selectedIconKey.equals(item.key, ignoreCase = true)
+                    FolderIconTile(
+                        icon = item.icon,
+                        label = item.label,
+                        isSelected = isSelected,
+                        onClick = { onSelectIcon(if (isSelected) null else item.key) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FolderIconTile(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    val borderColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    }
+    val containerColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainer
+    }
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        border = BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
+        modifier = Modifier.size(42.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
 }
 
 @Composable
 internal fun FolderQuickFillChipsRow(
     genres: List<String>,
     onSelectGenre: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (genres.isEmpty()) return
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         Text(
-            text = "Suggestions from your library",
+            text = "Quick fill from your library",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = GoogleSansWeight.medium,
@@ -216,48 +403,29 @@ internal fun FolderQuickFillChipsRow(
 internal fun FolderDisplaySizeSelector(
     selectedSize: FolderDisplaySize,
     onSizeSelected: (FolderDisplaySize) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val initialIndex = remember {
-        FolderDisplaySize.entries.indexOf(selectedSize).coerceAtLeast(0)
-    }
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = "Folder size",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = GoogleSansWeight.bold,
+        )
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Grid footprint",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = GoogleSansWeight.bold,
-            )
-            Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-            ) {
-                Text(
-                    text = "${selectedSize.dimensionsLabel} • ${selectedSize.title}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    fontWeight = GoogleSansWeight.bold,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                )
-            }
-        }
-
-        LazyRow(
-            state = listState,
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(FolderDisplaySize.entries, key = { it.name }) { size ->
-                FolderDisplaySizeCard(
+            SelectableFolderSizes.forEach { size ->
+                FolderSizeCard(
                     size = size,
                     isSelected = selectedSize == size,
                     onClick = { onSizeSelected(size) },
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -265,10 +433,11 @@ internal fun FolderDisplaySizeSelector(
 }
 
 @Composable
-private fun FolderDisplaySizeCard(
+private fun FolderSizeCard(
     size: FolderDisplaySize,
     isSelected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val borderColor = if (isSelected) {
         MaterialTheme.colorScheme.primary
@@ -286,327 +455,30 @@ private fun FolderDisplaySizeCard(
         shape = RoundedCornerShape(14.dp),
         color = containerColor,
         border = BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
-        modifier = Modifier.width(76.dp),
+        modifier = modifier,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 10.dp, horizontal = 6.dp),
+                .padding(vertical = 10.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            MiniGridFootprintDiagram(
-                spanCols = size.spanCols,
-                spanRows = size.spanRows,
-                isSelected = isSelected,
-            )
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(1.dp),
-            ) {
-                Text(
-                    text = size.dimensionsLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = GoogleSansWeight.bold,
-                    color = if (isSelected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
-                Text(
-                    text = size.title,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MiniGridFootprintDiagram(
-    spanCols: Int,
-    spanRows: Int,
-    isSelected: Boolean,
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(2.5.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        for (r in 0 until 3) {
-            Row(horizontalArrangement = Arrangement.spacedBy(2.5.dp)) {
-                for (c in 0 until 3) {
-                    val isActive = c < spanCols && r < spanRows
-                    val cellColor = when {
-                        isActive && isSelected -> MaterialTheme.colorScheme.primary
-                        isActive -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(7.dp)
-                            .clip(RoundedCornerShape(1.5.dp))
-                            .background(cellColor),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-internal fun FolderIconPickerSection(
-    selectedIconKey: String?,
-    queryText: String,
-    onSelectIcon: (String?) -> Unit,
-) {
-    val suggestedIcons = remember(queryText) {
-        GenreIcons.suggestIcons(queryText)
-    }
-
-    val displayIcons = remember(suggestedIcons) {
-        val suggestedKeys = suggestedIcons.map { it.key }.toSet()
-        suggestedIcons + GenreIcons.all.filterNot { it.key in suggestedKeys }
-    }
-
-    val initialIndex = remember {
-        val matchIndex = displayIcons.indexOfFirst { it.key.equals(selectedIconKey, ignoreCase = true) }
-        if (matchIndex >= 0) matchIndex + 1 else 0
-    }
-    val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = "Icon (optional)",
+                text = size.dimensionsLabel,
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = GoogleSansWeight.bold,
-            )
-
-            if (!selectedIconKey.isNullOrBlank()) {
-                TextButton(
-                    onClick = { onSelectIcon(null) },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Clear,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Text(
-                        text = "Reset to default",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = GoogleSansWeight.medium,
-                        modifier = Modifier.padding(start = 4.dp),
-                    )
-                }
-            } else {
-                Text(
-                    text = "Default folder icon",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-            }
-        }
-
-        LazyRow(
-            state = listState,
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            item(key = "default_folder_icon") {
-                FolderDefaultIconTile(
-                    isSelected = selectedIconKey.isNullOrBlank(),
-                    onClick = { onSelectIcon(null) },
-                )
-            }
-
-            items(displayIcons, key = { it.key }) { item ->
-                val isSelected = selectedIconKey.equals(item.key, ignoreCase = true)
-                FolderIconTile(
-                    item = item,
-                    isSelected = isSelected,
-                    onClick = {
-                        onSelectIcon(if (isSelected) null else item.key)
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FolderDefaultIconTile(
-    isSelected: Boolean,
-    onClick: () -> Unit,
-) {
-    val borderColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    }
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = containerColor,
-        border = BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
-        modifier = Modifier.size(44.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.Rounded.Folder,
-                contentDescription = "Default folder icon",
-                tint = if (isSelected) {
+                color = if (isSelected) {
                     MaterialTheme.colorScheme.primary
                 } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
+                    MaterialTheme.colorScheme.onSurface
                 },
-                modifier = Modifier.size(22.dp),
             )
-        }
-    }
-}
-
-@Composable
-private fun FolderIconTile(
-    item: GenreIconItem,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-) {
-    val borderColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    }
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = containerColor,
-        border = BorderStroke(if (isSelected) 2.dp else 1.dp, borderColor),
-        modifier = Modifier.size(44.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = item.label,
-                tint = if (isSelected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.size(22.dp),
+            Text(
+                text = size.title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-    }
-}
-
-@Composable
-internal fun FolderAutoSyncCard(
-    autoSync: Boolean,
-    onAutoSyncChange: (Boolean) -> Unit,
-    linkedGenre: String,
-    suggestedGenres: List<String> = emptyList(),
-    onSelectLinkedGenre: ((String) -> Unit)? = null,
-) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.Sync,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-                    }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        Text(
-                            text = "Auto-sync with genre",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = GoogleSansWeight.bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = if (autoSync && linkedGenre.isNotBlank()) {
-                                "Shows tagged '$linkedGenre' join automatically"
-                            } else {
-                                "Automatically adds matching subscribed shows"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                Switch(
-                    checked = autoSync,
-                    onCheckedChange = onAutoSyncChange,
-                )
-            }
-
-            if (autoSync && suggestedGenres.isNotEmpty() && onSelectLinkedGenre != null) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    items(suggestedGenres, key = { it }) { genre ->
-                        val isSelected = linkedGenre.equals(genre, ignoreCase = true)
-                        val icon = GenreIcons.iconOrFallback(null, genre)
-                        PillFilterChip(
-                            label = genre,
-                            icon = icon,
-                            selected = isSelected,
-                            onClick = { onSelectLinkedGenre(genre) },
-                        )
-                    }
-                }
-            }
         }
     }
 }
@@ -627,62 +499,30 @@ internal fun FolderCompactCoverStyleCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.GridView,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = "1×1 Cover Display",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = GoogleSansWeight.medium,
-                    )
-                }
-
-                Text(
-                    text = if (isIconSelected) "Folder Icon" else "Podcast Grid",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = GoogleSansWeight.medium,
-                )
-            }
-
             Text(
-                text = if (hasIcon) {
-                    "Choose between folder icon badge or a 2×2 mini-grid of podcast artworks"
-                } else {
-                    "No icon chosen — displaying 2×2 mini-grid of podcast artworks"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "1×1 Cover style",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = GoogleSansWeight.bold,
+                color = MaterialTheme.colorScheme.onSurface,
             )
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                FolderCoverStyleOption(
+                CoverStyleOptionTab(
                     title = "Folder Icon",
-                    subtitle = if (hasIcon) "Tap to open" else "Pick icon below",
+                    subtitle = if (hasIcon) "Tap to open" else "Pick icon above",
                     iconVector = iconVector,
                     isSelected = isIconSelected,
                     onClick = if (hasIcon) {
@@ -693,9 +533,9 @@ internal fun FolderCompactCoverStyleCard(
                     modifier = Modifier.weight(1f),
                 )
 
-                FolderCoverStyleOption(
+                CoverStyleOptionTab(
                     title = "Podcast Grid",
-                    subtitle = "Clickable covers",
+                    subtitle = "2×2 covers",
                     iconVector = Icons.Rounded.GridView,
                     isSelected = isGridSelected,
                     onClick = { onShowPodcastGridChange(true) },
@@ -707,23 +547,22 @@ internal fun FolderCompactCoverStyleCard(
 }
 
 @Composable
-private fun FolderCoverStyleOption(
+private fun CoverStyleOptionTab(
     title: String,
     subtitle: String,
     iconVector: ImageVector,
     isSelected: Boolean,
-    modifier: Modifier = Modifier,
     onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
     val enabled = onClick != null
     Surface(
-        modifier = modifier
-            .clickable(enabled = enabled) { onClick?.invoke() },
+        modifier = modifier.clickable(enabled = enabled) { onClick?.invoke() },
         shape = RoundedCornerShape(12.dp),
         color = if (isSelected) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
         } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
+            MaterialTheme.colorScheme.surfaceContainer
         },
         border = BorderStroke(
             width = if (isSelected) 1.5.dp else 1.dp,
@@ -737,7 +576,7 @@ private fun FolderCoverStyleOption(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -773,5 +612,187 @@ private fun FolderCoverStyleOption(
                 )
             }
         }
+    }
+}
+
+@Composable
+internal fun FolderOrganizationCard(
+    state: FolderOrganizationState,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Organization",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = GoogleSansWeight.bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            AutoSyncRow(
+                autoSync = state.autoSync,
+                onAutoSyncChange = state.onAutoSyncChange,
+                linkedGenre = state.linkedGenre,
+            )
+
+            if (state.autoSync && state.suggestedGenres.isNotEmpty() && state.onSelectLinkedGenre != null) {
+                AutoSyncGenreChips(
+                    suggestedGenres = state.suggestedGenres,
+                    linkedGenre = state.linkedGenre,
+                    onSelectLinkedGenre = state.onSelectLinkedGenre,
+                )
+            }
+
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+            )
+
+            AutoOrganizeLibraryRow(
+                checked = state.autoOrganizeLibrary,
+                onCheckedChange = state.onAutoOrganizeLibraryChange,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AutoSyncRow(
+    autoSync: Boolean,
+    onAutoSyncChange: (Boolean) -> Unit,
+    linkedGenre: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f).padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.size(30.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Sync,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(15.dp),
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = "Auto-sync with genre",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = GoogleSansWeight.medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = if (autoSync && linkedGenre.isNotBlank()) {
+                        "Shows tagged '$linkedGenre' join automatically"
+                    } else {
+                        "Automatically adds matching subscribed shows"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Switch(
+            checked = autoSync,
+            onCheckedChange = onAutoSyncChange,
+        )
+    }
+}
+
+@Composable
+private fun AutoSyncGenreChips(
+    suggestedGenres: List<String>,
+    linkedGenre: String,
+    onSelectLinkedGenre: (String) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(suggestedGenres, key = { it }) { genre ->
+            val isSelected = linkedGenre.equals(genre, ignoreCase = true)
+            val icon = GenreIcons.iconOrFallback(null, genre)
+            PillFilterChip(
+                label = genre,
+                icon = icon,
+                selected = isSelected,
+                onClick = { onSelectLinkedGenre(genre) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AutoOrganizeLibraryRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            modifier = Modifier.weight(1f).padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                modifier = Modifier.size(30.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.GridView,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier.size(15.dp),
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(
+                    text = "Auto-organize library into folders",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = GoogleSansWeight.medium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Automatically groups subscriptions into genre folders",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
     }
 }

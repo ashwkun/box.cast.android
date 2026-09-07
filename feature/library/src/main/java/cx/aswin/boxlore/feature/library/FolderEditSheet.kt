@@ -1,5 +1,10 @@
 package cx.aswin.boxlore.feature.library
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.Arrangement
@@ -34,19 +39,23 @@ internal data class FolderEditFormState(
     val canSave: Boolean,
     val nameText: String,
     val selectedIconKey: String?,
+    val isIconPickerExpanded: Boolean,
     val selectedDisplaySize: FolderDisplaySize,
     val showPodcastGrid: Boolean,
     val autoSyncGenre: Boolean,
+    val autoOrganizeLibrary: Boolean,
     val effectiveLinkedGenre: String?,
     val suggestedGenres: List<String>,
 )
 
 internal data class FolderEditFormActions(
     val onNameChange: (String) -> Unit,
+    val onToggleIconPicker: () -> Unit,
     val onSelectIcon: (String?) -> Unit,
     val onSelectDisplaySize: (FolderDisplaySize) -> Unit,
     val onShowPodcastGridChange: (Boolean) -> Unit,
     val onAutoSyncChange: (Boolean) -> Unit,
+    val onAutoOrganizeLibraryChange: (Boolean) -> Unit,
     val onSelectLinkedGenre: (String) -> Unit,
     val onSelectSuggestedGenre: (String) -> Unit,
     val onDone: () -> Unit,
@@ -64,11 +73,44 @@ fun FolderEditSheet(
     onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
     onDelete: (() -> Unit)? = null,
 ) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val (formState, formActions) = rememberFolderEditStateAndActions(
+        initialFolder = initialFolder,
+        suggestedGenres = suggestedGenres,
+        onDismissRequest = onDismissRequest,
+        onSave = onSave,
+        onDelete = onDelete,
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        contentWindowInsets = { WindowInsets.navigationBars },
+        modifier = Modifier.imePadding(),
+    ) {
+        FolderEditSheetContent(
+            state = formState,
+            actions = formActions,
+        )
+    }
+}
+
+@Composable
+private fun rememberFolderEditStateAndActions(
+    initialFolder: SubscriptionFolder?,
+    suggestedGenres: List<String>,
+    onDismissRequest: () -> Unit,
+    onSave: (name: String, icon: String?, displaySize: FolderDisplaySize, linkedGenre: String?, showPodcastGrid: Boolean) -> Unit,
+    onDelete: (() -> Unit)?,
+): Pair<FolderEditFormState, FolderEditFormActions> {
     var nameText by remember(initialFolder) { mutableStateOf(initialFolder?.name ?: "") }
     var selectedIconKey by remember(initialFolder) { mutableStateOf(initialFolder?.icon) }
     var isIconManuallySelected by remember(initialFolder) {
         mutableStateOf(initialFolder?.icon != null)
     }
+    var isIconPickerExpanded by remember { mutableStateOf(false) }
     var selectedDisplaySize by remember(initialFolder) {
         mutableStateOf(initialFolder?.displaySize ?: FolderDisplaySize.COMPACT)
     }
@@ -78,12 +120,12 @@ fun FolderEditSheet(
     var autoSyncGenre by remember(initialFolder) {
         mutableStateOf(initialFolder?.isGenreLinked ?: false)
     }
+    var autoOrganizeLibrary by remember { mutableStateOf(false) }
     var linkedGenreText by remember(initialFolder) {
         mutableStateOf(initialFolder?.linkedGenre ?: "")
     }
 
     val focusManager = LocalFocusManager.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val isEditing = initialFolder != null
     val canSave = nameText.trim().isNotEmpty()
 
@@ -98,25 +140,31 @@ fun FolderEditSheet(
         canSave = canSave,
         nameText = nameText,
         selectedIconKey = selectedIconKey,
+        isIconPickerExpanded = isIconPickerExpanded,
         selectedDisplaySize = selectedDisplaySize,
         showPodcastGrid = showPodcastGrid,
         autoSyncGenre = autoSyncGenre,
+        autoOrganizeLibrary = autoOrganizeLibrary,
         effectiveLinkedGenre = effectiveLinkedGenre,
         suggestedGenres = suggestedGenres,
     )
 
     val formActions = FolderEditFormActions(
         onNameChange = { nameText = it },
+        onToggleIconPicker = {
+            isIconPickerExpanded = !isIconPickerExpanded
+            focusManager.clearFocus()
+        },
         onSelectIcon = {
             selectedIconKey = it
             isIconManuallySelected = true
+            isIconPickerExpanded = false
             focusManager.clearFocus()
         },
         onSelectDisplaySize = { selectedDisplaySize = it },
         onShowPodcastGridChange = { showPodcastGrid = it },
-        onAutoSyncChange = { enabled ->
-            autoSyncGenre = enabled
-        },
+        onAutoSyncChange = { enabled -> autoSyncGenre = enabled },
+        onAutoOrganizeLibraryChange = { enabled -> autoOrganizeLibrary = enabled },
         onSelectLinkedGenre = { genre ->
             linkedGenreText = if (linkedGenreText.equals(genre, ignoreCase = true)) "" else genre
         },
@@ -146,19 +194,7 @@ fun FolderEditSheet(
         onDelete = onDelete,
     )
 
-    ModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        contentWindowInsets = { WindowInsets.navigationBars },
-        modifier = Modifier.imePadding(),
-    ) {
-        FolderEditSheetContent(
-            state = formState,
-            actions = formActions,
-        )
-    }
+    return formState to formActions
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -187,12 +223,26 @@ internal fun FolderEditSheetContent(
                 onSave = actions.onSave,
             )
 
-            FolderNameInputField(
+            FolderIdentityHeader(
                 nameText = state.nameText,
                 onNameChange = actions.onNameChange,
                 iconKey = state.selectedIconKey,
+                isIconPickerExpanded = state.isIconPickerExpanded,
+                onToggleIconPicker = actions.onToggleIconPicker,
                 onDone = actions.onDone,
             )
+
+            AnimatedVisibility(
+                visible = state.isIconPickerExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                FolderIconPickerRow(
+                    selectedIconKey = state.selectedIconKey,
+                    queryText = state.nameText,
+                    onSelectIcon = actions.onSelectIcon,
+                )
+            }
 
             if (state.suggestedGenres.isNotEmpty()) {
                 FolderQuickFillChipsRow(
@@ -215,18 +265,16 @@ internal fun FolderEditSheetContent(
                 )
             }
 
-            FolderIconPickerSection(
-                selectedIconKey = state.selectedIconKey,
-                queryText = state.nameText,
-                onSelectIcon = actions.onSelectIcon,
-            )
-
-            FolderAutoSyncCard(
-                autoSync = state.autoSyncGenre,
-                onAutoSyncChange = actions.onAutoSyncChange,
-                linkedGenre = state.effectiveLinkedGenre ?: state.nameText.trim(),
-                suggestedGenres = state.suggestedGenres,
-                onSelectLinkedGenre = actions.onSelectLinkedGenre,
+            FolderOrganizationCard(
+                state = FolderOrganizationState(
+                    autoSync = state.autoSyncGenre,
+                    onAutoSyncChange = actions.onAutoSyncChange,
+                    autoOrganizeLibrary = state.autoOrganizeLibrary,
+                    onAutoOrganizeLibraryChange = actions.onAutoOrganizeLibraryChange,
+                    linkedGenre = state.effectiveLinkedGenre ?: state.nameText.trim(),
+                    suggestedGenres = state.suggestedGenres,
+                    onSelectLinkedGenre = actions.onSelectLinkedGenre,
+                ),
             )
         }
     }
