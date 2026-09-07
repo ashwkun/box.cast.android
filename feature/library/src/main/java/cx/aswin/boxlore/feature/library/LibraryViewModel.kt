@@ -312,7 +312,7 @@ class LibraryViewModel(
 
     fun setAutoOrganizeFolders(
         enabled: Boolean,
-        displaySize: FolderDisplaySize = FolderDisplaySize.SHELF,
+        displaySize: FolderDisplaySize? = null,
         showPodcastGrid: Boolean = false,
     ) {
         viewModelScope.launch {

@@ -114,7 +114,7 @@ class FolderEditLogicTest {
         }
 
         override suspend fun autoOrganizeSubscribedShows(
-            defaultDisplaySize: FolderDisplaySize,
+            defaultDisplaySize: FolderDisplaySize?,
             showPodcastGrid: Boolean,
         ) {
             // No-op in test fake

@@ -213,97 +213,97 @@ class RoomFolderRepository(
     }
 
     override suspend fun autoOrganizeSubscribedShows(
-        defaultDisplaySize: FolderDisplaySize,
+        defaultDisplaySize: FolderDisplaySize?,
         showPodcastGrid: Boolean,
     ) {
         val subscribed = podcastDao.getSubscribedPodcastsList()
         if (subscribed.isEmpty()) return
 
-        val genreToPodcasts = mutableMapOf<String, MutableList<String>>()
-        for (pod in subscribed) {
-            val genreName = pod.customGenre?.trim()?.takeIf { it.isNotEmpty() }
-                ?: pod.genre?.split(",")?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
-            if (!genreName.isNullOrBlank()) {
-                val canonical = PodcastGenres.canonicalize(genreName)
-                    ?: (if (genreName.equals("tech", ignoreCase = true)) "Technology" else genreName.replaceFirstChar { it.uppercase() })
-                genreToPodcasts.getOrPut(canonical) { mutableListOf() }.add(pod.podcastId)
-            }
-        }
-
+        val genreToPodcasts = groupSubscribedPodcastsByGenre(subscribed)
         val existingFolders = folderDao.getAllFoldersList()
 
         for ((genre, podcastIds) in genreToPodcasts) {
-            val existing = existingFolders.firstOrNull { f ->
-                val linked = f.linkedGenre
-                linked?.equals(genre, ignoreCase = true) == true ||
-                    isGenreTokenMatch(f.name, genre) ||
-                    (linked != null && isGenreTokenMatch(linked, genre))
-            }
-
-            if (existing != null) {
-                if (existing.linkedGenre.isNullOrBlank()) {
-                    folderDao.upsertFolder(existing.copy(linkedGenre = genre))
-                }
-                val currentIds = folderDao.getPodcastIdsForFolderList(existing.folderId)
-                val merged = (currentIds + podcastIds).distinct()
-                if (merged.size != currentIds.size) {
-                    folderDao.setPodcastsForFolder(existing.folderId, merged)
-                }
-            } else {
-                val folderId = UUID.randomUUID().toString()
-                val iconKey = defaultIconForGenre(genre)
-                val entity = FolderEntity(
-                    folderId = folderId,
-                    name = genre,
-                    icon = iconKey,
-                    displaySize = defaultDisplaySize,
-                    linkedGenre = genre,
-                    showPodcastGrid = showPodcastGrid,
-                    createdAt = System.currentTimeMillis(),
-                )
-                folderDao.upsertFolder(entity)
-                folderDao.setPodcastsForFolder(folderId, podcastIds.distinct())
-            }
+            mergeOrCreateGenreFolder(
+                genre = genre,
+                podcastIds = podcastIds,
+                existingFolders = existingFolders,
+                defaultDisplaySize = defaultDisplaySize,
+                showPodcastGrid = showPodcastGrid,
+            )
         }
 
         syncLinkedGenres()
+    }
+
+    private suspend fun mergeOrCreateGenreFolder(
+        genre: String,
+        podcastIds: List<String>,
+        existingFolders: List<FolderEntity>,
+        defaultDisplaySize: FolderDisplaySize?,
+        showPodcastGrid: Boolean,
+    ) {
+        val existing = existingFolders.firstOrNull { f ->
+            val linked = f.linkedGenre
+            linked?.equals(genre, ignoreCase = true) == true ||
+                isGenreTokenMatch(f.name, genre) ||
+                (linked != null && isGenreTokenMatch(linked, genre))
+        }
+
+        if (existing != null) {
+            if (existing.linkedGenre.isNullOrBlank()) {
+                folderDao.upsertFolder(existing.copy(linkedGenre = genre))
+            }
+            val currentIds = folderDao.getPodcastIdsForFolderList(existing.folderId)
+            val merged = (currentIds + podcastIds).distinct()
+            if (merged.size != currentIds.size) {
+                folderDao.setPodcastsForFolder(existing.folderId, merged)
+            }
+        } else {
+            createAutoOrganizeFolder(
+                genre = genre,
+                podcastIds = podcastIds,
+                defaultDisplaySize = defaultDisplaySize,
+                showPodcastGrid = showPodcastGrid,
+            )
+        }
+    }
+
+    private suspend fun createAutoOrganizeFolder(
+        genre: String,
+        podcastIds: List<String>,
+        defaultDisplaySize: FolderDisplaySize?,
+        showPodcastGrid: Boolean,
+    ) {
+        val folderId = UUID.randomUUID().toString()
+        val iconKey = defaultIconForGenre(genre)
+        val distinctPodcastIds = podcastIds.distinct()
+        val chosenSize = defaultDisplaySize ?: when {
+            distinctPodcastIds.size <= 2 -> FolderDisplaySize.COMPACT
+            distinctPodcastIds.size <= 5 -> FolderDisplaySize.SHELF
+            else -> FolderDisplaySize.PANEL
+        }
+        val resolvedGrid = if (chosenSize == FolderDisplaySize.COMPACT) {
+            if (defaultDisplaySize == null) true else showPodcastGrid
+        } else {
+            false
+        }
+        val entity = FolderEntity(
+            folderId = folderId,
+            name = genre,
+            icon = iconKey,
+            displaySize = chosenSize,
+            linkedGenre = genre,
+            showPodcastGrid = resolvedGrid,
+            createdAt = System.currentTimeMillis(),
+        )
+        folderDao.upsertFolder(entity)
+        folderDao.setPodcastsForFolder(folderId, distinctPodcastIds)
     }
 
     private fun defaultIconForGenre(genre: String): String? {
         resolveGenreIconKey?.invoke(genre)?.let { return it }
         val canonical = PodcastGenres.canonicalize(genre) ?: genre
         return GENRE_DEFAULT_ICON_MAP[canonical.lowercase().trim()] ?: "folder"
-    }
-
-    private fun matchesGenre(pod: PodcastEntity, targetGenre: String): Boolean {
-        val effectiveGenre = pod.customGenre?.takeIf { it.isNotBlank() }
-            ?: pod.genre?.takeIf { it.isNotBlank() }
-            ?: return false
-        return effectiveGenre.split(",").any { token ->
-            isGenreTokenMatch(token, targetGenre)
-        }
-    }
-
-    private fun isGenreTokenMatch(candidate: String, target: String): Boolean {
-        val trimmedCandidate = candidate.trim()
-        val trimmedTarget = target.trim()
-        if (trimmedCandidate.equals(trimmedTarget, ignoreCase = true)) return true
-
-        val isTechSynonym = (trimmedTarget.equals("Tech", ignoreCase = true) && trimmedCandidate.equals("Technology", ignoreCase = true)) ||
-            (trimmedTarget.equals("Technology", ignoreCase = true) && trimmedCandidate.equals("Tech", ignoreCase = true))
-        if (isTechSynonym) return true
-
-        val canonicalTarget = PodcastGenres.canonicalize(trimmedTarget)
-        val canonicalCandidate = PodcastGenres.canonicalize(trimmedCandidate)
-
-        if (canonicalTarget != null) {
-            if (canonicalTarget.equals(canonicalCandidate, ignoreCase = true)) return true
-            if (canonicalTarget.equals(trimmedCandidate, ignoreCase = true)) return true
-        }
-        if (canonicalCandidate != null) {
-            if (canonicalCandidate.equals(trimmedTarget, ignoreCase = true)) return true
-        }
-        return false
     }
 
     private companion object {
@@ -335,4 +335,49 @@ class RoomFolderRepository(
             "money" to "finance",
         )
     }
+}
+
+private fun groupSubscribedPodcastsByGenre(subscribed: List<PodcastEntity>): Map<String, List<String>> {
+    val result = mutableMapOf<String, MutableList<String>>()
+    for (pod in subscribed) {
+        val genreName = pod.customGenre?.trim()?.takeIf { it.isNotEmpty() }
+            ?: pod.genre?.split(",")?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+        if (!genreName.isNullOrBlank()) {
+            val canonical = PodcastGenres.canonicalize(genreName)
+                ?: (if (genreName.equals("tech", ignoreCase = true)) "Technology" else genreName.replaceFirstChar { it.uppercase() })
+            result.getOrPut(canonical) { mutableListOf() }.add(pod.podcastId)
+        }
+    }
+    return result
+}
+
+private fun matchesGenre(pod: PodcastEntity, targetGenre: String): Boolean {
+    val effectiveGenre = pod.customGenre?.takeIf { it.isNotBlank() }
+        ?: pod.genre?.takeIf { it.isNotBlank() }
+        ?: return false
+    return effectiveGenre.split(",").any { token ->
+        isGenreTokenMatch(token, targetGenre)
+    }
+}
+
+private fun isGenreTokenMatch(candidate: String, target: String): Boolean {
+    val trimmedCandidate = candidate.trim()
+    val trimmedTarget = target.trim()
+    if (trimmedCandidate.equals(trimmedTarget, ignoreCase = true)) return true
+
+    val isTechSynonym = (trimmedTarget.equals("Tech", ignoreCase = true) && trimmedCandidate.equals("Technology", ignoreCase = true)) ||
+        (trimmedTarget.equals("Technology", ignoreCase = true) && trimmedCandidate.equals("Tech", ignoreCase = true))
+    if (isTechSynonym) return true
+
+    val canonicalTarget = PodcastGenres.canonicalize(trimmedTarget)
+    val canonicalCandidate = PodcastGenres.canonicalize(trimmedCandidate)
+
+    if (canonicalTarget != null) {
+        if (canonicalTarget.equals(canonicalCandidate, ignoreCase = true)) return true
+        if (canonicalTarget.equals(trimmedCandidate, ignoreCase = true)) return true
+    }
+    if (canonicalCandidate != null) {
+        if (canonicalCandidate.equals(trimmedTarget, ignoreCase = true)) return true
+    }
+    return false
 }

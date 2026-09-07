@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -259,5 +260,47 @@ class FolderRepositoryTest {
         assertEquals(emptyList<String>(), repository.getFolder(comedyFolder.id)?.podcastIds)
         assertEquals(listOf("pod-1"), repository.getFolder(techFolder.id)?.podcastIds)
         assertEquals(listOf("pod-1"), repository.getFolder(manualFolder.id)?.podcastIds)
+    }
+
+    @Test
+    fun autoOrganizeSubscribedShows_adaptiveSizingAssignsSizesBasedOnShowCount() = runTest {
+        // 1 show in Comedy (<= 2 -> COMPACT with podcast grid)
+        insertPodcast("comedy-1", "Standup Central", genre = "Comedy")
+
+        // 4 shows in Technology (3..5 -> SHELF)
+        insertPodcast("tech-1", "Tech 1", genre = "Technology")
+        insertPodcast("tech-2", "Tech 2", genre = "Technology")
+        insertPodcast("tech-3", "Tech 3", genre = "Technology")
+        insertPodcast("tech-4", "Tech 4", genre = "Technology")
+
+        // 6 shows in News (>= 6 -> PANEL)
+        insertPodcast("news-1", "News 1", genre = "News")
+        insertPodcast("news-2", "News 2", genre = "News")
+        insertPodcast("news-3", "News 3", genre = "News")
+        insertPodcast("news-4", "News 4", genre = "News")
+        insertPodcast("news-5", "News 5", genre = "News")
+        insertPodcast("news-6", "News 6", genre = "News")
+
+        // Trigger auto-organize with defaultDisplaySize = null (Auto / Adaptive)
+        repository.autoOrganizeSubscribedShows(defaultDisplaySize = null)
+
+        val folders = repository.getFolders()
+        assertEquals(3, folders.size)
+
+        val comedyFolder = folders.firstOrNull { it.name == "Comedy" }
+        assertNotNull(comedyFolder)
+        assertEquals(FolderDisplaySize.COMPACT, comedyFolder?.displaySize)
+        assertTrue(comedyFolder?.showPodcastGrid == true)
+        assertEquals(listOf("comedy-1"), comedyFolder?.podcastIds)
+
+        val techFolder = folders.firstOrNull { it.name == "Technology" }
+        assertNotNull(techFolder)
+        assertEquals(FolderDisplaySize.SHELF, techFolder?.displaySize)
+        assertEquals(4, techFolder?.podcastIds?.size)
+
+        val newsFolder = folders.firstOrNull { it.name == "News" }
+        assertNotNull(newsFolder)
+        assertEquals(FolderDisplaySize.PANEL, newsFolder?.displaySize)
+        assertEquals(6, newsFolder?.podcastIds?.size)
     }
 }
