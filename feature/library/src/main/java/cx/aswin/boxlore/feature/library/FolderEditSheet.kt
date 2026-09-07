@@ -112,7 +112,7 @@ private fun rememberFolderEditStateAndActions(
         mutableStateOf(initialFolder?.showPodcastGrid ?: false)
     }
     val autoSyncState = remember(initialFolder) {
-        mutableStateOf(initialFolder?.isGenreLinked ?: false)
+        mutableStateOf(initialFolder?.isGenreLinked ?: true)
     }
     val linkedGenreState = remember(initialFolder) {
         mutableStateOf(initialFolder?.linkedGenre ?: "")
@@ -203,6 +203,8 @@ private fun rememberFolderEditFormActions(
             val matchedKey = findExactGenreIconKey(trimmed, allFolderSuggestions)
             if (matchedKey != null) {
                 fields.iconState.value = matchedKey
+                fields.autoSyncState.value = true
+                fields.linkedGenreState.value = trimmed
             }
         }
     },
@@ -221,12 +223,16 @@ private fun rememberFolderEditFormActions(
         fields.nameState.value = suggestion.name
         fields.iconState.value = suggestion.iconKey
         fields.iconManualState.value = true
+        fields.autoSyncState.value = true
+        fields.linkedGenreState.value = suggestion.name
         focusManager.clearFocus()
     },
     onSwitchToTech = {
         fields.nameState.value = "Tech"
         fields.iconState.value = "tech"
         fields.iconManualState.value = true
+        fields.autoSyncState.value = true
+        fields.linkedGenreState.value = "Tech"
         focusManager.clearFocus()
     },
     onDone = { focusManager.clearFocus() },

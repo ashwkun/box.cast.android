@@ -106,6 +106,12 @@ class LibraryViewModel(
                 initialValue = emptyList(),
             ) ?: MutableStateFlow<List<SubscriptionFolder>>(emptyList()).asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            folderRepository?.syncLinkedGenres()
+        }
+    }
+
     fun createFolder(
         name: String,
         icon: String?,

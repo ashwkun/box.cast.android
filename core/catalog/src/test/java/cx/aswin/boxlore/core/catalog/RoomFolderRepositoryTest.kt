@@ -107,6 +107,45 @@ class RoomFolderRepositoryTest {
     }
 
     @Test
+    fun createFolderWithTechLinkedGenreAutoAddsTechnologyShows() = runTest {
+        insertSubscribedPodcast("p1", "Tech 1", genre = "Technology")
+        insertSubscribedPodcast("p2", "Tech 2", customGenre = "Tech")
+        insertSubscribedPodcast("p3", "Coding Pod", customGenre = "Coding")
+        insertSubscribedPodcast("p4", "Comedy Show", genre = "Comedy")
+
+        val folder = repository.createFolder(
+            name = "My Tech",
+            icon = "tech",
+            displaySize = FolderDisplaySize.SHELF,
+            linkedGenre = "Tech",
+        )
+
+        assertEquals(3, folder.podcastCount)
+        assertTrue(folder.podcastIds.contains("p1"))
+        assertTrue(folder.podcastIds.contains("p2"))
+        assertTrue(folder.podcastIds.contains("p3"))
+        assertFalse(folder.podcastIds.contains("p4"))
+    }
+
+    @Test
+    fun createFolderWithTechNameWithoutExplicitGenreAutoAddsTechnologyShows() = runTest {
+        insertSubscribedPodcast("p1", "Tech 1", genre = "Technology")
+        insertSubscribedPodcast("p2", "Comedy Show", genre = "Comedy")
+
+        val folder = repository.createFolder(
+            name = "Tech",
+            icon = "tech",
+            displaySize = FolderDisplaySize.SHELF,
+            linkedGenre = null,
+        )
+
+        assertEquals(1, folder.podcastCount)
+        assertTrue(folder.podcastIds.contains("p1"))
+        assertFalse(folder.podcastIds.contains("p2"))
+        assertEquals("Tech", folder.linkedGenre)
+    }
+
+    @Test
     fun deleteFolderRemovesFolderAndCrossRefsWithoutUnsubscribingPodcasts() = runTest {
         insertSubscribedPodcast("p1", "Show 1", genre = "News")
 

@@ -6,6 +6,7 @@ import cx.aswin.boxlore.core.database.PodcastDao
 import cx.aswin.boxlore.core.database.PodcastEntity
 import cx.aswin.boxlore.core.database.PodcastFolderCrossRef
 import cx.aswin.boxlore.core.model.FolderDisplaySize
+import cx.aswin.boxlore.core.model.PodcastGenres
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +36,7 @@ class RoomFolderRepository(
                     icon = entity.icon,
                     displaySize = entity.displaySize,
                     linkedGenre = entity.linkedGenre,
+                    showPodcastGrid = entity.showPodcastGrid,
                     createdAt = entity.createdAt,
                     podcastCount = pIds.size,
                     podcastIds = pIds,
@@ -99,11 +101,12 @@ class RoomFolderRepository(
         val trimmedName = name.trim()
         val trimmedIcon = icon?.trim()?.takeIf { it.isNotEmpty() }
         val trimmedGenre = linkedGenre?.trim()?.takeIf { it.isNotEmpty() }
+        val effectiveTargetGenre = trimmedGenre ?: PodcastGenres.canonicalize(trimmedName)?.let { trimmedName }
 
         val initialPodcastIds = podcastIds.toMutableList()
-        if (trimmedGenre != null) {
+        if (effectiveTargetGenre != null) {
             val matchingSubscribed = podcastDao.getSubscribedPodcastsList()
-                .filter { pod -> matchesGenre(pod, trimmedGenre) }
+                .filter { pod -> matchesGenre(pod, effectiveTargetGenre) }
                 .map { it.podcastId }
             for (matchingId in matchingSubscribed) {
                 if (matchingId !in initialPodcastIds) {
@@ -118,7 +121,7 @@ class RoomFolderRepository(
             name = trimmedName,
             icon = trimmedIcon,
             displaySize = displaySize,
-            linkedGenre = trimmedGenre,
+            linkedGenre = trimmedGenre ?: effectiveTargetGenre,
             showPodcastGrid = showPodcastGrid,
             createdAt = createdAt,
         )
@@ -132,7 +135,7 @@ class RoomFolderRepository(
             name = trimmedName,
             icon = trimmedIcon,
             displaySize = displaySize,
-            linkedGenre = trimmedGenre,
+            linkedGenre = trimmedGenre ?: effectiveTargetGenre,
             showPodcastGrid = showPodcastGrid,
             createdAt = createdAt,
             podcastCount = initialPodcastIds.size,
@@ -144,22 +147,23 @@ class RoomFolderRepository(
         val trimmedName = folder.name.trim()
         val trimmedIcon = folder.icon?.trim()?.takeIf { it.isNotEmpty() }
         val trimmedGenre = folder.linkedGenre?.trim()?.takeIf { it.isNotEmpty() }
+        val effectiveTargetGenre = trimmedGenre ?: PodcastGenres.canonicalize(trimmedName)?.let { trimmedName }
 
         val entity = FolderEntity(
             folderId = folder.id,
             name = trimmedName,
             icon = trimmedIcon,
             displaySize = folder.displaySize,
-            linkedGenre = trimmedGenre,
+            linkedGenre = trimmedGenre ?: effectiveTargetGenre,
             showPodcastGrid = folder.showPodcastGrid,
             createdAt = if (folder.createdAt > 0L) folder.createdAt else System.currentTimeMillis(),
         )
         folderDao.upsertFolder(entity)
 
-        if (trimmedGenre != null) {
+        if (effectiveTargetGenre != null) {
             val existingIds = folderDao.getPodcastIdsForFolderList(folder.id).toMutableSet()
             val matchingSubscribed = podcastDao.getSubscribedPodcastsList()
-                .filter { pod -> matchesGenre(pod, trimmedGenre) }
+                .filter { pod -> matchesGenre(pod, effectiveTargetGenre) }
                 .map { it.podcastId }
             val added = matchingSubscribed.filter { existingIds.add(it) }
             if (added.isNotEmpty()) {
@@ -185,26 +189,58 @@ class RoomFolderRepository(
     }
 
     override suspend fun syncLinkedGenres() {
-        val folders = folderDao.getAllFoldersList().filter { !it.linkedGenre.isNullOrBlank() }
+        val folders = folderDao.getAllFoldersList().filter {
+            !it.linkedGenre.isNullOrBlank() || PodcastGenres.canonicalize(it.name) != null
+        }
         if (folders.isEmpty()) return
 
         val subscribed = podcastDao.getSubscribedPodcastsList()
         val subscribedIds = subscribed.map { it.podcastId }.toSet()
         for (folder in folders) {
-            val targetGenre = folder.linkedGenre!!.trim()
+            val targetGenre = folder.linkedGenre?.trim()?.takeIf { it.isNotEmpty() } ?: folder.name.trim()
             val matching = subscribed.filter { pod -> matchesGenre(pod, targetGenre) }.map { it.podcastId }
             val currentValidIds = folderDao.getPodcastIdsForFolderList(folder.folderId).filter { it in subscribedIds }.toSet()
             val newIds = (currentValidIds + matching).toList()
             if (newIds.size != currentValidIds.size || currentValidIds.size != folderDao.getPodcastIdsForFolderList(folder.folderId).size) {
                 folderDao.setPodcastsForFolder(folder.folderId, newIds)
             }
+            if (folder.linkedGenre.isNullOrBlank() && PodcastGenres.canonicalize(folder.name) != null) {
+                folderDao.upsertFolder(folder.copy(linkedGenre = targetGenre))
+            }
         }
     }
 
     private fun matchesGenre(pod: PodcastEntity, targetGenre: String): Boolean {
-        val candidates = listOfNotNull(pod.customGenre, pod.genre)
+        val candidates = listOfNotNull(
+            pod.customGenre?.takeIf { it.isNotBlank() },
+            pod.genre?.takeIf { it.isNotBlank() },
+        )
         return candidates.any { genreField ->
-            genreField.split(",").any { it.trim().equals(targetGenre, ignoreCase = true) }
+            genreField.split(",").any { token ->
+                isGenreTokenMatch(token, targetGenre)
+            }
         }
+    }
+
+    private fun isGenreTokenMatch(candidate: String, target: String): Boolean {
+        val trimmedCandidate = candidate.trim()
+        val trimmedTarget = target.trim()
+        if (trimmedCandidate.equals(trimmedTarget, ignoreCase = true)) return true
+
+        val isTechSynonym = (trimmedTarget.equals("Tech", ignoreCase = true) && trimmedCandidate.equals("Technology", ignoreCase = true)) ||
+            (trimmedTarget.equals("Technology", ignoreCase = true) && trimmedCandidate.equals("Tech", ignoreCase = true))
+        if (isTechSynonym) return true
+
+        val canonicalTarget = PodcastGenres.canonicalize(trimmedTarget)
+        val canonicalCandidate = PodcastGenres.canonicalize(trimmedCandidate)
+
+        if (canonicalTarget != null) {
+            if (canonicalTarget.equals(canonicalCandidate, ignoreCase = true)) return true
+            if (canonicalTarget.equals(trimmedCandidate, ignoreCase = true)) return true
+        }
+        if (canonicalCandidate != null) {
+            if (canonicalCandidate.equals(trimmedTarget, ignoreCase = true)) return true
+        }
+        return false
     }
 }
