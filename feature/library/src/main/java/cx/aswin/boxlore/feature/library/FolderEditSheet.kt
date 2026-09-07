@@ -1,10 +1,5 @@
 package cx.aswin.boxlore.feature.library
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.layout.Arrangement
@@ -39,23 +34,19 @@ internal data class FolderEditFormState(
     val canSave: Boolean,
     val nameText: String,
     val selectedIconKey: String?,
-    val isIconPickerExpanded: Boolean,
     val selectedDisplaySize: FolderDisplaySize,
     val showPodcastGrid: Boolean,
     val autoSyncGenre: Boolean,
-    val autoOrganizeLibrary: Boolean,
     val effectiveLinkedGenre: String?,
     val suggestedGenres: List<String>,
 )
 
 internal data class FolderEditFormActions(
     val onNameChange: (String) -> Unit,
-    val onToggleIconPicker: () -> Unit,
     val onSelectIcon: (String?) -> Unit,
     val onSelectDisplaySize: (FolderDisplaySize) -> Unit,
     val onShowPodcastGridChange: (Boolean) -> Unit,
     val onAutoSyncChange: (Boolean) -> Unit,
-    val onAutoOrganizeLibraryChange: (Boolean) -> Unit,
     val onSelectLinkedGenre: (String) -> Unit,
     val onSelectSuggestedGenre: (String) -> Unit,
     val onDone: () -> Unit,
@@ -110,7 +101,6 @@ private fun rememberFolderEditStateAndActions(
     var isIconManuallySelected by remember(initialFolder) {
         mutableStateOf(initialFolder?.icon != null)
     }
-    var isIconPickerExpanded by remember { mutableStateOf(false) }
     var selectedDisplaySize by remember(initialFolder) {
         mutableStateOf(initialFolder?.displaySize ?: FolderDisplaySize.COMPACT)
     }
@@ -120,7 +110,6 @@ private fun rememberFolderEditStateAndActions(
     var autoSyncGenre by remember(initialFolder) {
         mutableStateOf(initialFolder?.isGenreLinked ?: false)
     }
-    var autoOrganizeLibrary by remember { mutableStateOf(false) }
     var linkedGenreText by remember(initialFolder) {
         mutableStateOf(initialFolder?.linkedGenre ?: "")
     }
@@ -140,31 +129,23 @@ private fun rememberFolderEditStateAndActions(
         canSave = canSave,
         nameText = nameText,
         selectedIconKey = selectedIconKey,
-        isIconPickerExpanded = isIconPickerExpanded,
         selectedDisplaySize = selectedDisplaySize,
         showPodcastGrid = showPodcastGrid,
         autoSyncGenre = autoSyncGenre,
-        autoOrganizeLibrary = autoOrganizeLibrary,
         effectiveLinkedGenre = effectiveLinkedGenre,
         suggestedGenres = suggestedGenres,
     )
 
     val formActions = FolderEditFormActions(
         onNameChange = { nameText = it },
-        onToggleIconPicker = {
-            isIconPickerExpanded = !isIconPickerExpanded
-            focusManager.clearFocus()
-        },
         onSelectIcon = {
             selectedIconKey = it
             isIconManuallySelected = true
-            isIconPickerExpanded = false
             focusManager.clearFocus()
         },
         onSelectDisplaySize = { selectedDisplaySize = it },
         onShowPodcastGridChange = { showPodcastGrid = it },
         onAutoSyncChange = { enabled -> autoSyncGenre = enabled },
-        onAutoOrganizeLibraryChange = { enabled -> autoOrganizeLibrary = enabled },
         onSelectLinkedGenre = { genre ->
             linkedGenreText = if (linkedGenreText.equals(genre, ignoreCase = true)) "" else genre
         },
@@ -227,22 +208,8 @@ internal fun FolderEditSheetContent(
                 nameText = state.nameText,
                 onNameChange = actions.onNameChange,
                 iconKey = state.selectedIconKey,
-                isIconPickerExpanded = state.isIconPickerExpanded,
-                onToggleIconPicker = actions.onToggleIconPicker,
                 onDone = actions.onDone,
             )
-
-            AnimatedVisibility(
-                visible = state.isIconPickerExpanded,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
-            ) {
-                FolderIconPickerRow(
-                    selectedIconKey = state.selectedIconKey,
-                    queryText = state.nameText,
-                    onSelectIcon = actions.onSelectIcon,
-                )
-            }
 
             if (state.suggestedGenres.isNotEmpty()) {
                 FolderQuickFillChipsRow(
@@ -250,6 +217,12 @@ internal fun FolderEditSheetContent(
                     onSelectGenre = actions.onSelectSuggestedGenre,
                 )
             }
+
+            FolderIconPickerRow(
+                selectedIconKey = state.selectedIconKey,
+                queryText = state.nameText,
+                onSelectIcon = actions.onSelectIcon,
+            )
 
             FolderDisplaySizeSelector(
                 selectedSize = state.selectedDisplaySize,
@@ -269,8 +242,6 @@ internal fun FolderEditSheetContent(
                 state = FolderOrganizationState(
                     autoSync = state.autoSyncGenre,
                     onAutoSyncChange = actions.onAutoSyncChange,
-                    autoOrganizeLibrary = state.autoOrganizeLibrary,
-                    onAutoOrganizeLibraryChange = actions.onAutoOrganizeLibraryChange,
                     linkedGenre = state.effectiveLinkedGenre ?: state.nameText.trim(),
                     suggestedGenres = state.suggestedGenres,
                     onSelectLinkedGenre = actions.onSelectLinkedGenre,

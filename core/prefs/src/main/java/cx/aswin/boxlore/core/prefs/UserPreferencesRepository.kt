@@ -1228,6 +1228,20 @@ class UserPreferencesRepository(context: Context,) {
         }
     }
 
+    val autoOrganizeFoldersStream: Flow<Boolean> =
+        dataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }.map { preferences ->
+                preferences[Keys.AUTO_ORGANIZE_FOLDERS_ENABLED] ?: false
+            }.distinctUntilChanged()
+
+    suspend fun setAutoOrganizeFolders(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[Keys.AUTO_ORGANIZE_FOLDERS_ENABLED] = enabled
+        }
+    }
+
     /**
      * When true (default), implicit plays (queue / mixtape / Smart Queue / casual play) soft-expire
      * mid-episode seek after 7 days without playing. Explicit resume surfaces always seek.

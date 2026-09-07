@@ -107,6 +107,7 @@ fun SubscriptionsScreen(
         val useSmartRank by viewModel.useSmartRank.collectAsStateWithLifecycle()
         val hideCompletedInSubs by viewModel.hideCompletedInSubs.collectAsStateWithLifecycle()
         val pinnedPodcastIds by viewModel.pinnedPodcastIds.collectAsStateWithLifecycle()
+        val autoOrganizeFolders by viewModel.autoOrganizeFolders.collectAsStateWithLifecycle()
         val subscriptionsTabStyle by viewModel.subscriptionsTabStyle.collectAsStateWithLifecycle()
         var showSortMenu by remember { mutableStateOf(false) }
         var showFolderEditSheet by remember { mutableStateOf(false) }
@@ -296,6 +297,8 @@ fun SubscriptionsScreen(
                                                                 "shows"
                                                             )
                                                         },
+                                                        autoOrganizeFolders = autoOrganizeFolders,
+                                                        onAutoOrganizeFoldersChange = viewModel::setAutoOrganizeFolders,
                                                         onDismiss = { showSortMenu = false }
                                                     )
                                                 } else {

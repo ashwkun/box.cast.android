@@ -98,7 +98,7 @@ object GenreIcons {
         listOf("comedy") to Icons.Rounded.SentimentVerySatisfied,
         listOf("sport", "sports") to Icons.Rounded.SportsBaseball,
         listOf("science") to Icons.Rounded.Science,
-        listOf("tech", "computer") to Icons.Rounded.Computer,
+        listOf("tech", "technology", "computer") to Icons.Rounded.Computer,
         listOf("news") to Icons.Rounded.Newspaper,
         listOf("health", "fitness") to Icons.Rounded.Favorite,
         listOf("history") to Icons.Rounded.AccountBalance,

@@ -22,14 +22,11 @@ import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -63,8 +60,6 @@ internal val SelectableFolderSizes = listOf(
 internal data class FolderOrganizationState(
     val autoSync: Boolean,
     val onAutoSyncChange: (Boolean) -> Unit,
-    val autoOrganizeLibrary: Boolean,
-    val onAutoOrganizeLibraryChange: (Boolean) -> Unit,
     val linkedGenre: String,
     val suggestedGenres: List<String> = emptyList(),
     val onSelectLinkedGenre: ((String) -> Unit)? = null,
@@ -145,94 +140,56 @@ internal fun FolderIdentityHeader(
     nameText: String,
     onNameChange: (String) -> Unit,
     iconKey: String?,
-    isIconPickerExpanded: Boolean,
-    onToggleIconPicker: () -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Surface(
-            onClick = onToggleIconPicker,
-            shape = RoundedCornerShape(18.dp),
-            color = if (isIconPickerExpanded) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerHigh
-            },
-            border = BorderStroke(
-                width = if (isIconPickerExpanded) 2.dp else 1.dp,
-                color = if (isIconPickerExpanded) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
-                },
-            ),
-            modifier = Modifier.size(56.dp),
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = GenreIcons.folderIconOrFallback(iconKey),
-                    contentDescription = "Choose folder icon",
-                    tint = if (isIconPickerExpanded) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                    modifier = Modifier.size(26.dp),
-                )
-
-                Icon(
-                    imageVector = if (isIconPickerExpanded) {
-                        Icons.Rounded.KeyboardArrowUp
-                    } else {
-                        Icons.Rounded.KeyboardArrowDown
-                    },
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    modifier = Modifier
-                        .size(14.dp)
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 2.dp, end = 2.dp),
-                )
-            }
-        }
-
-        OutlinedTextField(
-            value = nameText,
-            onValueChange = onNameChange,
-            label = { Text("Folder name") },
-            placeholder = { Text("e.g. Daily Tech, Comedy, Science") },
-            singleLine = true,
-            trailingIcon = {
-                if (nameText.isNotEmpty()) {
-                    IconButton(onClick = { onNameChange("") }) {
-                        Icon(
-                            imageVector = Icons.Rounded.Clear,
-                            contentDescription = "Clear name",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+    OutlinedTextField(
+        value = nameText,
+        onValueChange = onNameChange,
+        label = { Text("Folder name") },
+        placeholder = { Text("e.g. Daily Tech, Comedy, Science") },
+        leadingIcon = {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                modifier = Modifier.size(34.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = GenreIcons.folderIconOrFallback(iconKey),
+                        contentDescription = "Folder icon",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
-            },
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            ),
-            keyboardOptions = KeyboardOptions(
-                capitalization = KeyboardCapitalization.Words,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
-            modifier = Modifier.weight(1f),
-        )
-    }
+            }
+        },
+        singleLine = true,
+        trailingIcon = {
+            if (nameText.isNotEmpty()) {
+                IconButton(onClick = { onNameChange("") }) {
+                    Icon(
+                        imageVector = Icons.Rounded.Clear,
+                        contentDescription = "Clear name",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        shape = RoundedCornerShape(16.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Words,
+            imeAction = ImeAction.Done,
+        ),
+        keyboardActions = KeyboardActions(onDone = { onDone() }),
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -274,7 +231,7 @@ internal fun FolderIconPickerRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Pick an icon",
+                    text = "Folder icon (optional)",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = GoogleSansWeight.bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -652,15 +609,6 @@ internal fun FolderOrganizationCard(
                     onSelectLinkedGenre = state.onSelectLinkedGenre,
                 )
             }
-
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-            )
-
-            AutoOrganizeLibraryRow(
-                checked = state.autoOrganizeLibrary,
-                onCheckedChange = state.onAutoOrganizeLibraryChange,
-            )
         }
     }
 }
@@ -742,57 +690,5 @@ private fun AutoSyncGenreChips(
                 onClick = { onSelectLinkedGenre(genre) },
             )
         }
-    }
-}
-
-@Composable
-private fun AutoOrganizeLibraryRow(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Row(
-            modifier = Modifier.weight(1f).padding(end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.tertiaryContainer,
-                modifier = Modifier.size(30.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.GridView,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.size(15.dp),
-                    )
-                }
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(
-                    text = "Auto-organize library into folders",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = GoogleSansWeight.medium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = "Automatically groups subscriptions into genre folders",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-        )
     }
 }

@@ -533,6 +533,13 @@ private fun parseGenreTokens(raw: String): List<String> =
             genre.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
         }
 
+private fun canonicalizeGenreDisplay(rawGenre: String): String {
+    val matched = SUBSCRIPTION_GENRE_CATALOG.find {
+        it.value.equals(rawGenre, ignoreCase = true) || it.label.equals(rawGenre, ignoreCase = true)
+    }
+    return matched?.label ?: rawGenre
+}
+
 internal fun extractDistinctGenres(podcasts: List<Podcast>): List<String> {
     val customCounts = mutableMapOf<String, Int>()
     val customDisplay = mutableMapOf<String, String>()
@@ -541,13 +548,16 @@ internal fun extractDistinctGenres(podcasts: List<Podcast>): List<String> {
     for (pod in podcasts) {
         val customRaw = pod.customGenre?.takeIf { it.isNotBlank() }
         if (customRaw != null) {
-            for (tag in parseGenreTokens(customRaw)) {
+            for (rawTag in parseGenreTokens(customRaw)) {
+                val tag = canonicalizeGenreDisplay(rawTag)
                 val key = tag.lowercase()
                 customCounts[key] = (customCounts[key] ?: 0) + 1
                 customDisplay.putIfAbsent(key, tag)
             }
         } else {
-            catalogGenres.addAll(parseGenreTokens(pod.genre.orEmpty()))
+            catalogGenres.addAll(
+                parseGenreTokens(pod.genre.orEmpty()).map { canonicalizeGenreDisplay(it) }
+            )
         }
     }
 

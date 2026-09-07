@@ -65,7 +65,19 @@ class SubscriptionFilterLogicTest {
                 podcast("3", genre = "News"),
             )
         )
-        assertEquals(listOf("Comedy", "News", "Technology"), genres)
+        assertEquals(listOf("Comedy", "News", "Tech"), genres)
+    }
+
+    @Test
+    fun extractDistinctGenres_deduplicatesTechAndTechnologyToSingleLabel() {
+        val podcasts = listOf(
+            podcast("1", genre = "Technology", customGenre = null),
+            podcast("2", genre = "Comedy", customGenre = null),
+            podcast("3", genre = "Music", customGenre = "Tech"),
+            podcast("4", genre = "News", customGenre = "Technology"),
+        )
+        val genres = extractDistinctGenres(podcasts)
+        assertEquals(listOf("Tech", "Comedy"), genres)
     }
 
     @Test

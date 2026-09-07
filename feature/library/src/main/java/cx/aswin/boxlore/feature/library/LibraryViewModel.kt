@@ -246,6 +246,19 @@ class LibraryViewModel(
         }
     }
 
+    val autoOrganizeFolders: StateFlow<Boolean> = userPreferencesRepository.autoOrganizeFoldersStream
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false
+        )
+
+    fun setAutoOrganizeFolders(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAutoOrganizeFolders(enabled)
+        }
+    }
+
     // Combine subscriptions, liked episodes, downloads, AND listening history
     // so we can enrich each podcast's latestEpisode with play status
     val uiState: StateFlow<LibraryUiState> = combine(

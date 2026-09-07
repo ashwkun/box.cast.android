@@ -3,6 +3,7 @@ package cx.aswin.boxlore.core.designsystem.icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MusicNote
@@ -42,6 +43,8 @@ class GenreIconsTest {
     fun `defaultGenreIcon resolves common podcast genres`() {
         assertEquals(Icons.Rounded.Newspaper, GenreIcons.defaultGenreIcon("News"))
         assertEquals(Icons.Rounded.MusicNote, GenreIcons.defaultGenreIcon("Music"))
+        assertEquals(Icons.Rounded.Computer, GenreIcons.defaultGenreIcon("Technology"))
+        assertEquals(Icons.Rounded.Computer, GenreIcons.defaultGenreIcon("Tech"))
         assertEquals(GenreIcons.findIcon("art"), GenreIcons.defaultGenreIcon("Arts"))
         assertEquals(GenreIcons.findIcon("work"), GenreIcons.defaultGenreIcon("Startups"))
         assertEquals(Icons.Rounded.Category, GenreIcons.defaultGenreIcon("Unknown Genre"))
