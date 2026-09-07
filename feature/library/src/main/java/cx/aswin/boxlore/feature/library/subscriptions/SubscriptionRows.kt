@@ -5,9 +5,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -174,6 +176,7 @@ internal fun ArtworkTitleFallback(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun SubscriptionListRow(
     podcast: Podcast,
@@ -182,6 +185,7 @@ internal fun SubscriptionListRow(
     isPinned: Boolean = false,
     isDragging: Boolean = false,
     dragModifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val lastSeen = cx.aswin.boxlore.feature.library.LocalLastSeenEpisodes.current[podcast.id]
     val hasRecentNew =
@@ -212,7 +216,16 @@ internal fun SubscriptionListRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .then(
+                if (onLongClick != null && !isDragging) {
+                    Modifier.combinedClickable(
+                        onClick = onClick,
+                        onLongClick = onLongClick,
+                    )
+                } else {
+                    Modifier.clickable(onClick = onClick)
+                }
+            )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -393,7 +406,7 @@ internal fun SubscriptionGridCard(
     modifier: Modifier = Modifier,
     isPinned: Boolean = false,
     isDragging: Boolean = false,
-    dragModifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val latestEpisodeId = podcast.latestEpisode?.id
     val latestEpisodePubDate = podcast.latestEpisode?.publishedDate ?: 0L
@@ -421,7 +434,6 @@ internal fun SubscriptionGridCard(
     Box(
         modifier =
         modifier
-            .then(dragModifier)
             .fillMaxWidth()
             .aspectRatio(1f)
             .zIndex(if (isDragging) 1f else 0f)
@@ -432,10 +444,21 @@ internal fun SubscriptionGridCard(
                 clip = true
             }
             .shadow(elevation = dragElevation, shape = artworkShape, clip = false)
-            .expressiveClickable(
-                shape = artworkShape,
-                pressScaleEnabled = !isDragging,
-                onClick = onClick,
+            .then(
+                if (onLongClick != null && !isDragging) {
+                    Modifier.expressiveClickable(
+                        shape = artworkShape,
+                        pressScaleEnabled = !isDragging,
+                        onLongClick = onLongClick,
+                        onClick = onClick,
+                    )
+                } else {
+                    Modifier.expressiveClickable(
+                        shape = artworkShape,
+                        pressScaleEnabled = !isDragging,
+                        onClick = onClick,
+                    )
+                }
             ),
     ) {
         OptimizedImage(

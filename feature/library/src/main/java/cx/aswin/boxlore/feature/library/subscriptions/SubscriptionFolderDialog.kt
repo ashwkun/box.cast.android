@@ -1,7 +1,8 @@
 package cx.aswin.boxlore.feature.library.subscriptions
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -31,6 +33,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +51,21 @@ import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.feature.library.LocalLastSeenEpisodes
+import cx.aswin.boxlore.feature.library.logic.SubscriptionManualOrderLogic
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyGridState
+
+/**
+ * Callbacks and events for interactions within [SubscriptionFolderDialog].
+ */
+internal data class FolderDialogActions(
+    val onDismissRequest: () -> Unit = {},
+    val onPodcastClick: (String) -> Unit = {},
+    val onPodcastLongClick: (Podcast) -> Unit = {},
+    val onEditFolder: () -> Unit = {},
+    val onSaveReorder: (List<String>) -> Unit = {},
+    val onCancelReorder: () -> Unit = {},
+)
 
 /**
  * Centered floating dialog displaying all podcasts in a subscription folder with maximized viewing area.
@@ -54,17 +75,22 @@ import cx.aswin.boxlore.feature.library.LocalLastSeenEpisodes
 internal fun SubscriptionFolderDialog(
     folder: SubscriptionFolder,
     podcasts: List<Podcast>,
-    onDismissRequest: () -> Unit,
-    onPodcastClick: (String) -> Unit,
-    onEditFolder: () -> Unit,
+    actions: FolderDialogActions,
     modifier: Modifier = Modifier,
+    isReorderMode: Boolean = false,
 ) {
     Dialog(
-        onDismissRequest = onDismissRequest,
+        onDismissRequest = {
+            if (isReorderMode) {
+                actions.onCancelReorder()
+            } else {
+                actions.onDismissRequest()
+            }
+        },
         properties = DialogProperties(
             usePlatformDefaultWidth = false,
             dismissOnBackPress = true,
-            dismissOnClickOutside = true,
+            dismissOnClickOutside = !isReorderMode,
         ),
     ) {
         val lastSeenEpisodes = LocalLastSeenEpisodes.current
@@ -87,8 +113,10 @@ internal fun SubscriptionFolderDialog(
                 FolderDialogHeader(
                     folder = folder,
                     podcastsCount = podcasts.size,
-                    onEditFolder = onEditFolder,
-                    onDismissRequest = onDismissRequest,
+                    onEditFolder = actions.onEditFolder,
+                    onDismissRequest = {
+                        if (isReorderMode) actions.onCancelReorder() else actions.onDismissRequest()
+                    },
                 )
 
                 HorizontalDivider(
@@ -98,16 +126,18 @@ internal fun SubscriptionFolderDialog(
 
                 if (podcasts.isEmpty()) {
                     EmptyFolderDialogContent(
-                        onEditFolder = onEditFolder,
+                        onEditFolder = actions.onEditFolder,
                     )
                 } else {
                     FolderDialogGrid(
+                        folder = folder,
                         podcasts = podcasts,
                         lastSeenEpisodes = lastSeenEpisodes,
-                        onPodcastClick = onPodcastClick,
+                        isReorderMode = isReorderMode,
+                        actions = actions,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false),
+                            .weight(1f, fill = false)
+                            .padding(bottom = 8.dp),
                     )
                 }
             }
@@ -181,48 +211,101 @@ private fun FolderDialogHeader(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FolderDialogGrid(
+    folder: SubscriptionFolder,
     podcasts: List<Podcast>,
     lastSeenEpisodes: Map<String, String>,
-    onPodcastClick: (String) -> Unit,
+    isReorderMode: Boolean,
+    actions: FolderDialogActions,
     modifier: Modifier = Modifier,
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
-        contentPadding = PaddingValues(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier,
-    ) {
-        items(podcasts, key = { it.id }) { podcast ->
-            FolderDialogPodcastItem(
-                podcast = podcast,
-                lastSeenId = lastSeenEpisodes[podcast.id],
-                onClick = { onPodcastClick(podcast.id) },
+    var localPodcasts by remember(podcasts, isReorderMode) { mutableStateOf(podcasts) }
+    val gridState = rememberLazyGridState()
+    val reorderableState = rememberReorderableLazyGridState(gridState) { from, to ->
+        val fromId = from.key as? String ?: return@rememberReorderableLazyGridState
+        val toId = to.key as? String ?: return@rememberReorderableLazyGridState
+        val currentIds = localPodcasts.map { it.id }
+        val newIds = SubscriptionManualOrderLogic.move(currentIds, fromId, toId)
+        val podById = localPodcasts.associateBy { it.id }
+        localPodcasts = newIds.mapNotNull(podById::get)
+    }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(3),
+            state = gridState,
+            contentPadding = PaddingValues(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false),
+        ) {
+            items(localPodcasts, key = { it.id }) { podcast ->
+                if (isReorderMode) {
+                    ReorderableItem(
+                        reorderableState,
+                        key = podcast.id,
+                        modifier = Modifier.animateItem(),
+                    ) { isDragging ->
+                        FolderDialogPodcastItem(
+                            podcast = podcast,
+                            lastSeenId = lastSeenEpisodes[podcast.id],
+                            onClick = {},
+                            isDragging = isDragging,
+                            dragModifier = Modifier.longPressDraggableHandle(),
+                        )
+                    }
+                } else {
+                    FolderDialogPodcastItem(
+                        podcast = podcast,
+                        lastSeenId = lastSeenEpisodes[podcast.id],
+                        onClick = { actions.onPodcastClick(podcast.id) },
+                        onLongClick = { actions.onPodcastLongClick(podcast) },
+                    )
+                }
+            }
+        }
+
+        if (isReorderMode) {
+            SubscriptionReorderBar(
+                reorderMode = ReorderMode.FolderShows(folder.id),
+                onSave = { actions.onSaveReorder(localPodcasts.map { it.id }) },
+                onCancel = actions.onCancelReorder,
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FolderDialogPodcastItem(
     podcast: Podcast,
     lastSeenId: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: () -> Unit = {},
+    isDragging: Boolean = false,
+    dragModifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .then(dragModifier)
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SubscriptionGridCard(
             podcast = podcast,
             lastSeenId = lastSeenId,
             onClick = onClick,
+            isDragging = isDragging,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(

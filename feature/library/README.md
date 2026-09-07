@@ -44,16 +44,21 @@ src/main/java/cx/aswin/boxlore/feature/library/
     HistorySuccessList.kt         — success-state LazyColumn (stats + timeline)
     HistoryTopBar.kt              — collapsible top app bar + overflow menu
   subscriptions/
+    FolderShowsSelectionSheet.kt  — Multi-select bottom sheet with search and pre-checked members for adding shows to folders
+    MoveToFolderSheet.kt          — Folder picker bottom sheet with show counts and new folder action
+    SubscriptionContextMenuSheet.kt — Contextual press-and-hold sheet for folders, folder shows, and root shows
     SubscriptionFolderCards.kt    — Enlarged & compact folder card layouts with direct-clickable covers, overflow badge, and scroll-safe header clicks
-    SubscriptionFolderDialog.kt   — Centered floating dialog displaying folder shows in a 3-column grid with maximized viewing area
+    SubscriptionFolderDialog.kt   — Centered floating dialog displaying folder shows in a 3-column grid with maximized viewing area and embedded reorder bar
+    SubscriptionFolderLayoutLogic.kt — Folder partitioning, display-size calculations, and inter/intra folder sort resolution
+    SubscriptionGenreCatalog.kt   — genre label/icon map mirrored from Explore and resolved against custom podcast genre overrides
+    SubscriptionListRowParts.kt   — list artwork, title column, pin badge
+    SubscriptionReorderControls.kt — Scoped reorder mode state and floating bar with Save/Exit controls and sort notices
+    SubscriptionRows.kt           — grid cards (title fallback on broken art), list/latest rows, date headers
+    SubscriptionSortSheet.kt      — Multi-tier subscription sorting modal bottom sheet (shows outside folders, folders at top, shows inside folders, drag tips, and auto-organize)
+    SubscriptionTabContents.kt    — Shows grid/list + New Episodes catch-up list (Play All FAB); calvin reorderable on unfiltered Shows and folders
     SubscriptionTabs.kt           — Shows|New Episodes switcher; Explore-style genre pills with icons
     SubscriptionsFilterRow.kt     — horizontal filter chips row with dynamic custom genre & icon resolution
     SubscriptionsTabSelectorFab.kt — Floating segmented FAB pill indicator for Shows/New Episodes
-    SubscriptionGenreCatalog.kt   — genre label/icon map mirrored from Explore and resolved against custom podcast genre overrides
-    SubscriptionSortSheet.kt      — Multi-tier subscription sorting modal bottom sheet (shows outside folders, folders at top, shows inside folders, drag tips, and auto-organize)
-    SubscriptionTabContents.kt    — Shows grid/list + New Episodes catch-up list (Play All FAB); calvin reorderable on unfiltered Shows (ordered ids, current Podcast objects)
-    SubscriptionRows.kt           — grid cards (title fallback on broken art), list/latest rows, date headers
-    SubscriptionListRowParts.kt   — list artwork, title column, pin badge
   logic/
     SubscriptionManualOrderLogic.kt — Manual sort apply / drag move / drop; skips non-podcast drag keys
     SubscriptionSmartOrderLogic.kt — Smart sort: score desc, then title
@@ -66,6 +71,7 @@ src/main/java/cx/aswin/boxlore/feature/library/
 - Shows: image-only 3-column grid (default) or richer list; Explore-style `PillFilterChip` genres **with icons**; subscription folders partitioned into pinned full-width shelves (`Shelf 3×1`, `Panel 3×2`, `Showcase 3×3`, etc.) and compact 1×1 folders (both pinned at top of the library), and unfiled shows below; 3-tier granular sorting via `SubscriptionSortSheet` with independent controls for shows outside folders, folders arranged relative to each other at the top (`FolderInterSort`), and shows inside folders (`FolderIntraSort`), plus press-and-hold repositioning tips; folder Smart Sort uses Decayed Top-3 diminishing returns (`Top + 0.5 * 2nd + 0.25 * 3rd`) to eliminate both hoarder bias and dilution penalties; dual folder-level and cover-level NEW badges (1×1 compact folder shows elevated primary-framed badge when any show has new episodes; enlarged pinned folders badge visible show covers directly and display a header badge when new episodes hide within the +N overflow cluster; expanded dialog badges each show individually); in Manual sort mode, unfiled podcasts can be long-pressed and dragged to reorder; sort icon in top bar opens `SubscriptionSortSheet` on Shows tab and sort menu on New Episodes tab; Smart shares Home Your Shows' deterministic score (log-normalized listening signals plus a bounded three-day subscribe-recency floor, not a front-of-list slice); long-press-drag artwork on the unfiltered Shows list (genre All, empty search) to reorder — covers keep the usual shrink-bounce on tap and stay rounded while dragging; the first drop seeds `subscription_manual_order` from the visible list and switches `subscription_sort` to Manual; drag state stores ordered ids and re-reads current `Podcast` objects so artwork/episode badges stay fresh; new shows append A–Z at the end of Manual; unsubscribe drops that id from Manual order (and Home pins); a circular pin badge marks Home-pinned shows; NEW badge uses shared `isLatestEpisodeNew` (Room `rssHasNewEpisodes` for true-RSS and PI direct-feed tips, else 48h); broken/missing art shows podcast title on the cover.
 - New Episodes: latest episode per show from Room `latestEpisode` (PI tip, or publisher-feed tip when opted into **Missing episodes?**); the screen calls `SubscriptionForegroundSync.requestRefresh` on appear so this is a live `/sync` (including **Open app to** Subscriptions), not a cache-only paint from a previous session. Same icon genre pills; Smart vs Chronological sort plus **Hide played episodes** checkbox in the Sort menu; denser play rows; quieter sticky date headers; Play All FAB.
 - Search stays in the top bar without removing the tab switcher. No glance/summary strip. Genre row is pills-only (sort/hide are not on that row).
+- Context menus & Scoped Reorder Mode: Long-pressing anywhere on a folder card (including member show preview covers) triggers the folder context menu (`Edit folder`, `Add shows to folder`, `Reorder folders`, `Delete folder`). Long-pressing a podcast inside `SubscriptionFolderDialog` triggers the folder podcast context menu (`Remove from folder`, `Move to another folder`, `Reorder shows in folder`, `Unsubscribe`). Long-pressing an unfiled podcast in the root grid triggers the root podcast context menu (`Add to folder`, `Reorder shows`). Entering reorder mode displays a floating `SubscriptionReorderBar` with `Save` and `Exit` buttons and a notice that sort will switch to Manual upon saving. Strict boundary protection prevents dragging across sections (folders cannot drag into shows, and vice versa).
 - Genre icon/label catalog in `subscriptions/SubscriptionGenreCatalog.kt` mirrors Explore (no feature→feature import).
 
 ## Dependencies

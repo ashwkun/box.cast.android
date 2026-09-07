@@ -172,6 +172,7 @@ internal fun partitionSubscribedShows(
     folderSort: FolderInterSort = FolderInterSort.Inherit,
     intraFolderSort: FolderIntraSort = FolderIntraSort.Inherit,
     smartOrderIds: List<String> = emptyList(),
+    folderManualOrder: List<String> = emptyList(),
 ): PartitionedSubscriptionItems {
     val podcastsById = podcasts.associateBy { it.id }
     val effectiveIntraSort = resolveEffectiveIntraSort(intraFolderSort, sort)
@@ -201,6 +202,7 @@ internal fun partitionSubscribedShows(
         podcastsByFolderId = podcastsByFolderId,
         smartRankMap = smartRankMap,
         totalPodcasts = totalPodcasts,
+        folderManualOrder = folderManualOrder,
     )
     val compactFolders = sortFolders(
         folders = folders.filter { !it.displaySize.isPinnedToTop },
@@ -208,6 +210,7 @@ internal fun partitionSubscribedShows(
         podcastsByFolderId = podcastsByFolderId,
         smartRankMap = smartRankMap,
         totalPodcasts = totalPodcasts,
+        folderManualOrder = folderManualOrder,
     )
 
     return PartitionedSubscriptionItems(
@@ -291,6 +294,7 @@ private fun resolveEffectiveInterSort(
             SubscriptionSort.Alphabetical -> FolderInterSort.Alphabetical
             SubscriptionSort.RecentlyUpdated -> FolderInterSort.RecentlyUpdated
             SubscriptionSort.MostListened -> FolderInterSort.SmartRank
+            SubscriptionSort.Manual -> FolderInterSort.Manual
             else -> FolderInterSort.RecentlyUpdated
         }
     } else {
@@ -329,6 +333,7 @@ private fun sortFolders(
     podcastsByFolderId: Map<String, List<Podcast>>,
     smartRankMap: Map<String, Int>,
     totalPodcasts: Int,
+    folderManualOrder: List<String> = emptyList(),
 ): List<SubscriptionFolder> {
     val sortFolderByRecency: (SubscriptionFolder) -> Long = { folder ->
         podcastsByFolderId[folder.id].orEmpty().maxOfOrNull { it.latestEpisode?.publishedDate ?: 0L } ?: 0L
@@ -349,6 +354,14 @@ private fun sortFolders(
             folders.sortedByDescending(sortFolderByRecency)
         FolderInterSort.MostShows ->
             folders.sortedByDescending { it.podcastIds.size }
+        FolderInterSort.Manual -> {
+            if (folderManualOrder.isEmpty()) {
+                folders
+            } else {
+                val manualMap = folderManualOrder.mapIndexed { index, id -> id to index }.toMap()
+                folders.sortedBy { manualMap[it.id] ?: Int.MAX_VALUE }
+            }
+        }
         else -> folders
     }
 }

@@ -5,7 +5,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -245,10 +244,12 @@ private fun CompactPodcastGridContent(
                     .weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
             ) {
+                val onFolderLongClick = { actions.onFolderLongClick(folder) }
                 MiniPodcastSlot(
                     podcast = slots[0].first,
                     hasNewEpisode = slots[0].second,
                     onClick = actions.onPodcastClick,
+                    onLongClick = onFolderLongClick,
                     onEmptyClick = { actions.onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
@@ -256,6 +257,7 @@ private fun CompactPodcastGridContent(
                     podcast = slots[1].first,
                     hasNewEpisode = slots[1].second,
                     onClick = actions.onPodcastClick,
+                    onLongClick = onFolderLongClick,
                     onEmptyClick = { actions.onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
@@ -266,10 +268,12 @@ private fun CompactPodcastGridContent(
                     .weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
             ) {
+                val onFolderLongClick = { actions.onFolderLongClick(folder) }
                 MiniPodcastSlot(
                     podcast = slots[2].first,
                     hasNewEpisode = slots[2].second,
                     onClick = actions.onPodcastClick,
+                    onLongClick = onFolderLongClick,
                     onEmptyClick = { actions.onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
@@ -277,6 +281,7 @@ private fun CompactPodcastGridContent(
                     CompactOverflowSlot(
                         count = podcasts.size - 3,
                         onClick = { actions.onFolderClick(folder.id) },
+                        onLongClick = onFolderLongClick,
                         modifier = Modifier.weight(1f),
                     )
                 } else {
@@ -284,6 +289,7 @@ private fun CompactPodcastGridContent(
                         podcast = slots[3].first,
                         hasNewEpisode = slots[3].second,
                         onClick = actions.onPodcastClick,
+                        onLongClick = onFolderLongClick,
                         onEmptyClick = { actions.onFolderClick(folder.id) },
                         modifier = Modifier.weight(1f),
                     )
@@ -293,10 +299,12 @@ private fun CompactPodcastGridContent(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun CompactOverflowSlot(
     count: Int,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -304,7 +312,7 @@ private fun CompactOverflowSlot(
             .fillMaxSize()
             .clip(RoundedCornerShape(6.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -372,10 +380,12 @@ private fun CompactFolderTitlePill(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MiniPodcastSlot(
     podcast: Podcast?,
     onClick: (String) -> Unit,
+    onLongClick: () -> Unit = {},
     onEmptyClick: () -> Unit = {},
     hasNewEpisode: Boolean = false,
     modifier: Modifier = Modifier,
@@ -387,7 +397,10 @@ private fun MiniPodcastSlot(
                 .fillMaxSize()
                 .clip(miniShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .clickable { onClick(podcast.id) },
+                .combinedClickable(
+                    onClick = { onClick(podcast.id) },
+                    onLongClick = onLongClick,
+                ),
         ) {
             OptimizedImage(
                 url = podcast.imageUrl.takeIf { it.isNotEmpty() } ?: podcast.fallbackImageUrl,
@@ -406,7 +419,10 @@ private fun MiniPodcastSlot(
                 .fillMaxSize()
                 .clip(miniShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
-                .clickable(onClick = onEmptyClick),
+                .combinedClickable(
+                    onClick = onEmptyClick,
+                    onLongClick = onLongClick,
+                ),
         )
     }
 }

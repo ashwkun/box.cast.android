@@ -148,6 +148,49 @@ class LibraryViewModel(
         }
     }
 
+    fun addPodcastToFolder(podcastId: String, folderId: String) {
+        viewModelScope.launch {
+            folderRepository?.addPodcastToFolder(podcastId, folderId)
+        }
+    }
+
+    fun removePodcastFromFolder(podcastId: String, folderId: String) {
+        viewModelScope.launch {
+            folderRepository?.removePodcastFromFolder(podcastId, folderId)
+        }
+    }
+
+    fun setFolderShows(folderId: String, podcastIds: List<String>) {
+        viewModelScope.launch {
+            folderRepository?.setPodcastsForFolder(folderId, podcastIds)
+        }
+    }
+
+    fun movePodcastToFolder(podcastId: String, fromFolderId: String?, toFolderId: String) {
+        viewModelScope.launch {
+            if (fromFolderId != null) {
+                folderRepository?.removePodcastFromFolder(podcastId, fromFolderId)
+            }
+            folderRepository?.addPodcastToFolder(podcastId, toFolderId)
+        }
+    }
+
+    fun unsubscribe(podcast: Podcast) {
+        viewModelScope.launch {
+            subscriptionRepository.toggleSubscription(podcast)
+        }
+    }
+
+    fun reorderFolderShows(folderId: String, orderedPodcastIds: List<String>) {
+        viewModelScope.launch {
+            folderRepository?.setPodcastsForFolder(folderId, orderedPodcastIds)
+            val currentIntraSort = userPreferencesRepository.subscriptionIntraFolderSortStream.first()
+            if (currentIntraSort != FolderIntraSort.Manual.name) {
+                userPreferencesRepository.setSubscriptionIntraFolderSort(FolderIntraSort.Manual.name)
+            }
+        }
+    }
+
     private val subscriptionSort = userPreferencesRepository.subscriptionSortStream
         .map { sortName ->
             try {
@@ -286,6 +329,24 @@ class LibraryViewModel(
     fun setFolderSort(sort: FolderInterSort) {
         viewModelScope.launch {
             userPreferencesRepository.setSubscriptionFolderSort(sort.name)
+        }
+    }
+
+    val folderManualOrder: StateFlow<List<String>> = userPreferencesRepository.subscriptionFolderManualOrderStream
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    fun reorderFolders(orderedFolderIds: List<String>) {
+        if (orderedFolderIds.isEmpty()) return
+        viewModelScope.launch {
+            userPreferencesRepository.setSubscriptionFolderManualOrder(orderedFolderIds)
+            val currentFolderSort = userPreferencesRepository.subscriptionFolderSortStream.first()
+            if (currentFolderSort != FolderInterSort.Manual.name) {
+                userPreferencesRepository.setSubscriptionFolderSort(FolderInterSort.Manual.name)
+            }
         }
     }
 

@@ -598,4 +598,63 @@ class SubscriptionFolderLayoutLogicTest {
         assertEquals(listOf("p-b", "p-c", "p-a"), resolvedRecentShows.map { it.id })
         assertEquals(recentPartition.podcastsByFolderId["f-test"]?.map { it.id }, resolvedRecentShows.map { it.id })
     }
+
+    @Test
+    fun `partitionSubscribedShows with FolderInterSort Manual respects folderManualOrder`() {
+        val podcasts = (1..6).map { mockPodcast(it.toString()) }
+        val folder1 = SubscriptionFolder(id = "f-1", name = "Folder 1", podcastIds = listOf("1", "2"))
+        val folder2 = SubscriptionFolder(id = "f-2", name = "Folder 2", podcastIds = listOf("3", "4"))
+        val folder3 = SubscriptionFolder(id = "f-3", name = "Folder 3", podcastIds = listOf("5", "6"))
+
+        val partition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder1, folder2, folder3),
+            folderSort = FolderInterSort.Manual,
+            folderManualOrder = listOf("f-3", "f-1"),
+        )
+
+        val compactOrder = partition.compactFolders.map { it.id }
+        assertEquals(listOf("f-3", "f-1", "f-2"), compactOrder)
+    }
+
+    @Test
+    fun `partitionSubscribedShows with FolderInterSort Inherit when sort is Manual respects folderManualOrder`() {
+        val podcasts = (1..6).map { mockPodcast(it.toString()) }
+        val folder1 = SubscriptionFolder(id = "f-1", name = "Folder 1", podcastIds = listOf("1", "2"))
+        val folder2 = SubscriptionFolder(id = "f-2", name = "Folder 2", podcastIds = listOf("3", "4"))
+        val folder3 = SubscriptionFolder(id = "f-3", name = "Folder 3", podcastIds = listOf("5", "6"))
+
+        val partition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder1, folder2, folder3),
+            sort = SubscriptionSort.Manual,
+            folderSort = FolderInterSort.Inherit,
+            folderManualOrder = listOf("f-2", "f-3", "f-1"),
+        )
+
+        val compactOrder = partition.compactFolders.map { it.id }
+        assertEquals(listOf("f-2", "f-3", "f-1"), compactOrder)
+    }
+
+    @Test
+    fun `resolveSortedFolderShows with FolderIntraSort Manual preserves exact folder podcastIds order`() {
+        val podcasts = listOf(
+            mockPodcast("pod-z", title = "Zeta"),
+            mockPodcast("pod-a", title = "Alpha"),
+            mockPodcast("pod-m", title = "Mike"),
+        )
+        val folder = SubscriptionFolder(
+            id = "f-manual",
+            name = "Manual Folder",
+            podcastIds = listOf("pod-m", "pod-z", "pod-a"),
+        )
+
+        val resolved = resolveSortedFolderShows(
+            folder = folder,
+            podcasts = podcasts,
+            intraFolderSort = FolderIntraSort.Manual,
+        )
+
+        assertEquals(listOf("pod-m", "pod-z", "pod-a"), resolved.map { it.id })
+    }
 }

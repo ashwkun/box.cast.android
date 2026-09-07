@@ -23,6 +23,7 @@ internal object Keys {
     val SUBSCRIPTION_FOLDER_SORT = stringPreferencesKey("subscription_folder_sort")
     val SUBSCRIPTION_INTRA_FOLDER_SORT = stringPreferencesKey("subscription_intra_folder_sort")
     val SUBSCRIPTION_MANUAL_ORDER = stringPreferencesKey("subscription_manual_order")
+    val SUBSCRIPTION_FOLDER_MANUAL_ORDER = stringPreferencesKey("subscription_folder_manual_order")
     val HOME_PINNED_PODCAST_IDS = stringPreferencesKey("home_pinned_podcast_ids")
     val LEGACY_RSS_REPAIR_VERSION =
         intPreferencesKey("legacy_rss_repair_version")

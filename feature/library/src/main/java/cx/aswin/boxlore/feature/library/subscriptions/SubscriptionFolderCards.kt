@@ -112,13 +112,16 @@ internal fun PinnedEnlargedFolderCard(
                     lastSeenEpisodes = lastSeenEpisodes,
                     onPodcastClick = actions.onPodcastClick,
                     onOverflowClick = { actions.onFolderClick(folder.id) },
+                    onFolderLongClick = { actions.onFolderLongClick(folder) },
                 )
             }
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+/**
+ * Header row for pinned enlarged folders with title, icon, and show count.
+ */
 @Composable
 private fun PinnedFolderHeader(
     folder: SubscriptionFolder,
@@ -131,46 +134,38 @@ private fun PinnedFolderHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
             .combinedClickable(
                 onClick = { onFolderClick(folder.id) },
                 onLongClick = { onFolderLongClick(folder) },
             )
-            .padding(horizontal = 2.dp, vertical = 2.dp),
+            .padding(horizontal = 6.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
+        Icon(
+            imageVector = folderIcon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp),
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = folder.name,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = GoogleSansWeight.bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = folderIcon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp),
-            )
+        )
 
-            Spacer(modifier = Modifier.width(6.dp))
-
-            Text(
-                text = folder.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = GoogleSansWeight.bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false),
-            )
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Text(
-                text = "•  " + if (podcastsCount == 1) "1 show" else "$podcastsCount shows",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
+        Text(
+            text = if (podcastsCount == 1) "1 show" else "$podcastsCount shows",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
 
         Spacer(modifier = Modifier.width(6.dp))
 
@@ -186,6 +181,7 @@ private fun PinnedFolderHeader(
 /**
  * Grid of directly clickable covers inside an enlarged folder card.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FolderCoversGrid(
     slots: FolderSlots,
@@ -193,6 +189,7 @@ private fun FolderCoversGrid(
     lastSeenEpisodes: Map<String, String>,
     onPodcastClick: (String) -> Unit,
     onOverflowClick: () -> Unit,
+    onFolderLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val totalItems = slots.visibleShows.size + if (slots.hasOverflow) 1 else 0
@@ -218,6 +215,7 @@ private fun FolderCoversGrid(
                             podcast = podcast,
                             hasNewEpisode = isNew,
                             onClick = { onPodcastClick(podcast.id) },
+                            onLongClick = onFolderLongClick,
                             modifier = Modifier.weight(1f),
                         )
                     } else if (itemIndex == slots.visibleShows.size && slots.hasOverflow) {
@@ -229,6 +227,7 @@ private fun FolderCoversGrid(
                             overflowCount = slots.overflowCount,
                             newEpisodesCount = overflowNewCount,
                             onClick = onOverflowClick,
+                            onLongClick = onFolderLongClick,
                             modifier = Modifier.weight(1f),
                         )
                     } else {
@@ -236,7 +235,7 @@ private fun FolderCoversGrid(
                             modifier = Modifier
                                 .weight(1f)
                                 .aspectRatio(1f)
-                                .clickable(onClick = onOverflowClick),
+                                .combinedClickable(onClick = onOverflowClick, onLongClick = onFolderLongClick),
                         )
                     }
                 }
@@ -248,11 +247,13 @@ private fun FolderCoversGrid(
 /**
  * Single directly clickable podcast cover within a folder card.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DirectClickableShowCover(
     podcast: Podcast,
     hasNewEpisode: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(10.dp)
@@ -262,7 +263,7 @@ private fun DirectClickableShowCover(
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape)
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         OptimizedImage(
             url = podcast.imageUrl.takeIf { it.isNotEmpty() } ?: podcast.fallbackImageUrl,
@@ -284,11 +285,13 @@ private fun DirectClickableShowCover(
  * Renders the overflow slot with a 2×2 mini collage, dark scrim, bold `+N` count,
  * and an optional "N new episodes" chip below `+N` when unplayed new episodes exist.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FolderOverflowSlotCard(
     overflowShows: List<Podcast>,
     overflowCount: Int,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     newEpisodesCount: Int = 0,
     modifier: Modifier = Modifier,
 ) {
@@ -308,7 +311,7 @@ private fun FolderOverflowSlotCard(
                     Modifier
                 }
             )
-            .clickable(onClick = onClick),
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         contentAlignment = Alignment.Center,
     ) {
         // 2×2 mini collage preview of overflow shows

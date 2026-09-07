@@ -64,15 +64,25 @@ import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.core.prefs.SubscriptionsTabStyle
+import cx.aswin.boxlore.feature.library.subscriptions.ContextMenuTarget
 import cx.aswin.boxlore.feature.library.subscriptions.ExpressiveTabSwitcher
+import cx.aswin.boxlore.feature.library.subscriptions.FolderDialogActions
+import cx.aswin.boxlore.feature.library.subscriptions.FolderInterSort
+import cx.aswin.boxlore.feature.library.subscriptions.FolderIntraSort
+import cx.aswin.boxlore.feature.library.subscriptions.FolderShowsSelectionSheet
 import cx.aswin.boxlore.feature.library.subscriptions.LatestSortMenuItems
 import cx.aswin.boxlore.feature.library.subscriptions.LatestTabActions
 import cx.aswin.boxlore.feature.library.subscriptions.LatestTabConfig
 import cx.aswin.boxlore.feature.library.subscriptions.LatestTabContent
+import cx.aswin.boxlore.feature.library.subscriptions.MoveToFolderSheet
+import cx.aswin.boxlore.feature.library.subscriptions.ReorderMode
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabActions
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabConfig
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabContent
+import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionContextMenuActions
+import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionContextMenuSheet
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionFolderDialog
+import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionReorderBar
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionSortActions
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionSortConfig
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionSortSheet
@@ -115,6 +125,7 @@ fun SubscriptionsScreen(
         val pinnedPodcastIds by viewModel.pinnedPodcastIds.collectAsStateWithLifecycle()
         val autoOrganizeFolders by viewModel.autoOrganizeFolders.collectAsStateWithLifecycle()
         val folderSort by viewModel.folderSort.collectAsStateWithLifecycle()
+        val folderManualOrder by viewModel.folderManualOrder.collectAsStateWithLifecycle()
         val intraFolderSort by viewModel.intraFolderSort.collectAsStateWithLifecycle()
         val folders by viewModel.folders.collectAsStateWithLifecycle()
         val subscriptionsTabStyle by viewModel.subscriptionsTabStyle.collectAsStateWithLifecycle()
@@ -123,6 +134,14 @@ fun SubscriptionsScreen(
         var showFolderEditSheet by remember { mutableStateOf(false) }
         var editingFolder by remember { mutableStateOf<cx.aswin.boxlore.core.model.SubscriptionFolder?>(null) }
         var activeFolderId by rememberSaveable { mutableStateOf<String?>(null) }
+        var contextMenuTarget by remember { mutableStateOf<ContextMenuTarget?>(null) }
+        var reorderMode by remember { mutableStateOf<ReorderMode>(ReorderMode.Inactive) }
+        var selectedFolderForShowSelection by remember { mutableStateOf<SubscriptionFolder?>(null) }
+        var moveShowTarget by remember { mutableStateOf<Pair<SubscriptionFolder?, Podcast>?>(null) }
+        var confirmDeleteFolder by remember { mutableStateOf<SubscriptionFolder?>(null) }
+        var confirmUnsubscribePodcast by remember { mutableStateOf<Podcast?>(null) }
+        var tempFolderOrder by remember { mutableStateOf<List<String>>(emptyList()) }
+        var tempRootOrder by remember { mutableStateOf<List<String>>(emptyList()) }
 
         val isFloatingTabs = subscriptionsTabStyle == SubscriptionsTabStyle.FLOATING
 
@@ -149,6 +168,12 @@ fun SubscriptionsScreen(
                 isSearchActive = false
                 searchQuery = ""
             }
+        }
+
+        BackHandler(enabled = reorderMode != ReorderMode.Inactive) {
+            reorderMode = ReorderMode.Inactive
+            tempFolderOrder = emptyList()
+            tempRootOrder = emptyList()
         }
 
         BackHandler(enabled = activeFolderId != null) {
@@ -382,10 +407,20 @@ fun SubscriptionsScreen(
                                         config = ShowsTabConfig(
                                             isGridView = isGridView,
                                             canReorder = searchQuery.isBlank(),
+                                            reorderMode = reorderMode,
                                             pinnedPodcastIds = pinnedPodcastIds,
                                             sort = success.currentSort,
-                                            manualOrder = success.manualOrder,
+                                            manualOrder = if (reorderMode is ReorderMode.RootShows && tempRootOrder.isNotEmpty()) {
+                                                tempRootOrder
+                                            } else {
+                                                success.manualOrder
+                                            },
                                             folderSort = folderSort,
+                                            folderManualOrder = if (reorderMode is ReorderMode.Folders && tempFolderOrder.isNotEmpty()) {
+                                                tempFolderOrder
+                                            } else {
+                                                folderManualOrder
+                                            },
                                             intraFolderSort = intraFolderSort,
                                             smartOrderIds = success.smartOrderIds,
                                         ),
@@ -395,7 +430,15 @@ fun SubscriptionsScreen(
                                                 viewModel.subPodcastsClickedCount++
                                                 onPodcastClick(it)
                                             },
-                                            onReorder = viewModel::reorderSubscriptions,
+                                            onPodcastLongClick = { podcast ->
+                                                contextMenuTarget = ContextMenuTarget.RootPodcast(podcast)
+                                            },
+                                            onReorder = { newOrder ->
+                                                tempRootOrder = newOrder
+                                            },
+                                            onReorderFolders = { newOrder ->
+                                                tempFolderOrder = newOrder
+                                            },
                                             onNewFolderClick = {
                                                 editingFolder = null
                                                 showFolderEditSheet = true
@@ -404,7 +447,7 @@ fun SubscriptionsScreen(
                                                 activeFolderId = folderId
                                             },
                                             onFolderLongClick = { folder ->
-                                                editingFolder = folder
+                                                contextMenuTarget = ContextMenuTarget.Folder(folder)
                                             },
                                         ),
                                     )
@@ -438,7 +481,7 @@ fun SubscriptionsScreen(
                 }
             }
 
-            if (isFloatingTabs && !isSearchActive) {
+            if (isFloatingTabs && !isSearchActive && reorderMode == ReorderMode.Inactive) {
                 val animatedBottomOffset by animateDpAsState(
                     targetValue = tabFabBottomPadding,
                     animationSpec = spring(
@@ -460,6 +503,40 @@ fun SubscriptionsScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = animatedBottomOffset),
+                )
+            }
+
+            if (reorderMode is ReorderMode.Folders || reorderMode is ReorderMode.RootShows) {
+                SubscriptionReorderBar(
+                    reorderMode = reorderMode,
+                    onSave = {
+                        when (reorderMode) {
+                            ReorderMode.Folders -> {
+                                if (tempFolderOrder.isNotEmpty()) {
+                                    viewModel.reorderFolders(tempFolderOrder)
+                                }
+                                viewModel.setFolderSort(FolderInterSort.Manual)
+                            }
+                            ReorderMode.RootShows -> {
+                                if (tempRootOrder.isNotEmpty()) {
+                                    viewModel.reorderSubscriptions(tempRootOrder)
+                                }
+                                viewModel.setSubscriptionSort(SubscriptionSort.Manual)
+                            }
+                            else -> Unit
+                        }
+                        reorderMode = ReorderMode.Inactive
+                        tempFolderOrder = emptyList()
+                        tempRootOrder = emptyList()
+                    },
+                    onCancel = {
+                        reorderMode = ReorderMode.Inactive
+                        tempFolderOrder = emptyList()
+                        tempRootOrder = emptyList()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = bottomChromeHeight + 8.dp),
                 )
             }
 
@@ -526,14 +603,178 @@ fun SubscriptionsScreen(
                 SubscriptionFolderDialog(
                     folder = activeFolder,
                     podcasts = activeFolderShows,
-                    onDismissRequest = { activeFolderId = null },
-                    onPodcastClick = { podcastId ->
-                        activeFolderId = null
-                        onPodcastClick(podcastId)
+                    actions = FolderDialogActions(
+                        onDismissRequest = { activeFolderId = null },
+                        onPodcastClick = { podcastId ->
+                            activeFolderId = null
+                            onPodcastClick(podcastId)
+                        },
+                        onEditFolder = {
+                            editingFolder = activeFolder
+                            activeFolderId = null
+                        },
+                        onPodcastLongClick = { podcast ->
+                            contextMenuTarget = ContextMenuTarget.FolderPodcast(activeFolder, podcast)
+                        },
+                        onSaveReorder = { orderedIds ->
+                            viewModel.reorderFolderShows(activeFolder.id, orderedIds)
+                            viewModel.setIntraFolderSort(FolderIntraSort.Manual)
+                            reorderMode = ReorderMode.Inactive
+                        },
+                        onCancelReorder = {
+                            reorderMode = ReorderMode.Inactive
+                        },
+                    ),
+                    isReorderMode = reorderMode is ReorderMode.FolderShows &&
+                        (reorderMode as ReorderMode.FolderShows).folderId == activeFolder.id,
+                )
+            }
+
+            val currentContextMenu = contextMenuTarget
+            if (currentContextMenu != null) {
+                SubscriptionContextMenuSheet(
+                    target = currentContextMenu,
+                    actions = SubscriptionContextMenuActions(
+                        onEditFolder = { folder ->
+                            editingFolder = folder
+                            showFolderEditSheet = true
+                        },
+                        onAddShowsToFolder = { folder ->
+                            selectedFolderForShowSelection = folder
+                        },
+                        onReorderFolders = {
+                            tempFolderOrder = folderManualOrder.ifEmpty { folders.map { it.id } }
+                            reorderMode = ReorderMode.Folders
+                        },
+                        onDeleteFolder = { folder ->
+                            confirmDeleteFolder = folder
+                        },
+                        onRemoveFromFolder = { folder, podcast ->
+                            viewModel.removePodcastFromFolder(podcast.id, folder.id)
+                        },
+                        onMoveToAnotherFolder = { folder, podcast ->
+                            moveShowTarget = folder to podcast
+                        },
+                        onReorderFolderShows = { folder ->
+                            reorderMode = ReorderMode.FolderShows(folder.id)
+                        },
+                        onUnsubscribePodcast = { podcast ->
+                            confirmUnsubscribePodcast = podcast
+                        },
+                        onReorderRootShows = {
+                            val unfiledPodcasts = (uiState as? LibraryUiState.Success)?.subscribedPodcasts.orEmpty()
+                                .filter { pod -> folders.none { folder -> pod.id in folder.podcastIds } }
+                            val manualOrder = (uiState as? LibraryUiState.Success)?.manualOrder.orEmpty()
+                            tempRootOrder = if (manualOrder.isNotEmpty()) {
+                                val unfiledIds = unfiledPodcasts.map { it.id }.toSet()
+                                val ordered = manualOrder.filter { it in unfiledIds }
+                                val remainder = unfiledPodcasts.map { it.id }.filter { it !in manualOrder }
+                                ordered + remainder
+                            } else {
+                                unfiledPodcasts.map { it.id }
+                            }
+                            reorderMode = ReorderMode.RootShows
+                        },
+                    ),
+                    onDismissRequest = { contextMenuTarget = null },
+                )
+            }
+
+            val folderForSelection = selectedFolderForShowSelection
+            if (folderForSelection != null && successState != null) {
+                FolderShowsSelectionSheet(
+                    folder = folderForSelection,
+                    allSubscribedPodcasts = successState.subscribedPodcasts,
+                    onSave = { selectedIds ->
+                        viewModel.setFolderShows(folderForSelection.id, selectedIds)
+                        selectedFolderForShowSelection = null
                     },
-                    onEditFolder = {
-                        editingFolder = activeFolder
-                        activeFolderId = null
+                    onDismissRequest = { selectedFolderForShowSelection = null },
+                )
+            }
+
+            val moveTarget = moveShowTarget
+            if (moveTarget != null) {
+                MoveToFolderSheet(
+                    podcast = moveTarget.second,
+                    currentFolderId = moveTarget.first?.id,
+                    availableFolders = folders,
+                    onSelectFolder = { targetFolderId ->
+                        viewModel.movePodcastToFolder(
+                            podcastId = moveTarget.second.id,
+                            fromFolderId = moveTarget.first?.id,
+                            toFolderId = targetFolderId,
+                        )
+                        moveShowTarget = null
+                    },
+                    onCreateNewFolder = {
+                        editingFolder = null
+                        showFolderEditSheet = true
+                        moveShowTarget = null
+                    },
+                    onDismissRequest = { moveShowTarget = null },
+                )
+            }
+
+            val folderToDelete = confirmDeleteFolder
+            if (folderToDelete != null) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { confirmDeleteFolder = null },
+                    title = { Text("Delete folder?") },
+                    text = {
+                        Text(
+                            "Shows in '${folderToDelete.name}' will stay in your library and won't be deleted or unsubscribed.",
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                viewModel.deleteFolder(folderToDelete.id)
+                                if (activeFolderId == folderToDelete.id) {
+                                    activeFolderId = null
+                                }
+                                confirmDeleteFolder = null
+                            },
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = { confirmDeleteFolder = null },
+                        ) {
+                            Text("Cancel")
+                        }
+                    },
+                )
+            }
+
+            val podcastToUnsubscribe = confirmUnsubscribePodcast
+            if (podcastToUnsubscribe != null) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { confirmUnsubscribePodcast = null },
+                    title = { Text("Unsubscribe?") },
+                    text = {
+                        Text(
+                            "Are you sure you want to unsubscribe from '${podcastToUnsubscribe.title}'? It will be removed from your subscriptions and folders.",
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                viewModel.unsubscribe(podcastToUnsubscribe)
+                                confirmUnsubscribePodcast = null
+                            },
+                        ) {
+                            Text("Unsubscribe", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = { confirmUnsubscribePodcast = null },
+                        ) {
+                            Text("Cancel")
+                        }
                     },
                 )
             }

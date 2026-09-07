@@ -581,6 +581,20 @@ class UserPreferencesRepository(context: Context,) {
         }
     }
 
+    val subscriptionFolderManualOrderStream: Flow<List<String>> =
+        dataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }.map { preferences ->
+                PreferenceIdList.decode(preferences[Keys.SUBSCRIPTION_FOLDER_MANUAL_ORDER])
+            }.distinctUntilChanged()
+
+    suspend fun setSubscriptionFolderManualOrder(ids: List<String>) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SUBSCRIPTION_FOLDER_MANUAL_ORDER] = PreferenceIdList.encode(ids)
+        }
+    }
+
     val homePinnedPodcastIdsStream: Flow<List<String>> =
         dataStore.data
             .catch { exception ->
