@@ -1,5 +1,5 @@
 {
-  "lastRun": "2026-09-07T06:27:19.407Z",
+  "lastRun": "2026-09-07T12:56:48.545Z",
   "podcasts": {
     "2123": {
       "lastEpisodeId": "567722198",
@@ -78,10 +78,10 @@
       "lastCheckedAt": 1788549517762
     },
     "385117": {
-      "lastRssKey": "ae8aab82-aa82-11f1-bffe-83c9e6df3022",
-      "lastEpisodeTitle": "2AM ET 09/07/2026 Newscast",
+      "lastRssKey": "f8e392ca-aab4-11f1-956a-2375454e4aff",
+      "lastEpisodeTitle": "8AM ET 09/07/2026 Newscast",
       "lastEpisodeId": "60041043564",
-      "lastCheckedAt": 1788762445076
+      "lastCheckedAt": 1788785814724
     },
     "386911": {
       "lastRssKey": "fe6bbddc-a887-11f1-9153-5fae2fe654bd",
@@ -108,10 +108,10 @@
       "lastCheckedAt": 1786765059294
     },
     "437685": {
-      "lastRssKey": "854987c8-8d60-11f1-adef-6b944ed5df4b",
-      "lastEpisodeTitle": "The Great Awakening",
-      "lastEpisodeId": "60018647051",
-      "lastCheckedAt": 1788693259751
+      "lastRssKey": "852dfdd2-8d60-11f1-adef-bbd704f71d73",
+      "lastEpisodeTitle": "The Pirahã People",
+      "lastEpisodeId": "60058576707",
+      "lastCheckedAt": 1788785817898
     },
     "444331": {
       "lastRssKey": "b9872600-a645-11f1-9beb-bf0f1220ae69",
@@ -131,9 +131,9 @@
       "lastCheckedAt": 1788722693662
     },
     "466583": {
-      "lastRssKey": "bad887fa-8783-11f1-8da1-232ba4b9f2e8",
-      "lastEpisodeTitle": "The Young Hippies Who Hijacked a Plane",
-      "lastCheckedAt": 1788291902576
+      "lastRssKey": "55550814-a7e9-11f1-9a1e-f34adf9c9e73",
+      "lastEpisodeTitle": "The Gucci Murder",
+      "lastCheckedAt": 1788785819665
     },
     "490022": {
       "lastRssKey": "51094fa0-f93d-4e96-8aaa-8985c46cfb58",
@@ -201,10 +201,10 @@
       "lastCheckedAt": 1788643853208
     },
     "724143": {
-      "lastRssKey": "58d02f08-a8a9-11f1-bfcb-7b2ace4cca33",
-      "lastEpisodeTitle": "Fachin defende fim do inquérito das Fake News, ONU aprova novo mapa-múndi e Lito Sousa vai receber remédio",
-      "lastEpisodeId": "59842264790",
-      "lastCheckedAt": 1788565477060
+      "lastRssKey": "fa558c12-aaa5-11f1-baad-cb8491382dc3",
+      "lastEpisodeTitle": "Candidatos usam 7/9 contra STF; polícia investiga homofobia contra ator; Elton John no Rock in Rio",
+      "lastEpisodeId": "60065032576",
+      "lastCheckedAt": 1788785825403
     },
     "743229": {
       "lastRssKey": "3123d890-70b4-4b6c-a461-27bb204089fe",
@@ -243,10 +243,10 @@
       "lastCheckedAt": 1788291914943
     },
     "838740": {
-      "lastRssKey": "3a813baa-a66f-11f1-ad3a-97793fc61cf6",
-      "lastEpisodeTitle": "What the Biggest Year of My Life Taught Me",
+      "lastRssKey": "d252c192-a89f-11f1-99e6-1b1f53e86e1e",
+      "lastEpisodeTitle": "Andrew Huberman: The Simple Habits That Will Transform Your Health",
       "lastEpisodeId": "59832566518",
-      "lastCheckedAt": 1788509502351
+      "lastCheckedAt": 1788785827971
     },
     "889671": {
       "lastRssKey": "a634bf09-85c5-4120-9939-505e5338986c",
@@ -290,6 +290,11 @@
       "lastEpisodeId": "59697911357",
       "lastCheckedAt": 1788762473412
     },
+    "998969": {
+      "lastRssKey": "audioboom-01a07642-0bc9-7c51-96e8-296cc73d1d80",
+      "lastEpisodeTitle": "Episode 365: Bill Cooper Part 1 - The World According to Bill",
+      "lastCheckedAt": 1788785831457
+    },
     "1015378": {
       "lastRssKey": "a3cf57b6-0471-4554-a7e1-a41345c06d96",
       "lastEpisodeTitle": "GPT-6 Hits AGI? Tech Euphoria 2.0, SF Mansion Shortage, NYC Bans AI in Schools & Venezuela Oil Deal",
@@ -302,10 +307,10 @@
       "lastCheckedAt": 1788643859907
     },
     "1047718": {
-      "lastRssKey": "6a9910168f0812bd8e2f4f72",
-      "lastEpisodeTitle": "Arsenal take on Chelsea and deadline-day chaos: Football Weekly Extra",
+      "lastRssKey": "6a9e54d18f08fe90df703d17",
+      "lastEpisodeTitle": "Arsenal beat Chelsea to maintain perfect start and late drama at Everton - Football Weekly",
       "lastEpisodeId": "58884055225",
-      "lastCheckedAt": 1788450674556
+      "lastCheckedAt": 1788785833527
     },
     "1065434": {
       "lastRssKey": "http://www.podquiz.com/quiz.php?q=pq/1118",
@@ -360,16 +365,16 @@
       "lastCheckedAt": 1788340765459
     },
     "1365758": {
-      "lastRssKey": "5e716144-a74a-11f1-9b49-9bef3cb4a30a",
-      "lastEpisodeTitle": "Essentials: Use Sleep to Enhance Learning, Memory & Emotional State | Dr. Gina Poe",
+      "lastRssKey": "ee502b96-aa66-11f1-ad04-5ff2fd270a25",
+      "lastEpisodeTitle": "How Mitochondria Control Your Metabolism | Dr. Jared Rutter",
       "lastEpisodeId": "59970276449",
-      "lastCheckedAt": 1788643866373
+      "lastCheckedAt": 1788785840281
     },
     "1388001": {
-      "lastRssKey": "dff28fed-67d0-43af-a191-f9f7496de7e4",
-      "lastEpisodeTitle": "Les guerres modernes aboutissent à des non-victoires",
-      "lastEpisodeId": "60019060208",
-      "lastCheckedAt": 1788693280709
+      "lastRssKey": "2816e716-1cc2-42ba-91cc-caa58f55d8b1",
+      "lastEpisodeTitle": "La poussée d’extrême droite record dans l’Est de l’Allemagne crée un séisme politique",
+      "lastEpisodeId": "60058382551",
+      "lastCheckedAt": 1788785840851
     },
     "1621172": {
       "lastRssKey": "https://krfp.org/?p=33432",
@@ -407,10 +412,10 @@
       "lastCheckedAt": 1788029139347
     },
     "3237767": {
-      "lastRssKey": "7c05b02e-0c7b-4a2b-9510-15a7072b9d93",
-      "lastEpisodeTitle": "Our Top 10 NFL Defenses for 2026",
+      "lastRssKey": "2c64afbc-6de4-4d82-93d5-8ab11cb6c7fa",
+      "lastEpisodeTitle": "Hopium for Every NFL Team in 2026",
       "lastEpisodeId": "59884546748",
-      "lastCheckedAt": 1788730443811
+      "lastCheckedAt": 1788785844763
     },
     "3353685": {
       "lastEpisodeId": "59982883194",
@@ -431,10 +436,10 @@
       "lastCheckedAt": 1788608402916
     },
     "3759297": {
-      "lastRssKey": "1b882c72-a507-11f1-8cef-d7947428dc48",
-      "lastEpisodeTitle": "Smell My Touch",
+      "lastRssKey": "53ca5932-aa86-11f1-b75f-bfd488077183",
+      "lastEpisodeTitle": "Cincinnati Jeopardy",
       "lastEpisodeId": "59422345053",
-      "lastCheckedAt": 1788172548363
+      "lastCheckedAt": 1788785846499
     },
     "3880049": {
       "lastEpisodeId": "13360674190",
@@ -460,10 +465,10 @@
       "lastCheckedAt": 1788370667190
     },
     "4112681": {
-      "lastRssKey": "Buzzsprout-19727131",
-      "lastEpisodeTitle": "The Night Ferryman: A Sleep Story Read by Matt Walker",
-      "lastEpisodeId": "59738342314",
-      "lastCheckedAt": 1788172549416
+      "lastRssKey": "Buzzsprout-19763703",
+      "lastEpisodeTitle": "The Neuroscience of Déjà Vu",
+      "lastEpisodeId": "60054484325",
+      "lastCheckedAt": 1788785848080
     },
     "4150268": {
       "lastRssKey": "gid://art19-episode-locator/V0/Ya9YvfO8vj68NKL6z2kccY0KiSARF-uYwqupHs4A_18",
@@ -496,16 +501,16 @@
       "lastCheckedAt": 1787326350565
     },
     "4790854": {
-      "lastRssKey": "cmtceu1to0hlp01zrge5d36h3",
-      "lastEpisodeTitle": "EP240 | 聽到這些詞，就知道是智商稅 ft. 徐榜奎博士",
+      "lastRssKey": "cmtmn6a4h0bn301ut0ghp6mab",
+      "lastEpisodeTitle": "EP241 | 網路公審正在讓我們變得更不道德 ft. 王榮麟教授",
       "lastEpisodeId": "59773833400",
-      "lastCheckedAt": 1788340774917
+      "lastCheckedAt": 1788785851322
     },
     "4894842": {
-      "lastRssKey": "adf881a9-13d0-49a0-b718-44aee6fc6fda",
-      "lastEpisodeTitle": "Down the Stairs/Home Forever | Campfire Stories with MrBallen",
-      "lastEpisodeId": "59926986642",
-      "lastCheckedAt": 1788509526512
+      "lastRssKey": "387abc12-91fc-44c9-966f-92d027da41f9",
+      "lastEpisodeTitle": "Open Door Policy (PODCAST EXCLUSIVE EPISODE)",
+      "lastEpisodeId": "60054272818",
+      "lastCheckedAt": 1788785851744
     },
     "5107672": {
       "lastRssKey": "8767b558-5d3e-492f-a2c2-21a55734e386",
@@ -542,10 +547,10 @@
       "lastCheckedAt": 1787951210628
     },
     "5716308": {
-      "lastRssKey": "urn:bbc:podcast:p0p7z1kx",
-      "lastEpisodeTitle": "Preview 26/27: Brighton (A)",
+      "lastRssKey": "urn:bbc:podcast:p0p8dcl8",
+      "lastEpisodeTitle": "EP 222: El Hadji Diouf",
       "lastEpisodeId": "59622148405",
-      "lastCheckedAt": 1788526253174
+      "lastCheckedAt": 1788785853730
     },
     "5724334": {
       "lastRssKey": "466b10ac-9d4c-11f1-a8cd-53ff0d3a8a5f",
@@ -553,10 +558,10 @@
       "lastCheckedAt": 1788509528936
     },
     "5930143": {
-      "lastRssKey": "dff28fed-67d0-43af-a191-f9f7496de7e4",
-      "lastEpisodeTitle": "Les guerres modernes aboutissent à des non-victoires",
+      "lastRssKey": "2816e716-1cc2-42ba-91cc-caa58f55d8b1",
+      "lastEpisodeTitle": "La poussée d’extrême droite record dans l’Est de l’Allemagne crée un séisme politique",
       "lastEpisodeId": "59926219402",
-      "lastCheckedAt": 1788693293132
+      "lastCheckedAt": 1788785856075
     },
     "5945547": {
       "lastRssKey": "610bddc6-ee79-45ae-8c2b-3bd9258193f7",
@@ -565,10 +570,10 @@
       "lastCheckedAt": 1787951211378
     },
     "5972153": {
-      "lastRssKey": "f20393dc-a9e8-11f1-bcb9-3314371df224",
-      "lastEpisodeTitle": "Ukraine talks, Huckabee, space wars and French butter",
+      "lastRssKey": "ddb08036-aa90-11f1-add0-0b9903ac244d",
+      "lastEpisodeTitle": "AfD win, Ukraine, glacier blankets and horse smuggling",
       "lastEpisodeId": "59712792909",
-      "lastCheckedAt": 1788704466242
+      "lastCheckedAt": 1788785856870
     },
     "6456494": {
       "lastEpisodeId": "59912911833",
@@ -607,10 +612,10 @@
       "lastCheckedAt": 1788737469917
     },
     "6744768": {
-      "lastRssKey": "654f24c3-2098-4b61-b039-fd6ec6906a4a",
-      "lastEpisodeTitle": "How I Became a Communist in China",
+      "lastRssKey": "54ee17d2-7d4b-455f-bfa1-329f01bb29b2",
+      "lastEpisodeTitle": "Why You Should NEVER Come to China",
       "lastEpisodeId": "59871186213",
-      "lastCheckedAt": 1788714962102
+      "lastCheckedAt": 1788785859790
     },
     "6761897": {
       "lastRssKey": "7b609bf1-05bb-40b4-b67f-8620a7380a5c",
@@ -637,10 +642,10 @@
       "lastCheckedAt": 1788693297640
     },
     "6897392": {
-      "lastRssKey": "https://api.spreaker.com/episode/59780238",
-      "lastEpisodeTitle": "The First Nighter Program - The Chinese Gong",
+      "lastRssKey": "https://api.spreaker.com/episode/59779833",
+      "lastEpisodeTitle": "Radio City Playhouse - Fanny",
       "lastEpisodeId": "59068613094",
-      "lastCheckedAt": 1788693299411
+      "lastCheckedAt": 1788785861377
     },
     "6912659": {
       "lastRssKey": "dd62a2e8-4eff-49e9-80d1-efa0be56c290",
@@ -696,10 +701,10 @@
       "lastCheckedAt": 1788737480066
     },
     "7324937": {
-      "lastRssKey": "2a0b8d34-a8cc-11f1-ad8c-fbfbf5e6b94c",
-      "lastEpisodeTitle": "The Zone of Silence: America's Missile Secret",
-      "lastEpisodeId": "59990616693",
-      "lastCheckedAt": 1788628250435
+      "lastRssKey": "afd67150-2d42-11f1-801d-13b3c3e5dbf7",
+      "lastEpisodeTitle": "The Basement: Dan Flores | Ice Age Giants, Camels in America, and Coyote Resilience",
+      "lastEpisodeId": "60059410622",
+      "lastCheckedAt": 1788785867153
     },
     "7376606": {
       "lastRssKey": "1e345e6c-f219-4977-95ad-c96095c12b01",
@@ -762,10 +767,10 @@
       "lastCheckedAt": 1786559338104
     },
     "7639797": {
-      "lastRssKey": "777b7013-a862-43f9-9b2a-324b8cd77990",
-      "lastEpisodeTitle": "Revelation 11",
-      "lastEpisodeId": "60018153421",
-      "lastCheckedAt": 1788693307372
+      "lastRssKey": "8490bfd4-efc1-4b7b-90da-36015a427079",
+      "lastEpisodeTitle": "Revelation 12",
+      "lastEpisodeId": "60057933416",
+      "lastCheckedAt": 1788785869770
     },
     "7662230": {
       "lastEpisodeId": "48800123551",
