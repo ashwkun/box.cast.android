@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Work
 import androidx.compose.ui.graphics.vector.ImageVector
 import cx.aswin.boxlore.core.designsystem.icon.GenreIcons
 import cx.aswin.boxlore.core.model.Podcast
+import java.util.Locale
 
 /**
  * Genre pill metadata matched to Explore / Home / onboarding icons.
@@ -118,4 +119,69 @@ internal fun resolveSubscriptionGenreItem(
         )
     }
     return resolveSubscriptionGenreItem(genre)
+}
+
+private fun parseGenreTokens(raw: String): List<String> =
+    raw.split(",")
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.equals("podcast", ignoreCase = true) }
+        .map { genre ->
+            genre.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        }
+
+private fun canonicalizeGenreDisplay(rawGenre: String): String {
+    val matched = SUBSCRIPTION_GENRE_CATALOG.find {
+        it.value.equals(rawGenre, ignoreCase = true) || it.label.equals(rawGenre, ignoreCase = true)
+    }
+    return matched?.label ?: rawGenre
+}
+
+internal fun extractDistinctGenres(podcasts: List<Podcast>): List<String> {
+    val customCounts = mutableMapOf<String, Int>()
+    val customDisplay = mutableMapOf<String, String>()
+    val catalogGenres = mutableSetOf<String>()
+
+    for (pod in podcasts) {
+        val customRaw = pod.customGenre?.takeIf { it.isNotBlank() }
+        if (customRaw != null) {
+            for (rawTag in parseGenreTokens(customRaw)) {
+                val tag = canonicalizeGenreDisplay(rawTag)
+                val key = tag.lowercase()
+                customCounts[key] = (customCounts[key] ?: 0) + 1
+                customDisplay.putIfAbsent(key, tag)
+            }
+        } else {
+            catalogGenres.addAll(
+                parseGenreTokens(pod.genre.orEmpty()).map { canonicalizeGenreDisplay(it) },
+            )
+        }
+    }
+
+    val sortedCustom = customCounts.entries
+        .sortedWith(
+            compareByDescending<Map.Entry<String, Int>> { it.value }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { customDisplay[it.key] ?: it.key },
+        )
+        .map { customDisplay[it.key] ?: it.key }
+
+    val customLower = customCounts.keys.toSet()
+    val sortedCatalog = catalogGenres
+        .filter { it.lowercase() !in customLower }
+        .sortedWith(String.CASE_INSENSITIVE_ORDER)
+
+    return sortedCustom + sortedCatalog
+}
+
+internal fun filterPodcastsByGenre(podcasts: List<Podcast>, selectedGenre: String): List<Podcast> {
+    if (selectedGenre.equals("All", ignoreCase = true) || selectedGenre.isBlank()) return podcasts
+    val resolved = resolveSubscriptionGenreItem(selectedGenre, podcasts)
+    return podcasts.filter { pod ->
+        pod.effectiveGenre.split(",")
+            .map { it.trim() }
+            .any {
+                it.equals(selectedGenre, ignoreCase = true) ||
+                    it.equals(resolved.value, ignoreCase = true) ||
+                    it.equals(resolved.label, ignoreCase = true)
+            }
+    }
 }

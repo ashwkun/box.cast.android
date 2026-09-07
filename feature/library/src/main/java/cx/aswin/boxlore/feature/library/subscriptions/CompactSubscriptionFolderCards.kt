@@ -70,6 +70,7 @@ internal fun Compact1x1FolderCard(
     modifier: Modifier = Modifier,
     isDragging: Boolean = false,
     dragModifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
     val lastSeenEpisodes = LocalLastSeenEpisodes.current
     val hasOverflowNew = remember(podcasts, lastSeenEpisodes) {
@@ -127,6 +128,7 @@ internal fun Compact1x1FolderCard(
                     podcastCount = podcasts.size,
                     onFolderClick = actions.onFolderClick,
                     onFolderLongClick = actions.onFolderLongClick,
+                    isReordering = isReordering,
                 )
             } else {
                 CompactPodcastGridContent(
@@ -134,6 +136,7 @@ internal fun Compact1x1FolderCard(
                     podcasts = podcasts,
                     lastSeenEpisodes = lastSeenEpisodes,
                     actions = actions,
+                    isReordering = isReordering,
                 )
             }
         }
@@ -151,6 +154,7 @@ internal fun Compact1x1FolderCard(
                 folder = folder,
                 onFolderClick = actions.onFolderClick,
                 onFolderLongClick = actions.onFolderLongClick,
+                isReordering = isReordering,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .offset(y = 8.dp)
@@ -167,14 +171,21 @@ private fun CompactFolderIconContent(
     podcastCount: Int,
     onFolderClick: (String) -> Unit,
     onFolderLongClick: (SubscriptionFolder) -> Unit,
+    isReordering: Boolean = false,
 ) {
     val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .combinedClickable(
-                onClick = { onFolderClick(folder.id) },
-                onLongClick = { onFolderLongClick(folder) },
+            .then(
+                if (isReordering) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(
+                        onClick = { onFolderClick(folder.id) },
+                        onLongClick = { onFolderLongClick(folder) },
+                    )
+                }
             )
             .padding(8.dp),
         contentAlignment = Alignment.Center,
@@ -216,6 +227,7 @@ private fun CompactPodcastGridContent(
     podcasts: List<Podcast>,
     lastSeenEpisodes: Map<String, String>,
     actions: FolderCardActions,
+    isReordering: Boolean = false,
 ) {
     val slots = remember(podcasts, lastSeenEpisodes) {
         (0..3).map { index ->
@@ -228,9 +240,15 @@ private fun CompactPodcastGridContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .combinedClickable(
-                onClick = { actions.onFolderClick(folder.id) },
-                onLongClick = { actions.onFolderLongClick(folder) },
+            .then(
+                if (isReordering) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(
+                        onClick = { actions.onFolderClick(folder.id) },
+                        onLongClick = { actions.onFolderLongClick(folder) },
+                    )
+                }
             )
             .padding(5.dp),
     ) {
@@ -251,6 +269,7 @@ private fun CompactPodcastGridContent(
                     onClick = actions.onPodcastClick,
                     onLongClick = onFolderLongClick,
                     onEmptyClick = { actions.onFolderClick(folder.id) },
+                    isReordering = isReordering,
                     modifier = Modifier.weight(1f),
                 )
                 MiniPodcastSlot(
@@ -259,6 +278,7 @@ private fun CompactPodcastGridContent(
                     onClick = actions.onPodcastClick,
                     onLongClick = onFolderLongClick,
                     onEmptyClick = { actions.onFolderClick(folder.id) },
+                    isReordering = isReordering,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -275,6 +295,7 @@ private fun CompactPodcastGridContent(
                     onClick = actions.onPodcastClick,
                     onLongClick = onFolderLongClick,
                     onEmptyClick = { actions.onFolderClick(folder.id) },
+                    isReordering = isReordering,
                     modifier = Modifier.weight(1f),
                 )
                 if (podcasts.size > 4) {
@@ -282,6 +303,7 @@ private fun CompactPodcastGridContent(
                         count = podcasts.size - 3,
                         onClick = { actions.onFolderClick(folder.id) },
                         onLongClick = onFolderLongClick,
+                        isReordering = isReordering,
                         modifier = Modifier.weight(1f),
                     )
                 } else {
@@ -291,6 +313,7 @@ private fun CompactPodcastGridContent(
                         onClick = actions.onPodcastClick,
                         onLongClick = onFolderLongClick,
                         onEmptyClick = { actions.onFolderClick(folder.id) },
+                        isReordering = isReordering,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -306,13 +329,20 @@ private fun CompactOverflowSlot(
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(6.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .then(
+                if (isReordering) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                }
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -331,6 +361,7 @@ private fun CompactFolderTitlePill(
     onFolderClick: (String) -> Unit,
     onFolderLongClick: (SubscriptionFolder) -> Unit,
     modifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
     val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
     val displayName = remember(folder.name) {
@@ -352,9 +383,15 @@ private fun CompactFolderTitlePill(
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier
                 .clip(CircleShape)
-                .combinedClickable(
-                    onClick = { onFolderClick(folder.id) },
-                    onLongClick = { onFolderLongClick(folder) },
+                .then(
+                    if (isReordering) {
+                        Modifier
+                    } else {
+                        Modifier.combinedClickable(
+                            onClick = { onFolderClick(folder.id) },
+                            onLongClick = { onFolderLongClick(folder) },
+                        )
+                    }
                 )
                 .padding(horizontal = 6.dp, vertical = 2.dp)
                 .widthIn(max = 84.dp),
@@ -389,6 +426,7 @@ private fun MiniPodcastSlot(
     onEmptyClick: () -> Unit = {},
     hasNewEpisode: Boolean = false,
     modifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
     val miniShape = RoundedCornerShape(6.dp)
     if (podcast != null) {
@@ -397,9 +435,15 @@ private fun MiniPodcastSlot(
                 .fillMaxSize()
                 .clip(miniShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .combinedClickable(
-                    onClick = { onClick(podcast.id) },
-                    onLongClick = onLongClick,
+                .then(
+                    if (isReordering) {
+                        Modifier
+                    } else {
+                        Modifier.combinedClickable(
+                            onClick = { onClick(podcast.id) },
+                            onLongClick = onLongClick,
+                        )
+                    }
                 ),
         ) {
             OptimizedImage(
@@ -419,9 +463,15 @@ private fun MiniPodcastSlot(
                 .fillMaxSize()
                 .clip(miniShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
-                .combinedClickable(
-                    onClick = onEmptyClick,
-                    onLongClick = onLongClick,
+                .then(
+                    if (isReordering) {
+                        Modifier
+                    } else {
+                        Modifier.combinedClickable(
+                            onClick = onEmptyClick,
+                            onLongClick = onLongClick,
+                        )
+                    }
                 ),
         )
     }

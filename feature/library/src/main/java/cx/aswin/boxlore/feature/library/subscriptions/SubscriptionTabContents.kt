@@ -137,9 +137,19 @@ internal fun ShowsTabContent(
     val isRootReordering = config.reorderMode is ReorderMode.RootShows
     val isManualSort = config.sort == SubscriptionSort.Manual
 
-    var orderedKeys by rememberShowsOrderedKeys(unfiledPodcasts, config.manualOrder, isManualSort)
-    val orderedPodcasts = remember(orderedKeys, unfiledPodcasts, isManualSort) {
-        resolveOrderedPodcasts(unfiledPodcasts, orderedKeys, isManualSort)
+    var orderedKeys by rememberShowsOrderedKeys(
+        unfiledPodcasts = unfiledPodcasts,
+        manualOrder = config.manualOrder,
+        isManualSort = isManualSort,
+        isRootReordering = isRootReordering,
+    )
+    val orderedPodcasts = remember(orderedKeys, unfiledPodcasts, isManualSort, isRootReordering) {
+        resolveOrderedPodcasts(
+            unfiledPodcasts = unfiledPodcasts,
+            orderedKeys = orderedKeys,
+            isManualSort = isManualSort,
+            isRootReordering = isRootReordering,
+        )
     }
 
     val allFolderIds = remember(folders) { folders.map { it.id } }
@@ -180,13 +190,12 @@ internal fun ShowsTabContent(
         )
     }
 
-    val folderItems = remember(partition) {
-        ShowsFolderItems(
-            pinnedFolders = partition.pinnedFolders,
-            compactFolders = partition.compactFolders,
-            podcastsByFolderId = partition.podcastsByFolderId,
-        )
-    }
+    val folderItems = rememberShowsFolderItems(
+        partition = partition,
+        orderedFolderKeys = orderedFolderKeys,
+        isFoldersReordering = isFoldersReordering,
+        folderSort = config.folderSort,
+    )
 
     val gridConfig = ShowsGridConfig(
         reorderMode = config.reorderMode,
@@ -231,11 +240,19 @@ private fun LazyGridScope.folderGridItems(
             reorderableGridState,
             key = "pinned_folder_${folder.id}",
             enabled = gridConfig.isFoldersReordering,
-        ) { _ ->
+        ) { isDragging ->
             PinnedEnlargedFolderCard(
                 folder = folder,
                 podcasts = folderShows,
                 actions = folderActions,
+                isDragging = isDragging,
+                dragModifier =
+                if (gridConfig.isFoldersReordering) {
+                    Modifier.longPressDraggableHandle()
+                } else {
+                    Modifier
+                },
+                isReordering = gridConfig.isFoldersReordering,
             )
         }
     }
@@ -263,6 +280,7 @@ private fun LazyGridScope.folderGridItems(
                 } else {
                     Modifier
                 },
+                isReordering = gridConfig.isFoldersReordering,
             )
         }
     }
@@ -324,19 +342,21 @@ private fun ShowsReorderableGrid(
                 key = podcast.id,
                 enabled = gridConfig.isRootReordering,
             ) { isDragging ->
+                val onCardClick: (() -> Unit)? = if (gridConfig.isRootReordering) {
+                    null
+                } else {
+                    { actions.onPodcastClick(podcast.id) }
+                }
+                val onCardLongClick: (() -> Unit)? = if (gridConfig.isRootReordering) {
+                    null
+                } else {
+                    { actions.onPodcastLongClick(podcast) }
+                }
                 SubscriptionGridCard(
                     podcast = podcast,
                     lastSeenId = lastSeenEpisodes[podcast.id],
-                    onClick = {
-                        if (!gridConfig.isRootReordering) {
-                            actions.onPodcastClick(podcast.id)
-                        }
-                    },
-                    onLongClick = {
-                        if (!gridConfig.isRootReordering) {
-                            actions.onPodcastLongClick(podcast)
-                        }
-                    },
+                    onClick = onCardClick,
+                    onLongClick = onCardLongClick,
                     isPinned = podcast.id in gridConfig.pinnedPodcastIds,
                     isDragging = isDragging,
                     modifier =
@@ -403,6 +423,8 @@ private fun ShowsReorderableList(
                         folder = folder,
                         podcasts = folderShows,
                         actions = folderActions,
+                        isDragging = isDragging,
+                        isReordering = gridConfig.isFoldersReordering,
                     )
                 }
             }
@@ -413,18 +435,20 @@ private fun ShowsReorderableList(
                 key = podcast.id,
                 enabled = gridConfig.isRootReordering,
             ) { isDragging ->
+                val onRowClick: (() -> Unit)? = if (gridConfig.isRootReordering) {
+                    null
+                } else {
+                    { actions.onPodcastClick(podcast.id) }
+                }
+                val onRowLongClick: (() -> Unit)? = if (gridConfig.isRootReordering) {
+                    null
+                } else {
+                    { actions.onPodcastLongClick(podcast) }
+                }
                 SubscriptionListRow(
                     podcast = podcast,
-                    onClick = {
-                        if (!gridConfig.isRootReordering) {
-                            actions.onPodcastClick(podcast.id)
-                        }
-                    },
-                    onLongClick = {
-                        if (!gridConfig.isRootReordering) {
-                            actions.onPodcastLongClick(podcast)
-                        }
-                    },
+                    onClick = onRowClick,
+                    onLongClick = onRowLongClick,
                     isPinned = podcast.id in gridConfig.pinnedPodcastIds,
                     isDragging = isDragging,
                     dragModifier =

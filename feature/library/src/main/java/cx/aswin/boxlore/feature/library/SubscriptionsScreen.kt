@@ -643,7 +643,11 @@ fun SubscriptionsScreen(
                             selectedFolderForShowSelection = folder
                         },
                         onReorderFolders = {
-                            tempFolderOrder = folderManualOrder.ifEmpty { folders.map { it.id } }
+                            tempFolderOrder = if (folderSort == FolderInterSort.Manual && folderManualOrder.isNotEmpty()) {
+                                folderManualOrder
+                            } else {
+                                folders.map { it.id }
+                            }
                             reorderMode = ReorderMode.Folders
                         },
                         onDeleteFolder = { folder ->
@@ -665,7 +669,8 @@ fun SubscriptionsScreen(
                             val unfiledPodcasts = (uiState as? LibraryUiState.Success)?.subscribedPodcasts.orEmpty()
                                 .filter { pod -> folders.none { folder -> pod.id in folder.podcastIds } }
                             val manualOrder = (uiState as? LibraryUiState.Success)?.manualOrder.orEmpty()
-                            tempRootOrder = if (manualOrder.isNotEmpty()) {
+                            val currentSort = (uiState as? LibraryUiState.Success)?.currentSort
+                            tempRootOrder = if (currentSort == SubscriptionSort.Manual && manualOrder.isNotEmpty()) {
                                 val unfiledIds = unfiledPodcasts.map { it.id }.toSet()
                                 val ordered = manualOrder.filter { it in unfiledIds }
                                 val remainder = unfiledPodcasts.map { it.id }.filter { it !in manualOrder }

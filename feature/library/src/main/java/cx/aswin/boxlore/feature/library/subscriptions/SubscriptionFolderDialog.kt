@@ -2,7 +2,7 @@ package cx.aswin.boxlore.feature.library.subscriptions
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -253,7 +252,8 @@ private fun FolderDialogGrid(
                         FolderDialogPodcastItem(
                             podcast = podcast,
                             lastSeenId = lastSeenEpisodes[podcast.id],
-                            onClick = {},
+                            onClick = null,
+                            onLongClick = null,
                             isDragging = isDragging,
                             dragModifier = Modifier.longPressDraggableHandle(),
                         )
@@ -279,32 +279,27 @@ private fun FolderDialogGrid(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FolderDialogPodcastItem(
     podcast: Podcast,
     lastSeenId: String?,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    onLongClick: () -> Unit = {},
     isDragging: Boolean = false,
     dragModifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .then(dragModifier)
-            .clip(RoundedCornerShape(12.dp))
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick,
-            ),
+            .then(dragModifier),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SubscriptionGridCard(
             podcast = podcast,
             lastSeenId = lastSeenId,
             onClick = onClick,
+            onLongClick = onLongClick,
             isDragging = isDragging,
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -318,7 +313,14 @@ private fun FolderDialogPodcastItem(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 2.dp),
+                .padding(horizontal = 2.dp)
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable(onClick = onClick)
+                    } else {
+                        Modifier
+                    }
+                ),
         )
     }
 }

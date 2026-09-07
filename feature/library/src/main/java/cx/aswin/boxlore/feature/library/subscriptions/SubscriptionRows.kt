@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
@@ -180,7 +181,7 @@ internal fun ArtworkTitleFallback(
 @Composable
 internal fun SubscriptionListRow(
     podcast: Podcast,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     isPinned: Boolean = false,
     isDragging: Boolean = false,
@@ -217,13 +218,17 @@ internal fun SubscriptionListRow(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                if (onLongClick != null && !isDragging) {
+                if (onClick == null && onLongClick == null) {
+                    Modifier
+                } else if (onLongClick != null && !isDragging) {
                     Modifier.combinedClickable(
-                        onClick = onClick,
+                        onClick = onClick ?: {},
                         onLongClick = onLongClick,
                     )
-                } else {
+                } else if (onClick != null && !isDragging) {
                     Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
                 }
             )
             .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -398,11 +403,34 @@ private fun LatestEpisodePlayButton(onPlay: () -> Unit) {
     }
 }
 
+private fun Modifier.subscriptionCardClickable(
+    onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?,
+    isDragging: Boolean,
+    shape: Shape,
+): Modifier {
+    if (isDragging || (onClick == null && onLongClick == null)) return this
+    return if (onLongClick != null) {
+        expressiveClickable(
+            shape = shape,
+            pressScaleEnabled = true,
+            onLongClick = onLongClick,
+            onClick = onClick ?: {},
+        )
+    } else {
+        expressiveClickable(
+            shape = shape,
+            pressScaleEnabled = true,
+            onClick = onClick ?: {},
+        )
+    }
+}
+
 @Composable
 internal fun SubscriptionGridCard(
     podcast: Podcast,
     lastSeenId: String?,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     isPinned: Boolean = false,
     isDragging: Boolean = false,
@@ -444,21 +472,11 @@ internal fun SubscriptionGridCard(
                 clip = true
             }
             .shadow(elevation = dragElevation, shape = artworkShape, clip = false)
-            .then(
-                if (onLongClick != null && !isDragging) {
-                    Modifier.expressiveClickable(
-                        shape = artworkShape,
-                        pressScaleEnabled = !isDragging,
-                        onLongClick = onLongClick,
-                        onClick = onClick,
-                    )
-                } else {
-                    Modifier.expressiveClickable(
-                        shape = artworkShape,
-                        pressScaleEnabled = !isDragging,
-                        onClick = onClick,
-                    )
-                }
+            .subscriptionCardClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+                isDragging = isDragging,
+                shape = artworkShape,
             ),
     ) {
         OptimizedImage(
@@ -545,70 +563,5 @@ internal fun EpisodeRowArtwork(
                 drawStopIndicator = {}
             )
         }
-    }
-}
-
-private fun parseGenreTokens(raw: String): List<String> =
-    raw.split(",")
-        .map { it.trim() }
-        .filter { it.isNotEmpty() && !it.equals("podcast", ignoreCase = true) }
-        .map { genre ->
-            genre.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-        }
-
-private fun canonicalizeGenreDisplay(rawGenre: String): String {
-    val matched = SUBSCRIPTION_GENRE_CATALOG.find {
-        it.value.equals(rawGenre, ignoreCase = true) || it.label.equals(rawGenre, ignoreCase = true)
-    }
-    return matched?.label ?: rawGenre
-}
-
-internal fun extractDistinctGenres(podcasts: List<Podcast>): List<String> {
-    val customCounts = mutableMapOf<String, Int>()
-    val customDisplay = mutableMapOf<String, String>()
-    val catalogGenres = mutableSetOf<String>()
-
-    for (pod in podcasts) {
-        val customRaw = pod.customGenre?.takeIf { it.isNotBlank() }
-        if (customRaw != null) {
-            for (rawTag in parseGenreTokens(customRaw)) {
-                val tag = canonicalizeGenreDisplay(rawTag)
-                val key = tag.lowercase()
-                customCounts[key] = (customCounts[key] ?: 0) + 1
-                customDisplay.putIfAbsent(key, tag)
-            }
-        } else {
-            catalogGenres.addAll(
-                parseGenreTokens(pod.genre.orEmpty()).map { canonicalizeGenreDisplay(it) }
-            )
-        }
-    }
-
-    val sortedCustom = customCounts.entries
-        .sortedWith(
-            compareByDescending<Map.Entry<String, Int>> { it.value }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { customDisplay[it.key] ?: it.key }
-        )
-        .map { customDisplay[it.key] ?: it.key }
-
-    val customLower = customCounts.keys.toSet()
-    val sortedCatalog = catalogGenres
-        .filter { it.lowercase() !in customLower }
-        .sortedWith(String.CASE_INSENSITIVE_ORDER)
-
-    return sortedCustom + sortedCatalog
-}
-
-internal fun filterPodcastsByGenre(podcasts: List<Podcast>, selectedGenre: String): List<Podcast> {
-    if (selectedGenre.equals("All", ignoreCase = true) || selectedGenre.isBlank()) return podcasts
-    val resolved = resolveSubscriptionGenreItem(selectedGenre, podcasts)
-    return podcasts.filter { pod ->
-        pod.effectiveGenre.split(",")
-            .map { it.trim() }
-            .any {
-                it.equals(selectedGenre, ignoreCase = true) ||
-                    it.equals(resolved.value, ignoreCase = true) ||
-                    it.equals(resolved.label, ignoreCase = true)
-            }
     }
 }

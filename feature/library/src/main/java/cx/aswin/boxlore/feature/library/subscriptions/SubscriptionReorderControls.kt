@@ -169,9 +169,10 @@ internal fun rememberShowsOrderedKeys(
     unfiledPodcasts: List<cx.aswin.boxlore.core.model.Podcast>,
     manualOrder: List<String>,
     isManualSort: Boolean,
+    isRootReordering: Boolean = false,
 ): androidx.compose.runtime.MutableState<List<String>> {
-    val incomingKeys = androidx.compose.runtime.remember(unfiledPodcasts, manualOrder, isManualSort) {
-        if (isManualSort && manualOrder.isNotEmpty()) {
+    val incomingKeys = androidx.compose.runtime.remember(unfiledPodcasts, manualOrder, isManualSort, isRootReordering) {
+        if ((isManualSort || isRootReordering) && manualOrder.isNotEmpty()) {
             val podIds = unfiledPodcasts.map { it.id }.toSet()
             val ordered = manualOrder.filter { it in podIds }
             val remainder = unfiledPodcasts.map { it.id }.filter { it !in manualOrder }
@@ -191,8 +192,9 @@ internal fun resolveOrderedPodcasts(
     unfiledPodcasts: List<cx.aswin.boxlore.core.model.Podcast>,
     orderedKeys: List<String>,
     isManualSort: Boolean,
+    isRootReordering: Boolean = false,
 ): List<cx.aswin.boxlore.core.model.Podcast> {
-    if (!isManualSort) return unfiledPodcasts
+    if (!isManualSort && !isRootReordering) return unfiledPodcasts
     val unfiledPodcastsById = unfiledPodcasts.associateBy { it.id }
     val mapped = orderedKeys.mapNotNull(unfiledPodcastsById::get)
     val missing = unfiledPodcasts.filter { it.id !in orderedKeys }
@@ -240,5 +242,38 @@ internal fun rememberShowsMoveHandler(
                 actions.onReorder(moved)
             }
         }
+    }
+}
+
+@Composable
+internal fun rememberShowsFolderItems(
+    partition: PartitionedSubscriptionItems,
+    orderedFolderKeys: List<String>,
+    isFoldersReordering: Boolean,
+    folderSort: FolderInterSort,
+): ShowsFolderItems = androidx.compose.runtime.remember(
+    partition,
+    orderedFolderKeys,
+    isFoldersReordering,
+    folderSort,
+) {
+    if (isFoldersReordering || folderSort == FolderInterSort.Manual) {
+        val pinnedMap = partition.pinnedFolders.associateBy { it.id }
+        val compactMap = partition.compactFolders.associateBy { it.id }
+        val reorderedPinned = orderedFolderKeys.mapNotNull { pinnedMap[it] }
+        val reorderedCompact = orderedFolderKeys.mapNotNull { compactMap[it] }
+        val missingPinned = partition.pinnedFolders.filter { it.id !in orderedFolderKeys }
+        val missingCompact = partition.compactFolders.filter { it.id !in orderedFolderKeys }
+        ShowsFolderItems(
+            pinnedFolders = reorderedPinned + missingPinned,
+            compactFolders = reorderedCompact + missingCompact,
+            podcastsByFolderId = partition.podcastsByFolderId,
+        )
+    } else {
+        ShowsFolderItems(
+            pinnedFolders = partition.pinnedFolders,
+            compactFolders = partition.compactFolders,
+            podcastsByFolderId = partition.podcastsByFolderId,
+        )
     }
 }

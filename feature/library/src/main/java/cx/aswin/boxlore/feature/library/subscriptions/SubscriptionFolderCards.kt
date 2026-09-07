@@ -1,5 +1,7 @@
 package cx.aswin.boxlore.feature.library.subscriptions
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -33,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,21 +72,47 @@ internal fun PinnedEnlargedFolderCard(
     podcasts: List<Podcast>,
     actions: FolderCardActions,
     modifier: Modifier = Modifier,
+    isDragging: Boolean = false,
+    dragModifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
     val lastSeenEpisodes = LocalLastSeenEpisodes.current
     val shape = RoundedCornerShape(16.dp)
     val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
     val slots = calculateFolderSlots(podcasts, folder.displaySize)
 
+    val dragScale by animateFloatAsState(
+        targetValue = if (isDragging) 1.04f else 1f,
+        label = "pinnedFolderDragScale",
+    )
+    val dragElevation by animateDpAsState(
+        targetValue = if (isDragging) 8.dp else 0.dp,
+        label = "pinnedFolderDragElevation",
+    )
+
     Surface(
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        shadowElevation = dragElevation,
         modifier = modifier
+            .then(dragModifier)
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = { actions.onFolderClick(folder.id) },
-                onLongClick = { actions.onFolderLongClick(folder) },
+            .graphicsLayer {
+                scaleX = dragScale
+                scaleY = dragScale
+                this.shape = shape
+                clip = false
+            }
+            .then(
+                if (isReordering) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(
+                        onClick = { actions.onFolderClick(folder.id) },
+                        onLongClick = { actions.onFolderLongClick(folder) },
+                    )
+                }
             ),
     ) {
         Column(
@@ -98,21 +127,21 @@ internal fun PinnedEnlargedFolderCard(
                 folderIcon = folderIcon,
                 onFolderClick = actions.onFolderClick,
                 onFolderLongClick = actions.onFolderLongClick,
+                isReordering = isReordering,
             )
 
             // Grid of directly clickable covers
             if (podcasts.isEmpty()) {
                 EmptyFolderPlaceholder(
-                    onAddShowsClick = { actions.onFolderClick(folder.id) },
+                    onAddShowsClick = { if (!isReordering) actions.onFolderClick(folder.id) },
                 )
             } else {
                 FolderCoversGrid(
                     slots = slots,
-                    columns = folder.displaySize.spanCols,
+                    folder = folder,
+                    actions = actions,
                     lastSeenEpisodes = lastSeenEpisodes,
-                    onPodcastClick = actions.onPodcastClick,
-                    onOverflowClick = { actions.onFolderClick(folder.id) },
-                    onFolderLongClick = { actions.onFolderLongClick(folder) },
+                    isReordering = isReordering,
                 )
             }
         }
@@ -130,13 +159,20 @@ private fun PinnedFolderHeader(
     onFolderClick: (String) -> Unit,
     onFolderLongClick: (SubscriptionFolder) -> Unit,
     modifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = { onFolderClick(folder.id) },
-                onLongClick = { onFolderLongClick(folder) },
+            .then(
+                if (isReordering) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(
+                        onClick = { onFolderClick(folder.id) },
+                        onLongClick = { onFolderLongClick(folder) },
+                    )
+                }
             )
             .padding(horizontal = 6.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -185,13 +221,13 @@ private fun PinnedFolderHeader(
 @Composable
 private fun FolderCoversGrid(
     slots: FolderSlots,
-    columns: Int,
+    folder: SubscriptionFolder,
+    actions: FolderCardActions,
     lastSeenEpisodes: Map<String, String>,
-    onPodcastClick: (String) -> Unit,
-    onOverflowClick: () -> Unit,
-    onFolderLongClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
+    val columns = folder.displaySize.spanCols
     val totalItems = slots.visibleShows.size + if (slots.hasOverflow) 1 else 0
     val rows = (totalItems + columns - 1) / columns
 
@@ -214,9 +250,10 @@ private fun FolderCoversGrid(
                         DirectClickableShowCover(
                             podcast = podcast,
                             hasNewEpisode = isNew,
-                            onClick = { onPodcastClick(podcast.id) },
-                            onLongClick = onFolderLongClick,
+                            onClick = { actions.onPodcastClick(podcast.id) },
+                            onLongClick = { actions.onFolderLongClick(folder) },
                             modifier = Modifier.weight(1f),
+                            isReordering = isReordering,
                         )
                     } else if (itemIndex == slots.visibleShows.size && slots.hasOverflow) {
                         val overflowNewCount = remember(slots.overflowShows, lastSeenEpisodes) {
@@ -226,16 +263,26 @@ private fun FolderCoversGrid(
                             overflowShows = slots.overflowShows,
                             overflowCount = slots.overflowCount,
                             newEpisodesCount = overflowNewCount,
-                            onClick = onOverflowClick,
-                            onLongClick = onFolderLongClick,
+                            onClick = { actions.onFolderClick(folder.id) },
+                            onLongClick = { actions.onFolderLongClick(folder) },
                             modifier = Modifier.weight(1f),
+                            isReordering = isReordering,
                         )
                     } else {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
                                 .aspectRatio(1f)
-                                .combinedClickable(onClick = onOverflowClick, onLongClick = onFolderLongClick),
+                                .then(
+                                    if (isReordering) {
+                                        Modifier
+                                    } else {
+                                        Modifier.combinedClickable(
+                                            onClick = { actions.onFolderClick(folder.id) },
+                                            onLongClick = { actions.onFolderLongClick(folder) },
+                                        )
+                                    },
+                                ),
                         )
                     }
                 }
@@ -255,6 +302,7 @@ private fun DirectClickableShowCover(
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
     val shape = RoundedCornerShape(10.dp)
     Box(
@@ -263,7 +311,13 @@ private fun DirectClickableShowCover(
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .border(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f), shape)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .then(
+                if (isReordering) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                }
+            ),
     ) {
         OptimizedImage(
             url = podcast.imageUrl.takeIf { it.isNotEmpty() } ?: podcast.fallbackImageUrl,
@@ -294,6 +348,7 @@ private fun FolderOverflowSlotCard(
     onLongClick: () -> Unit = {},
     newEpisodesCount: Int = 0,
     modifier: Modifier = Modifier,
+    isReordering: Boolean = false,
 ) {
     val shape = RoundedCornerShape(10.dp)
     Box(
@@ -311,7 +366,13 @@ private fun FolderOverflowSlotCard(
                     Modifier
                 }
             )
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+            .then(
+                if (isReordering) {
+                    Modifier
+                } else {
+                    Modifier.combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                }
+            ),
         contentAlignment = Alignment.Center,
     ) {
         // 2×2 mini collage preview of overflow shows
