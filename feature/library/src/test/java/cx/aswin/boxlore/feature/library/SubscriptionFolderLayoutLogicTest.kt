@@ -4,6 +4,8 @@ import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
+import cx.aswin.boxlore.feature.library.subscriptions.FolderInterSort
+import cx.aswin.boxlore.feature.library.subscriptions.FolderIntraSort
 import cx.aswin.boxlore.feature.library.subscriptions.buildUnifiedGridItems
 import cx.aswin.boxlore.feature.library.subscriptions.calculateFolderSlots
 import cx.aswin.boxlore.feature.library.subscriptions.countFolderOverflowNew
@@ -378,5 +380,99 @@ class SubscriptionFolderLayoutLogicTest {
         // > 10 chars are truncated to first 10 + ellipsis
         assertEquals("Technology…", truncateCompactFolderName("Technology News"))
         assertEquals("My Favorit…", truncateCompactFolderName("My Favorite Shows"))
+    }
+
+    @Test
+    fun `partitionSubscribedShows respects FolderInterSort options`() {
+        val p1 = mockPodcast("p-1", latestPubDate = 5000L)
+        val p2 = mockPodcast("p-2", latestPubDate = 2000L)
+        val p3 = mockPodcast("p-3", latestPubDate = 8000L)
+        val podcasts = listOf(p1, p2, p3)
+
+        val folderA = SubscriptionFolder(
+            id = "f-a",
+            name = "Alpha",
+            displaySize = FolderDisplaySize.SHELF,
+            podcastIds = listOf("p-1"), // pub date 5000
+        )
+        val folderB = SubscriptionFolder(
+            id = "f-b",
+            name = "Beta",
+            displaySize = FolderDisplaySize.SHELF,
+            podcastIds = listOf("p-2", "p-3"), // pub date 8000, 2 shows
+        )
+        val folders = listOf(folderA, folderB)
+
+        // Inter-sort: RecentlyUpdated -> folderB (8000) then folderA (5000)
+        val recentPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = folders,
+            folderSort = FolderInterSort.RecentlyUpdated,
+        )
+        assertEquals(listOf("f-b", "f-a"), recentPartition.pinnedFolders.map { it.id })
+
+        // Inter-sort: Alphabetical -> folderA (Alpha) then folderB (Beta)
+        val alphaPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = folders,
+            folderSort = FolderInterSort.Alphabetical,
+        )
+        assertEquals(listOf("f-a", "f-b"), alphaPartition.pinnedFolders.map { it.id })
+
+        // Inter-sort: MostShows -> folderB (2 shows) then folderA (1 show)
+        val mostShowsPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = folders,
+            folderSort = FolderInterSort.MostShows,
+        )
+        assertEquals(listOf("f-b", "f-a"), mostShowsPartition.pinnedFolders.map { it.id })
+    }
+
+    @Test
+    fun `partitionSubscribedShows respects FolderIntraSort options`() {
+        val pA = mockPodcast("p-a", title = "Zebra", latestPubDate = 1000L)
+        val pB = mockPodcast("p-b", title = "Apple", latestPubDate = 9000L)
+        val pC = mockPodcast("p-c", title = "Mango", latestPubDate = 5000L)
+        val podcasts = listOf(pA, pB, pC)
+
+        val folder = SubscriptionFolder(
+            id = "f-test",
+            name = "Test Folder",
+            displaySize = FolderDisplaySize.SHELF,
+            podcastIds = listOf("p-c", "p-a", "p-b"), // Manual order: C, A, B
+        )
+
+        // Intra-sort: Alphabetical -> Apple (B), Mango (C), Zebra (A)
+        val alphaPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder),
+            intraFolderSort = FolderIntraSort.Alphabetical,
+        )
+        assertEquals(listOf("p-b", "p-c", "p-a"), alphaPartition.podcastsByFolderId["f-test"]?.map { it.id })
+
+        // Intra-sort: RecentlyUpdated -> Apple (9000), Mango (5000), Zebra (1000)
+        val recentPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder),
+            intraFolderSort = FolderIntraSort.RecentlyUpdated,
+        )
+        assertEquals(listOf("p-b", "p-c", "p-a"), recentPartition.podcastsByFolderId["f-test"]?.map { it.id })
+
+        // Intra-sort: Manual -> folder.podcastIds order: C, A, B
+        val manualPartition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder),
+            intraFolderSort = FolderIntraSort.Manual,
+        )
+        assertEquals(listOf("p-c", "p-a", "p-b"), manualPartition.podcastsByFolderId["f-test"]?.map { it.id })
+
+        // Intra-sort: Inherit with Alphabetical show sort
+        val inheritAlpha = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(folder),
+            sort = SubscriptionSort.Alphabetical,
+            intraFolderSort = FolderIntraSort.Inherit,
+        )
+        assertEquals(listOf("p-b", "p-c", "p-a"), inheritAlpha.podcastsByFolderId["f-test"]?.map { it.id })
     }
 }

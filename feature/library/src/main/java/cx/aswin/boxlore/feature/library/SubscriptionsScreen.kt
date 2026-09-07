@@ -69,11 +69,13 @@ import cx.aswin.boxlore.feature.library.subscriptions.LatestSortMenuItems
 import cx.aswin.boxlore.feature.library.subscriptions.LatestTabActions
 import cx.aswin.boxlore.feature.library.subscriptions.LatestTabConfig
 import cx.aswin.boxlore.feature.library.subscriptions.LatestTabContent
-import cx.aswin.boxlore.feature.library.subscriptions.ShowsSortMenuItems
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabActions
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabConfig
 import cx.aswin.boxlore.feature.library.subscriptions.ShowsTabContent
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionFolderDialog
+import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionSortActions
+import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionSortConfig
+import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionSortSheet
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionsTabSelectorFab
 import cx.aswin.boxlore.feature.library.subscriptions.SubscriptionsTabSelectorFabHeight
 import cx.aswin.boxlore.feature.library.subscriptions.extractDistinctGenres
@@ -111,9 +113,12 @@ fun SubscriptionsScreen(
         val hideCompletedInSubs by viewModel.hideCompletedInSubs.collectAsStateWithLifecycle()
         val pinnedPodcastIds by viewModel.pinnedPodcastIds.collectAsStateWithLifecycle()
         val autoOrganizeFolders by viewModel.autoOrganizeFolders.collectAsStateWithLifecycle()
+        val folderSort by viewModel.folderSort.collectAsStateWithLifecycle()
+        val intraFolderSort by viewModel.intraFolderSort.collectAsStateWithLifecycle()
         val folders by viewModel.folders.collectAsStateWithLifecycle()
         val subscriptionsTabStyle by viewModel.subscriptionsTabStyle.collectAsStateWithLifecycle()
         var showSortMenu by remember { mutableStateOf(false) }
+        var showSortSheet by rememberSaveable { mutableStateOf(false) }
         var showFolderEditSheet by remember { mutableStateOf(false) }
         var editingFolder by remember { mutableStateOf<cx.aswin.boxlore.core.model.SubscriptionFolder?>(null) }
         var activeFolderId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -280,49 +285,36 @@ fun SubscriptionsScreen(
                                     if (hasSubscribedPodcasts) {
                                         val success = checkNotNull(successState)
                                         Box {
-                                            IconButton(onClick = { showSortMenu = true }) {
+                                            IconButton(
+                                                onClick = {
+                                                    if (pagerState.currentPage == 0) {
+                                                        showSortSheet = true
+                                                    } else {
+                                                        showSortMenu = true
+                                                    }
+                                                },
+                                            ) {
                                                 Icon(Icons.AutoMirrored.Rounded.Sort, contentDescription = "Sort")
                                             }
-                                            DropdownMenu(
-                                                expanded = showSortMenu,
-                                                onDismissRequest = { showSortMenu = false },
-                                                shape = RoundedCornerShape(20.dp),
-                                                offset = DpOffset(x = (-12).dp, y = 4.dp)
-                                            ) {
-                                                if (pagerState.currentPage == 0) {
-                                                    ShowsSortMenuItems(
-                                                        currentSort = success.currentSort,
-                                                        onSortChange = { sort ->
-                                                            viewModel.setSubscriptionSort(sort)
-                                                            val analyticsName = when (sort) {
-                                                                SubscriptionSort.SmartRank -> "smart_sort"
-                                                                SubscriptionSort.RecentlyUpdated -> "recently_updated"
-                                                                SubscriptionSort.Alphabetical -> "alphabetical"
-                                                                SubscriptionSort.MostListened -> "most_listened"
-                                                                SubscriptionSort.Manual -> "manual"
-                                                            }
-                                                            cx.aswin.boxlore.core.analytics.AnalyticsHelper.trackLibrarySubscriptionsSortChanged(
-                                                                analyticsName,
-                                                                "shows"
-                                                            )
-                                                        },
-                                                        autoOrganizeFolders = autoOrganizeFolders,
-                                                        onAutoOrganizeFoldersChange = viewModel::setAutoOrganizeFolders,
-                                                        onDismiss = { showSortMenu = false }
-                                                    )
-                                                } else {
+                                            if (pagerState.currentPage != 0) {
+                                                DropdownMenu(
+                                                    expanded = showSortMenu,
+                                                    onDismissRequest = { showSortMenu = false },
+                                                    shape = RoundedCornerShape(20.dp),
+                                                    offset = DpOffset(x = (-12).dp, y = 4.dp),
+                                                ) {
                                                     LatestSortMenuItems(
                                                         useSmartRank = useSmartRank,
                                                         onUseSmartRankChange = { useSmart ->
                                                             viewModel.setUseSmartRank(useSmart)
                                                             cx.aswin.boxlore.core.analytics.AnalyticsHelper.trackLibrarySubscriptionsSortChanged(
                                                                 if (useSmart) "smart_sort" else "chronological",
-                                                                "latest"
+                                                                "latest",
                                                             )
                                                         },
                                                         hideCompleted = hideCompletedInSubs,
                                                         onHideCompletedChange = viewModel::setHideCompletedInSubs,
-                                                        onDismiss = { showSortMenu = false }
+                                                        onDismiss = { showSortMenu = false },
                                                     )
                                                 }
                                             }
@@ -392,6 +384,8 @@ fun SubscriptionsScreen(
                                             pinnedPodcastIds = pinnedPodcastIds,
                                             sort = success.currentSort,
                                             manualOrder = success.manualOrder,
+                                            folderSort = folderSort,
+                                            intraFolderSort = intraFolderSort,
                                         ),
                                         actions = ShowsTabActions(
                                             onExploreClick = onExploreClick,
@@ -528,6 +522,37 @@ fun SubscriptionsScreen(
                         editingFolder = activeFolder
                         activeFolderId = null
                     },
+                )
+            }
+
+            if (showSortSheet && successState != null) {
+                SubscriptionSortSheet(
+                    config = SubscriptionSortConfig(
+                        currentSort = successState.currentSort,
+                        folderSort = folderSort,
+                        intraFolderSort = intraFolderSort,
+                        autoOrganizeFolders = autoOrganizeFolders,
+                    ),
+                    actions = SubscriptionSortActions(
+                        onSortChange = { sort ->
+                            viewModel.setSubscriptionSort(sort)
+                            val analyticsName = when (sort) {
+                                SubscriptionSort.SmartRank -> "smart_sort"
+                                SubscriptionSort.RecentlyUpdated -> "recently_updated"
+                                SubscriptionSort.Alphabetical -> "alphabetical"
+                                SubscriptionSort.MostListened -> "most_listened"
+                                SubscriptionSort.Manual -> "manual"
+                            }
+                            cx.aswin.boxlore.core.analytics.AnalyticsHelper.trackLibrarySubscriptionsSortChanged(
+                                analyticsName,
+                                "shows",
+                            )
+                        },
+                        onFolderSortChange = viewModel::setFolderSort,
+                        onIntraFolderSortChange = viewModel::setIntraFolderSort,
+                        onAutoOrganizeFoldersChange = viewModel::setAutoOrganizeFolders,
+                        onDismiss = { showSortSheet = false },
+                    ),
                 )
             }
         }

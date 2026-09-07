@@ -539,6 +539,34 @@ class UserPreferencesRepository(context: Context,) {
         }
     }
 
+    val subscriptionFolderSortStream: Flow<String> =
+        dataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }.map { preferences ->
+                preferences[Keys.SUBSCRIPTION_FOLDER_SORT] ?: "Inherit"
+            }.distinctUntilChanged()
+
+    suspend fun setSubscriptionFolderSort(sort: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SUBSCRIPTION_FOLDER_SORT] = sort
+        }
+    }
+
+    val subscriptionIntraFolderSortStream: Flow<String> =
+        dataStore.data
+            .catch { exception ->
+                if (exception is IOException) emit(emptyPreferences()) else throw exception
+            }.map { preferences ->
+                preferences[Keys.SUBSCRIPTION_INTRA_FOLDER_SORT] ?: "Inherit"
+            }.distinctUntilChanged()
+
+    suspend fun setSubscriptionIntraFolderSort(sort: String) {
+        dataStore.edit { preferences ->
+            preferences[Keys.SUBSCRIPTION_INTRA_FOLDER_SORT] = sort
+        }
+    }
+
     val subscriptionManualOrderStream: Flow<List<String>> =
         dataStore.data
             .catch { exception ->

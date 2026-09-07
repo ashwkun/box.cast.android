@@ -25,6 +25,8 @@ import cx.aswin.boxlore.core.ranking.RankingObjective
 import cx.aswin.boxlore.core.ranking.RankingSurface
 import cx.aswin.boxlore.feature.library.logic.SubscriptionManualOrderLogic
 import cx.aswin.boxlore.feature.library.logic.SubscriptionSmartOrderLogic
+import cx.aswin.boxlore.feature.library.subscriptions.FolderInterSort
+import cx.aswin.boxlore.feature.library.subscriptions.FolderIntraSort
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -263,6 +265,46 @@ class LibraryViewModel(
     fun setAutoOrganizeFolders(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setAutoOrganizeFolders(enabled)
+        }
+    }
+
+    val folderSort: StateFlow<FolderInterSort> = userPreferencesRepository.subscriptionFolderSortStream
+        .map { sortName ->
+            try {
+                FolderInterSort.valueOf(sortName)
+            } catch (_: Exception) {
+                FolderInterSort.Inherit
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = FolderInterSort.Inherit,
+        )
+
+    fun setFolderSort(sort: FolderInterSort) {
+        viewModelScope.launch {
+            userPreferencesRepository.setSubscriptionFolderSort(sort.name)
+        }
+    }
+
+    val intraFolderSort: StateFlow<FolderIntraSort> = userPreferencesRepository.subscriptionIntraFolderSortStream
+        .map { sortName ->
+            try {
+                FolderIntraSort.valueOf(sortName)
+            } catch (_: Exception) {
+                FolderIntraSort.Inherit
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = FolderIntraSort.Inherit,
+        )
+
+    fun setIntraFolderSort(sort: FolderIntraSort) {
+        viewModelScope.launch {
+            userPreferencesRepository.setSubscriptionIntraFolderSort(sort.name)
         }
     }
 

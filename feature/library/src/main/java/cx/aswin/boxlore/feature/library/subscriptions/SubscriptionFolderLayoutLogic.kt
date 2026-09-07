@@ -7,6 +7,29 @@ import cx.aswin.boxlore.core.model.isLatestEpisodeNew
 import cx.aswin.boxlore.feature.library.SubscriptionSort
 
 /**
+ * Inter-folder sorting options (how folders are arranged relative to each other at the top).
+ */
+enum class FolderInterSort(val label: String) {
+    Inherit("Follow Shows"),
+    RecentlyUpdated("Recently Updated"),
+    Alphabetical("A–Z"),
+    MostShows("Most Shows"),
+    Manual("Manual"),
+}
+
+/**
+ * Intra-folder sorting options (how shows inside a folder are ordered for preview slots and sheet).
+ */
+enum class FolderIntraSort(val label: String) {
+    Inherit("Follow Shows"),
+    SmartRank("Smart Rank"),
+    RecentlyUpdated("Recently Updated"),
+    Alphabetical("A–Z"),
+    MostListened("Most Listened"),
+    Manual("Folder Order"),
+}
+
+/**
  * Slot allocation result for a folder card in the Subscriptions grid.
  */
 internal data class FolderSlots(
@@ -98,7 +121,13 @@ internal fun buildUnifiedGridItems(
 }
 
 /**
- * Calculates the visible show covers and overflow shows for a given folder card display size.
+ * Calculates slot assignments for direct clickable podcast slots and an optional overflow slot.
+ *
+ * Sizing rules:
+ * - Shelf (3×1): up to 4 shows. If > 4, 3 shows are directly clickable and 4th is the overflow slot.
+ * - Compact (1×1): up to 4 shows in a 2×2 mini-grid. If > 4, 3 shows are clickable and 4th is overflow.
+ * - Panel (3×2): up to 6 shows. If > 6, 5 shows clickable and 6th is overflow.
+ * - Showcase (3×3): up to 9 shows. If > 9, 8 shows clickable and 9th is overflow.
  */
 internal fun calculateFolderSlots(
     shows: List<Podcast>,
@@ -132,44 +161,41 @@ internal fun calculateFolderSlots(
 
 /**
  * Partitions subscribed podcasts into pinned enlarged folders, compact 1×1 folders, and unfiled shows.
- * In-folder shows are automatically sorted to match the active list order of [podcasts].
- * Pinned folders are sorted according to [sort] (e.g. freshest episode date for RecentlyUpdated, A-Z for Alphabetical).
+ * In-folder shows are sorted according to [intraFolderSort] (defaulting to follow [sort]).
+ * Pinned and compact folders are sorted according to [folderSort] (defaulting to follow [sort]).
  */
 internal fun partitionSubscribedShows(
     podcasts: List<Podcast>,
     folders: List<SubscriptionFolder>,
     sort: SubscriptionSort? = null,
+    folderSort: FolderInterSort = FolderInterSort.Inherit,
+    intraFolderSort: FolderIntraSort = FolderIntraSort.Inherit,
 ): PartitionedSubscriptionItems {
     val podcastsById = podcasts.associateBy { it.id }
+    val effectiveIntraSort = resolveEffectiveIntraSort(intraFolderSort, sort)
 
     val podcastsByFolderId = folders.associate { folder ->
         val memberIds = folder.podcastIds.toSet()
-        val sortedMembers = podcasts.filter { it.id in memberIds }
+        val members = podcasts.filter { it.id in memberIds }
         val missingMembers = folder.podcastIds.filter { it !in memberIds }.mapNotNull(podcastsById::get)
-        folder.id to (sortedMembers + missingMembers)
+        val allMembers = members + missingMembers
+        folder.id to sortFolderMembers(allMembers, effectiveIntraSort, podcasts, folder)
     }
 
     val filedPodcastIds = folders.flatMap { it.podcastIds }.toSet()
     val unfiledPodcasts = podcasts.filter { it.id !in filedPodcastIds }
 
-    val pinnedFoldersRaw = folders.filter { it.displaySize.isPinnedToTop }
-    val compactFoldersRaw = folders.filter { !it.displaySize.isPinnedToTop }
-
-    val sortFolder: (SubscriptionFolder) -> Long = { folder ->
-        podcastsByFolderId[folder.id].orEmpty().maxOfOrNull { it.latestEpisode?.publishedDate ?: 0L } ?: 0L
-    }
-
-    val pinnedFolders = when (sort) {
-        SubscriptionSort.Alphabetical -> pinnedFoldersRaw.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-        SubscriptionSort.RecentlyUpdated -> pinnedFoldersRaw.sortedByDescending(sortFolder)
-        else -> pinnedFoldersRaw
-    }
-
-    val compactFolders = when (sort) {
-        SubscriptionSort.Alphabetical -> compactFoldersRaw.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-        SubscriptionSort.RecentlyUpdated -> compactFoldersRaw.sortedByDescending(sortFolder)
-        else -> compactFoldersRaw
-    }
+    val effectiveInterSort = resolveEffectiveInterSort(folderSort, sort)
+    val pinnedFolders = sortFolders(
+        folders = folders.filter { it.displaySize.isPinnedToTop },
+        effectiveInterSort = effectiveInterSort,
+        podcastsByFolderId = podcastsByFolderId,
+    )
+    val compactFolders = sortFolders(
+        folders = folders.filter { !it.displaySize.isPinnedToTop },
+        effectiveInterSort = effectiveInterSort,
+        podcastsByFolderId = podcastsByFolderId,
+    )
 
     return PartitionedSubscriptionItems(
         pinnedFolders = pinnedFolders,
@@ -177,6 +203,78 @@ internal fun partitionSubscribedShows(
         unfiledPodcasts = unfiledPodcasts,
         podcastsByFolderId = podcastsByFolderId,
     )
+}
+
+private fun resolveEffectiveIntraSort(
+    intraFolderSort: FolderIntraSort,
+    sort: SubscriptionSort?,
+): FolderIntraSort =
+    if (intraFolderSort == FolderIntraSort.Inherit) {
+        when (sort) {
+            SubscriptionSort.RecentlyUpdated -> FolderIntraSort.RecentlyUpdated
+            SubscriptionSort.Alphabetical -> FolderIntraSort.Alphabetical
+            SubscriptionSort.SmartRank -> FolderIntraSort.SmartRank
+            SubscriptionSort.MostListened -> FolderIntraSort.MostListened
+            SubscriptionSort.Manual -> FolderIntraSort.Manual
+            else -> FolderIntraSort.RecentlyUpdated
+        }
+    } else {
+        intraFolderSort
+    }
+
+private fun sortFolderMembers(
+    allMembers: List<Podcast>,
+    effectiveIntraSort: FolderIntraSort,
+    podcasts: List<Podcast>,
+    folder: SubscriptionFolder,
+): List<Podcast> =
+    when (effectiveIntraSort) {
+        FolderIntraSort.Alphabetical ->
+            allMembers.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
+        FolderIntraSort.RecentlyUpdated ->
+            allMembers.sortedByDescending { it.latestEpisode?.publishedDate ?: 0L }
+        FolderIntraSort.SmartRank, FolderIntraSort.MostListened -> {
+            val indexMap = podcasts.mapIndexed { index, pod -> pod.id to index }.toMap()
+            allMembers.sortedBy { indexMap[it.id] ?: Int.MAX_VALUE }
+        }
+        FolderIntraSort.Manual -> {
+            val manualMap = folder.podcastIds.mapIndexed { index, id -> id to index }.toMap()
+            allMembers.sortedBy { manualMap[it.id] ?: Int.MAX_VALUE }
+        }
+        FolderIntraSort.Inherit -> allMembers
+    }
+
+private fun resolveEffectiveInterSort(
+    folderSort: FolderInterSort,
+    sort: SubscriptionSort?,
+): FolderInterSort =
+    if (folderSort == FolderInterSort.Inherit) {
+        when (sort) {
+            SubscriptionSort.Alphabetical -> FolderInterSort.Alphabetical
+            SubscriptionSort.RecentlyUpdated -> FolderInterSort.RecentlyUpdated
+            else -> FolderInterSort.RecentlyUpdated
+        }
+    } else {
+        folderSort
+    }
+
+private fun sortFolders(
+    folders: List<SubscriptionFolder>,
+    effectiveInterSort: FolderInterSort,
+    podcastsByFolderId: Map<String, List<Podcast>>,
+): List<SubscriptionFolder> {
+    val sortFolder: (SubscriptionFolder) -> Long = { folder ->
+        podcastsByFolderId[folder.id].orEmpty().maxOfOrNull { it.latestEpisode?.publishedDate ?: 0L } ?: 0L
+    }
+    return when (effectiveInterSort) {
+        FolderInterSort.Alphabetical ->
+            folders.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+        FolderInterSort.RecentlyUpdated ->
+            folders.sortedByDescending(sortFolder)
+        FolderInterSort.MostShows ->
+            folders.sortedByDescending { it.podcastIds.size }
+        else -> folders
+    }
 }
 
 /**

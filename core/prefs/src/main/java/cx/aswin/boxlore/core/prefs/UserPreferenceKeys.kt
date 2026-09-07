@@ -20,6 +20,8 @@ internal object Keys {
     val HAS_DISMISSED_EXPLORE_REGION_NUDGE = androidx.datastore.preferences.core.booleanPreferencesKey("has_dismissed_explore_region_nudge")
     val WAS_INITIAL_REGION_MATCH = androidx.datastore.preferences.core.booleanPreferencesKey("was_initial_region_match")
     val SUBSCRIPTION_SORT = stringPreferencesKey("subscription_sort")
+    val SUBSCRIPTION_FOLDER_SORT = stringPreferencesKey("subscription_folder_sort")
+    val SUBSCRIPTION_INTRA_FOLDER_SORT = stringPreferencesKey("subscription_intra_folder_sort")
     val SUBSCRIPTION_MANUAL_ORDER = stringPreferencesKey("subscription_manual_order")
     val HOME_PINNED_PODCAST_IDS = stringPreferencesKey("home_pinned_podcast_ids")
     val LEGACY_RSS_REPAIR_VERSION =
