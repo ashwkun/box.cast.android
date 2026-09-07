@@ -146,6 +146,18 @@ internal fun Compact1x1FolderCard(
                 NewEpisodeBadge()
             }
         }
+
+        if (folder.effectiveShowPodcastGrid) {
+            CompactFolderTitlePill(
+                folder = folder,
+                onFolderClick = actions.onFolderClick,
+                onFolderLongClick = actions.onFolderLongClick,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = 8.dp)
+                    .zIndex(5f),
+            )
+        }
     }
 }
 
@@ -278,13 +290,6 @@ private fun CompactPodcastGridContent(
                 }
             }
         }
-
-        CompactFolderTitlePill(
-            folder = folder,
-            onFolderClick = actions.onFolderClick,
-            onFolderLongClick = actions.onFolderLongClick,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
     }
 }
 
@@ -328,8 +333,8 @@ private fun CompactFolderTitlePill(
             width = 0.75.dp,
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
         ),
-        shadowElevation = 2.dp,
-        modifier = modifier.padding(bottom = 1.dp),
+        shadowElevation = 3.dp,
+        modifier = modifier,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
