@@ -62,6 +62,7 @@ import cx.aswin.boxlore.core.designsystem.component.navigationStyleUsesExternalS
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.Podcast
+import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.core.prefs.SubscriptionsTabStyle
 import cx.aswin.boxlore.feature.library.subscriptions.ExpressiveTabSwitcher
 import cx.aswin.boxlore.feature.library.subscriptions.LatestSortMenuItems
@@ -108,6 +109,7 @@ fun SubscriptionsScreen(
         val hideCompletedInSubs by viewModel.hideCompletedInSubs.collectAsStateWithLifecycle()
         val pinnedPodcastIds by viewModel.pinnedPodcastIds.collectAsStateWithLifecycle()
         val autoOrganizeFolders by viewModel.autoOrganizeFolders.collectAsStateWithLifecycle()
+        val folders by viewModel.folders.collectAsStateWithLifecycle()
         val subscriptionsTabStyle by viewModel.subscriptionsTabStyle.collectAsStateWithLifecycle()
         var showSortMenu by remember { mutableStateOf(false) }
         var showFolderEditSheet by remember { mutableStateOf(false) }
@@ -376,6 +378,7 @@ fun SubscriptionsScreen(
                                 when (page) {
                                     0 -> ShowsTabContent(
                                         podcasts = podcasts,
+                                        folders = folders,
                                         isGridView = isGridView,
                                         canReorder = searchQuery.isBlank(),
                                         pinnedPodcastIds = pinnedPodcastIds,
@@ -386,7 +389,16 @@ fun SubscriptionsScreen(
                                                 onPodcastClick(it)
                                             },
                                             onReorder = viewModel::reorderSubscriptions,
-                                            onNewFolderClick = { showFolderEditSheet = true },
+                                            onNewFolderClick = {
+                                                editingFolder = null
+                                                showFolderEditSheet = true
+                                            },
+                                            onFolderClick = { folderId ->
+                                                editingFolder = folders.find { it.id == folderId }
+                                            },
+                                            onFolderLongClick = { folder ->
+                                                editingFolder = folder
+                                            },
                                         ),
                                     )
                                     1 -> {
