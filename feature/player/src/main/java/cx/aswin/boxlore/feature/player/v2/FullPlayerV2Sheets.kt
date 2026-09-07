@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cx.aswin.boxlore.core.designsystem.components.RemoveDownloadConfirmationDialog
 import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.playback.PlaybackRepository
@@ -26,6 +27,7 @@ import cx.aswin.boxlore.core.playback.skipForward
 import cx.aswin.boxlore.feature.player.FullscreenTranscriptScreen
 import cx.aswin.boxlore.feature.player.v2.logic.ResponsiveHeroLayout
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun FullPlayerFullscreenOverlays(
@@ -149,6 +151,18 @@ internal fun FullPlayerModalSheets(
     }
     if (ui.showShareSheet) {
         PlayerShareSheet(model, ui, resources.context)
+    }
+    if (ui.showRemoveDownloadDialog) {
+        RemoveDownloadConfirmationDialog(
+            episodeTitle = model.episode.title,
+            onConfirm = {
+                ui.showRemoveDownloadDialog = false
+                resources.scope.launch {
+                    dependencies.downloadRepository.removeDownload(model.episode.id)
+                }
+            },
+            onDismiss = { ui.showRemoveDownloadDialog = false },
+        )
     }
 }
 

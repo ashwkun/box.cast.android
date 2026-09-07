@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import cx.aswin.boxlore.core.database.DownloadedEpisodeEntity
+import cx.aswin.boxlore.core.designsystem.components.RemoveDownloadConfirmationDialog
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.designsystem.theme.expressiveClickable
 import cx.aswin.boxlore.core.model.Episode
@@ -633,7 +634,7 @@ fun DownloadedShowEpisodesScreen(
                                                             text = { Text("Remove Download") },
                                                             onClick = {
                                                                 showMenu = false
-                                                                viewModel.removeDownload(download.episodeId)
+                                                                swipeToDeleteEpisode = download
                                                             },
                                                             leadingIcon = {
                                                                 Icon(Icons.Rounded.DeleteOutline, contentDescription = null, tint = MaterialTheme.colorScheme.error)
@@ -652,30 +653,18 @@ fun DownloadedShowEpisodesScreen(
             }
         }
 
-        // Dialog for swipe-to-delete confirmation
+        // Dialog for delete confirmation (swipe or 3-dots menu)
         if (swipeToDeleteEpisode != null) {
             val episode = swipeToDeleteEpisode!!
-            AlertDialog(
-                onDismissRequest = {
+            RemoveDownloadConfirmationDialog(
+                episodeTitle = episode.episodeTitle,
+                onConfirm = {
+                    viewModel.removeDownload(episode.episodeId)
                     swipeToDeleteEpisode = null
                 },
-                title = { Text("Delete Download?") },
-                text = { Text("Remove downloaded episode '${episode.episodeTitle}'?") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        viewModel.removeDownload(episode.episodeId)
-                        swipeToDeleteEpisode = null
-                    }) {
-                        Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = GoogleSansWeight.bold)
-                    }
+                onDismiss = {
+                    swipeToDeleteEpisode = null
                 },
-                dismissButton = {
-                    TextButton(onClick = {
-                        swipeToDeleteEpisode = null
-                    }) {
-                        Text("Cancel")
-                    }
-                }
             )
         }
 

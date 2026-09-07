@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cx.aswin.boxlore.core.designsystem.components.BoxLoreLoader
+import cx.aswin.boxlore.core.designsystem.components.RemoveDownloadConfirmationDialog
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.designsystem.theme.TrackScreenSession
 import cx.aswin.boxlore.core.model.Episode
@@ -117,6 +118,7 @@ fun PodcastInfoScreen(
     val queuedEpisodeIds by viewModel.queuedEpisodeIds.collectAsState()
     val downloadedEpisodeIds by viewModel.downloadedEpisodeIds.collectAsState()
     val downloadingEpisodeIds by viewModel.downloadingEpisodeIds.collectAsState()
+    val episodePendingDownloadRemoval by viewModel.episodePendingDownloadRemoval.collectAsState()
     val hideCompleted by viewModel.hideCompletedInShowDetails.collectAsState()
     val isPinnedToHome by viewModel.isPinnedToHome.collectAsState()
     val globalSkipBeginningMs by viewModel.globalSkipBeginningMs.collectAsState()
@@ -963,5 +965,13 @@ fun PodcastInfoScreen(
             onDismissUnplayed = { showMarkAllUnplayedDialog = false },
             viewModel = viewModel,
         )
+
+        if (episodePendingDownloadRemoval != null) {
+            RemoveDownloadConfirmationDialog(
+                episodeTitle = episodePendingDownloadRemoval?.title,
+                onConfirm = viewModel::confirmDownloadRemoval,
+                onDismiss = viewModel::dismissDownloadRemoval,
+            )
+        }
     }
 }

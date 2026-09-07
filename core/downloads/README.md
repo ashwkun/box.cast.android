@@ -15,6 +15,7 @@ Owns offline download orchestration: Media3 offline cache access, download datab
 - `SmartDownloadWorker`, `AutoDownloadWorker`, and `PurgeSmartDownloadsWorker` perform background download work. `AutoDownloadWorker` reconciles stale states, invokes background-safe direct enqueueing, and suspends on download completion.
 - `DownloadsDependencies` and `DownloadsDependenciesHolder` expose application-scoped download dependencies to workers.
 - `DownloadSpeedLimiter`, `ThrottlingDataSource`, and `SmartDownloadCandidateLogic` support download I/O and candidate filtering (excluding shows with auto-download enabled from mixtape candidate pools to avoid work duplication).
+- `DownloadTogglePolicy` resolves the deterministic action (`CONFIRM_REMOVAL`, `CANCEL_DOWNLOAD`, or `START_DOWNLOAD`) when toggling episode downloads across surfaces, ensuring downloaded media requires explicit confirmation before removal.
 - `ports.DownloadServiceLauncher` and `DownloadServiceLauncherHolder` let `:app` provide the Media3 service class without a downloads-to-playback Gradle edge.
 
 ## Internal structure
@@ -27,6 +28,7 @@ src/main/java/cx/aswin/boxlore/core/
     DownloadRepository.kt
     DownloadsDependencies.kt
     DownloadSpeedLimiter.kt
+    DownloadTogglePolicy.kt
     PurgeSmartDownloadsWorker.kt
     SmartDownloadCandidateLogic.kt
     SmartDownloadManager.kt
