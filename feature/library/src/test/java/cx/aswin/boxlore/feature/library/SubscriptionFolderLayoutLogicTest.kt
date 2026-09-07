@@ -703,4 +703,10 @@ class SubscriptionFolderLayoutLogicTest {
         val unifiedOrder = partition.folders.map { it.id }
         assertEquals(listOf("compact-1", "compact-2", "compact-3", "shelf-1", "shelf-2"), unifiedOrder)
     }
+
+    @Test
+    fun `smart sort label is unified across folder inter and intra sort enums`() {
+        assertEquals("Smart Sort", FolderInterSort.SmartRank.label)
+        assertEquals("Smart Sort", FolderIntraSort.SmartRank.label)
+    }
 }

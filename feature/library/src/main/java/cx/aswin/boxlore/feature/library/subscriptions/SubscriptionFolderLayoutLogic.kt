@@ -23,7 +23,7 @@ enum class FolderInterSort(val label: String) {
  */
 enum class FolderIntraSort(val label: String) {
     Inherit("Follow Shows"),
-    SmartRank("Smart Rank"),
+    SmartRank("Smart Sort"),
     RecentlyUpdated("Recently Updated"),
     Alphabetical("A–Z"),
     MostListened("Most Listened"),

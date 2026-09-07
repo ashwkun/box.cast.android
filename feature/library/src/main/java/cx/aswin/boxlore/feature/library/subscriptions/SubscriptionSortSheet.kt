@@ -1,5 +1,6 @@
 package cx.aswin.boxlore.feature.library.subscriptions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Sort
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
@@ -30,7 +32,6 @@ import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,11 +73,11 @@ internal data class SubscriptionSortActions(
 )
 
 /**
- * Bottom sheet providing granular multi-tier sorting controls for subscriptions:
- * 1. Shows outside folders (individual library podcasts).
- * 2. Folders at the top of the library.
- * 3. Shows inside folders.
- * Also includes an informative tip regarding press-and-hold repositioning.
+ * Bottom sheet providing structured, multi-tier sorting controls for subscriptions:
+ * 1. Automation: Auto-organize into genre folders.
+ * 2. Library Shows: Individual library podcasts outside folders.
+ * 3. Folder Arrangement: Folders relative to each other at the top.
+ * 4. Inside Folders: Shows inside folder cards and dialogs.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -103,48 +104,33 @@ internal fun SubscriptionSortSheet(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp)
                     .navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 SheetHeader(onDismiss = actions.onDismiss)
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                AutoOrganizeRow(
+                AutoOrganizeCard(
                     autoOrganize = config.autoOrganizeFolders,
                     onToggle = actions.onAutoOrganizeFoldersChange,
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ShowsSortSection(
+                ShowsSortCard(
                     currentSort = config.currentSort,
                     onSortChange = actions.onSortChange,
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                FolderSortSection(
+                FolderSortCard(
                     folderSort = config.folderSort,
                     onFolderSortChange = actions.onFolderSortChange,
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                IntraFolderSortSection(
+                IntraFolderSortCard(
                     intraFolderSort = config.intraFolderSort,
                     onIntraFolderSortChange = actions.onIntraFolderSortChange,
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                DragRepositionFootnote()
 
-                DragRepositionTipBanner()
-
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(10.dp))
             }
         }
     }
@@ -183,7 +169,7 @@ private fun SheetHeader(onDismiss: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Organize your shows & folders",
+                    text = "Customize how your shows and folders appear",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -200,175 +186,211 @@ private fun SheetHeader(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun DragRepositionTipBanner() {
+private fun AutoOrganizeCard(
+    autoOrganize: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(14.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier.weight(1f).padding(end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.TouchApp,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(18.dp),
-                )
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Auto-Organize Folders",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = GoogleSansWeight.bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Group shows into genre folders automatically",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 16.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Press & hold to reposition",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = GoogleSansWeight.bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "You can drag and reorder folders at the top, shows outside folders directly in the grid, and shows inside any folder.",
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, lineHeight = 16.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Switch(
+                checked = autoOrganize,
+                onCheckedChange = onToggle,
+            )
         }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ShowsSortSection(
+private fun ShowsSortCard(
     currentSort: SubscriptionSort,
     onSortChange: (SubscriptionSort) -> Unit,
 ) {
-    SectionHeader(
+    SortSectionCard(
         icon = Icons.Rounded.Podcasts,
-        title = "Shows Outside Folders",
-        description = "How individual podcasts in your library grid are sorted",
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        title = "Library Shows",
+        description = "Shows in your main library grid",
     ) {
-        SortChip(
-            label = "Smart Sort",
-            selected = currentSort == SubscriptionSort.SmartRank,
-            onClick = { onSortChange(SubscriptionSort.SmartRank) },
-        )
-        SortChip(
-            label = "Recently Updated",
-            selected = currentSort == SubscriptionSort.RecentlyUpdated,
-            onClick = { onSortChange(SubscriptionSort.RecentlyUpdated) },
-        )
-        SortChip(
-            label = "A–Z",
-            selected = currentSort == SubscriptionSort.Alphabetical,
-            onClick = { onSortChange(SubscriptionSort.Alphabetical) },
-        )
-        SortChip(
-            label = "Most Listened",
-            selected = currentSort == SubscriptionSort.MostListened,
-            onClick = { onSortChange(SubscriptionSort.MostListened) },
-        )
-        SortChip(
-            label = "Manual",
-            selected = currentSort == SubscriptionSort.Manual,
-            onClick = { onSortChange(SubscriptionSort.Manual) },
-        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            SortChip(
+                label = "Smart Sort",
+                selected = currentSort == SubscriptionSort.SmartRank,
+                onClick = { onSortChange(SubscriptionSort.SmartRank) },
+            )
+            SortChip(
+                label = "Recently Updated",
+                selected = currentSort == SubscriptionSort.RecentlyUpdated,
+                onClick = { onSortChange(SubscriptionSort.RecentlyUpdated) },
+            )
+            SortChip(
+                label = "A–Z",
+                selected = currentSort == SubscriptionSort.Alphabetical,
+                onClick = { onSortChange(SubscriptionSort.Alphabetical) },
+            )
+            SortChip(
+                label = "Most Listened",
+                selected = currentSort == SubscriptionSort.MostListened,
+                onClick = { onSortChange(SubscriptionSort.MostListened) },
+            )
+            SortChip(
+                label = "Manual",
+                selected = currentSort == SubscriptionSort.Manual,
+                onClick = { onSortChange(SubscriptionSort.Manual) },
+            )
+        }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FolderSortSection(
+private fun FolderSortCard(
     folderSort: FolderInterSort,
     onFolderSortChange: (FolderInterSort) -> Unit,
 ) {
-    SectionHeader(
+    SortSectionCard(
         icon = Icons.Rounded.Folder,
-        title = "Folders",
+        title = "Folder Arrangement",
         description = "How folders are ordered relative to each other",
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        FolderInterSort.entries.forEach { option ->
-            SortChip(
-                label = option.label,
-                selected = folderSort == option,
-                onClick = { onFolderSortChange(option) },
-            )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            FolderInterSort.entries.forEach { option ->
+                SortChip(
+                    label = option.label,
+                    selected = folderSort == option,
+                    onClick = { onFolderSortChange(option) },
+                )
+            }
         }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun IntraFolderSortSection(
+private fun IntraFolderSortCard(
     intraFolderSort: FolderIntraSort,
     onIntraFolderSortChange: (FolderIntraSort) -> Unit,
 ) {
-    SectionHeader(
+    SortSectionCard(
         icon = Icons.Rounded.FolderOpen,
-        title = "Shows Inside Folders",
-        description = "How shows appear inside cards and when opening a folder",
-    )
-    Spacer(modifier = Modifier.height(8.dp))
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        title = "Inside Folders",
+        description = "Order of shows within folder cards and sheets",
     ) {
-        FolderIntraSort.entries.forEach { option ->
-            SortChip(
-                label = option.label,
-                selected = intraFolderSort == option,
-                onClick = { onIntraFolderSortChange(option) },
-            )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            FolderIntraSort.entries.forEach { option ->
+                SortChip(
+                    label = option.label,
+                    selected = intraFolderSort == option,
+                    onClick = { onIntraFolderSortChange(option) },
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun SectionHeader(
+private fun SortSectionCard(
     icon: ImageVector,
     title: String,
     description: String,
+    content: @Composable () -> Unit,
 ) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp),
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = GoogleSansWeight.bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = GoogleSansWeight.bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            content()
         }
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = description,
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -415,31 +437,29 @@ private fun SortChip(
 }
 
 @Composable
-private fun AutoOrganizeRow(
-    autoOrganize: Boolean,
-    onToggle: (Boolean) -> Unit,
-) {
-    Row(
+private fun DragRepositionFootnote() {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(
-                text = "Auto-organize into folders",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = GoogleSansWeight.medium,
-                color = MaterialTheme.colorScheme.onSurface,
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.TouchApp,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
             )
             Text(
-                text = "Automatically create and group existing shows into genre folders now, and organize new subscriptions going forward.",
-                style = MaterialTheme.typography.bodySmall,
+                text = "Tip: Long-press any show or folder on the grid or in a folder to drag and reorder manually.",
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, lineHeight = 16.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Switch(
-            checked = autoOrganize,
-            onCheckedChange = onToggle,
-        )
     }
 }
