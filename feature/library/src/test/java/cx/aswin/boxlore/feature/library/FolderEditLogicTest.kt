@@ -61,6 +61,11 @@ class FolderEditLogicTest {
             return folder
         }
 
+        override suspend fun restoreFolder(folder: SubscriptionFolder): SubscriptionFolder {
+            _folders.update { list -> list.filter { it.id != folder.id } + folder }
+            return folder
+        }
+
         override suspend fun updateFolder(folder: SubscriptionFolder) {
             _folders.update { list ->
                 list.map { if (it.id == folder.id) folder else it }

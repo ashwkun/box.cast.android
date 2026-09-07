@@ -230,6 +230,8 @@ class SubscriptionRepository(
                 linkedPodcastIndexId =
                 existing?.linkedPodcastIndexId
                     ?: podcast.linkedPodcastIndexId,
+                customGenre = existing?.customGenre ?: podcast.customGenre,
+                customGenreIcon = existing?.customGenreIcon ?: podcast.customGenreIcon,
             )
         podcastDao.upsert(entity)
         localEpisodeCatalog?.setUnsubscribedTtl(podcast.id, null)

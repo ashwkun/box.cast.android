@@ -21,6 +21,8 @@ interface FolderRepository {
         podcastIds: List<String> = emptyList(),
     ): SubscriptionFolder
 
+    suspend fun restoreFolder(folder: SubscriptionFolder): SubscriptionFolder
+
     suspend fun updateFolder(folder: SubscriptionFolder)
     suspend fun deleteFolder(folderId: String)
     suspend fun addPodcastToFolder(podcastId: String, folderId: String)

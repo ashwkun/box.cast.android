@@ -7,6 +7,7 @@ import cx.aswin.boxlore.core.catalog.BuildConfig
 import cx.aswin.boxlore.core.catalog.ExactPodcastLookupKey
 import cx.aswin.boxlore.core.catalog.ExactPodcastLookupResult
 import cx.aswin.boxlore.core.catalog.ExactPodcastLookupType
+import cx.aswin.boxlore.core.catalog.FolderRepository
 import cx.aswin.boxlore.core.catalog.LOCAL_CATALOG_WINDOW_BOUND
 import cx.aswin.boxlore.core.catalog.PodcastIndexSearchResult
 import cx.aswin.boxlore.core.catalog.PodcastRepository
@@ -41,7 +42,11 @@ data class GlobalPreferencesBackup(
     val navigationStyle: String? = null,
     val openAppTo: String? = null,
     val subscriptionSort: String? = null,
+    val subscriptionFolderSort: String? = null,
+    val subscriptionIntraFolderSort: String? = null,
     val subscriptionManualOrder: List<String>? = null,
+    val subscriptionFolderManualOrder: List<String>? = null,
+    val autoOrganizeFolders: Boolean? = null,
     val homePinnedPodcastIds: List<String>? = null,
     val latestEpisodesSortUseSmart: Boolean? = null,
     val skipBehavior: String? = null,
@@ -72,12 +77,13 @@ data class GlobalPreferencesBackup(
 )
 
 data class BoxLoreBackup(
-    val version: Int = 5,
+    val version: Int = LibraryBackupDirectFeedLogic.VERSION,
     val subscriptions: List<PodcastEntity>,
     val history: List<ListeningHistoryEntity>,
     val globalPreferences: GlobalPreferencesBackup? = null,
     val adaptiveRanking: AdaptiveRankingBackup? = null,
     val directFeedOptIns: List<DirectFeedOptInBackup>? = null,
+    val folders: List<SubscriptionFolderBackup>? = null,
 )
 
 data class OpmlFeed(val title: String, val xmlUrl: String,)
@@ -94,6 +100,7 @@ class LibraryBackupManager(
     private val rssPodcastRepository: RssPodcastRepository =
         SharedAppDependenciesHolder.require().rssPodcastRepository,
     private val episodeSupplementPort: EpisodeSupplementPort? = null,
+    private val folderRepository: FolderRepository? = null,
 ) {
     private val context = context.applicationContext
     private val rssFeedClient = RssFeedClient()
@@ -119,7 +126,11 @@ class LibraryBackupManager(
                     navigationStyle = userPrefs.navigationStyleStream.first(),
                     openAppTo = userPrefs.openAppToStream.first(),
                     subscriptionSort = userPrefs.subscriptionSortStream.first(),
+                    subscriptionFolderSort = userPrefs.subscriptionFolderSortStream.first(),
+                    subscriptionIntraFolderSort = userPrefs.subscriptionIntraFolderSortStream.first(),
                     subscriptionManualOrder = userPrefs.subscriptionManualOrderStream.first(),
+                    subscriptionFolderManualOrder = userPrefs.subscriptionFolderManualOrderStream.first(),
+                    autoOrganizeFolders = userPrefs.autoOrganizeFoldersStream.first(),
                     homePinnedPodcastIds = userPrefs.homePinnedPodcastIdsStream.first(),
                     latestEpisodesSortUseSmart = userPrefs.latestEpisodesSortUseSmartStream.first(),
                     skipBehavior = userPrefs.skipBehaviorStream.first(),
@@ -153,6 +164,8 @@ class LibraryBackupManager(
             }
 
         val rankingBackup = adaptiveRankingRepository.exportBackup()
+        val folderRepo = folderRepository ?: SharedAppDependenciesHolder.instance?.folderRepository
+        val exportedFolders = folderRepo?.getFolders()?.map(LibraryBackupFolderLogic::toBackup).orEmpty()
         val backup =
             BoxLoreBackup(
                 version = LibraryBackupDirectFeedLogic.VERSION,
@@ -161,6 +174,7 @@ class LibraryBackupManager(
                 globalPreferences = globalPrefs,
                 adaptiveRanking = rankingBackup,
                 directFeedOptIns = null,
+                folders = exportedFolders,
             )
         return gson.toJson(backup)
     }
@@ -211,6 +225,11 @@ class LibraryBackupManager(
         for (entity in backup.subscriptions) {
             importBackupSubscription(entity, backup)?.let { importedIds += it }
         }
+        val folderRepo = folderRepository ?: SharedAppDependenciesHolder.instance?.folderRepository
+        if (folderRepo != null) {
+            LibraryBackupFolderLogic.restoreFolders(backup.folders, folderRepo)
+            folderRepo.syncLinkedGenres()
+        }
         restoreImportedHistory(backup.history, importedIds)
         backup.adaptiveRanking?.let { rankingBackup ->
             adaptiveRankingRepository.restoreBackup(rankingBackup)
@@ -253,7 +272,11 @@ class LibraryBackupManager(
         prefs.navigationStyle.writePref { up.setNavigationStyle(it) }
         prefs.openAppTo.writePref { up.setOpenAppTo(it) }
         prefs.subscriptionSort.writePref { up.setSubscriptionSort(it) }
+        prefs.subscriptionFolderSort.writePref { up.setSubscriptionFolderSort(it) }
+        prefs.subscriptionIntraFolderSort.writePref { up.setSubscriptionIntraFolderSort(it) }
         prefs.subscriptionManualOrder.writePref { up.setSubscriptionManualOrder(it) }
+        prefs.subscriptionFolderManualOrder.writePref { up.setSubscriptionFolderManualOrder(it) }
+        prefs.autoOrganizeFolders.writePref { up.setAutoOrganizeFolders(it) }
         prefs.homePinnedPodcastIds.writePref { up.setHomePinnedPodcastIds(it) }
         prefs.latestEpisodesSortUseSmart.writePref { up.setLatestEpisodesSortUseSmart(it) }
         prefs.skipBehavior.writePref { up.setSkipBehavior(it) }
@@ -340,6 +363,8 @@ class LibraryBackupManager(
                 linkedPodcastIndexId = entity.linkedPodcastIndexId,
                 skipBeginningOverrideMs = entity.skipBeginningOverrideMs,
                 skipEndingOverrideMs = entity.skipEndingOverrideMs,
+                customGenre = entity.customGenre,
+                customGenreIcon = entity.customGenreIcon,
             )
         subscriptionRepository.restoreSubscription(
             podcast = subscribedRssPodcast,
@@ -382,6 +407,8 @@ class LibraryBackupManager(
                 rssCatalogStale = entity.rssCatalogStale,
                 rssHasNewEpisodes = entity.rssHasNewEpisodes,
                 linkedPodcastIndexId = entity.linkedPodcastIndexId,
+                customGenre = entity.customGenre,
+                customGenreIcon = entity.customGenreIcon,
             )
         subscriptionRepository.restoreSubscription(
             podcast = podcast,
@@ -406,6 +433,13 @@ class LibraryBackupManager(
                 podcast.id,
                 entity.skipBeginningOverrideMs,
                 entity.skipEndingOverrideMs,
+            )
+        }
+        if (entity.customGenre != null || entity.customGenreIcon != null) {
+            subscriptionRepository.updateCustomGenre(
+                podcast.id,
+                entity.customGenre,
+                entity.customGenreIcon,
             )
         }
     }
