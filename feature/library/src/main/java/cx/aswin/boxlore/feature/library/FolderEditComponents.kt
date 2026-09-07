@@ -190,14 +190,14 @@ internal fun FolderIdentityHeader(
         leadingIcon = {
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.size(34.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = GenreIcons.folderIconOrFallback(iconKey),
                         contentDescription = "Folder icon",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(20.dp),
                     )
                 }
