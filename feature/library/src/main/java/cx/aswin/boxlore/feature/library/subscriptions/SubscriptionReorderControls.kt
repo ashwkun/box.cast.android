@@ -5,7 +5,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,22 +15,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.Reorder
+import androidx.compose.material.icons.rounded.Subscriptions
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /**
@@ -37,13 +46,45 @@ import androidx.compose.ui.unit.dp
 sealed interface ReorderMode {
     data object Inactive : ReorderMode
     data object Folders : ReorderMode
-    data class FolderShows(val folderId: String) : ReorderMode
+    data class FolderShows(val folderId: String, val folderName: String = "") : ReorderMode
     data object RootShows : ReorderMode
 }
 
+internal data class ReorderBarContent(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+)
+
+internal fun resolveReorderBarContent(reorderMode: ReorderMode): ReorderBarContent = when (reorderMode) {
+    ReorderMode.Folders -> ReorderBarContent(
+        title = "Reordering: Folders",
+        subtitle = "Drag to arrange • Switches to manual sort",
+        icon = Icons.Rounded.Folder,
+    )
+    is ReorderMode.FolderShows -> {
+        val name = reorderMode.folderName.takeIf { it.isNotBlank() } ?: "Folder"
+        ReorderBarContent(
+            title = "Reordering: $name",
+            subtitle = "Drag to arrange • Switches to folder manual sort",
+            icon = Icons.Rounded.FolderOpen,
+        )
+    }
+    ReorderMode.RootShows -> ReorderBarContent(
+        title = "Reordering: Shows",
+        subtitle = "Drag to arrange • Switches to manual sort",
+        icon = Icons.Rounded.Subscriptions,
+    )
+    ReorderMode.Inactive -> ReorderBarContent(
+        title = "",
+        subtitle = "",
+        icon = Icons.Rounded.Reorder,
+    )
+}
+
 /**
- * Floating bar displayed during active [ReorderMode], providing a notice that sort will switch
- * to manual, along with floating Save and Cancel action buttons.
+ * Floating bar displayed during active [ReorderMode], providing a notice of what is being
+ * reordered and that sort will switch to manual, along with floating Save and Cancel action buttons.
  */
 @Composable
 internal fun SubscriptionReorderBar(
@@ -58,18 +99,14 @@ internal fun SubscriptionReorderBar(
         exit = slideOutVertically { it } + fadeOut(),
         modifier = modifier,
     ) {
-        val message = when (reorderMode) {
-            ReorderMode.Folders -> "Your folder sort will be switched to manual"
-            is ReorderMode.FolderShows -> "Your sort inside this folder will be switched to manual"
-            ReorderMode.RootShows -> "Your subscription sort will be switched to manual"
-            ReorderMode.Inactive -> ""
-        }
+        val content = remember(reorderMode) { resolveReorderBarContent(reorderMode) }
 
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
             shadowElevation = 8.dp,
             tonalElevation = 6.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -85,63 +122,88 @@ internal fun SubscriptionReorderBar(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Reorder,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(38.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = content.icon,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Reorder Mode",
-                            style = MaterialTheme.typography.labelMedium,
+                            text = content.title,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = message,
+                            text = content.subtitle,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Cancel Button
-                    IconButton(
-                        onClick = onCancel,
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        modifier = Modifier.size(38.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Close,
-                            contentDescription = "Cancel reordering",
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Save Button
-                    FilledIconButton(
-                        onClick = onSave,
-                        modifier = Modifier.size(38.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Check,
-                            contentDescription = "Save new order",
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
+                ReorderBarActions(
+                    onSave = onSave,
+                    onCancel = onCancel,
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun ReorderBarActions(
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FilledTonalIconButton(
+            onClick = onCancel,
+            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+            modifier = Modifier.size(40.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = "Cancel reordering",
+                modifier = Modifier.size(20.dp),
+            )
+        }
+
+        FilledIconButton(
+            onClick = onSave,
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+            modifier = Modifier.size(40.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = "Save new order",
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
@@ -150,12 +212,14 @@ internal const val ShowsGenreHeaderKey = "shows_genre_header"
 internal val ShowsBlockedReorderKeys = setOf(ShowsGenreHeaderKey)
 
 internal fun isFolderKey(key: String): Boolean =
-    key.startsWith("compact_folder_") ||
+    key.startsWith("folder_") ||
+        key.startsWith("compact_folder_") ||
         key.startsWith("pinned_folder_") ||
         key.startsWith("list_folder_")
 
 internal fun extractFolderId(key: String): String? {
-    val id = key.removePrefix("compact_folder_")
+    val id = key.removePrefix("folder_")
+        .removePrefix("compact_folder_")
         .removePrefix("pinned_folder_")
         .removePrefix("list_folder_")
     return if (id != key) id else null
@@ -258,21 +322,16 @@ internal fun rememberShowsFolderItems(
     folderSort,
 ) {
     if (isFoldersReordering || folderSort == FolderInterSort.Manual) {
-        val pinnedMap = partition.pinnedFolders.associateBy { it.id }
-        val compactMap = partition.compactFolders.associateBy { it.id }
-        val reorderedPinned = orderedFolderKeys.mapNotNull { pinnedMap[it] }
-        val reorderedCompact = orderedFolderKeys.mapNotNull { compactMap[it] }
-        val missingPinned = partition.pinnedFolders.filter { it.id !in orderedFolderKeys }
-        val missingCompact = partition.compactFolders.filter { it.id !in orderedFolderKeys }
+        val folderMap = partition.folders.associateBy { it.id }
+        val reorderedFolders = orderedFolderKeys.mapNotNull { folderMap[it] }
+        val missingFolders = partition.folders.filter { it.id !in orderedFolderKeys }
         ShowsFolderItems(
-            pinnedFolders = reorderedPinned + missingPinned,
-            compactFolders = reorderedCompact + missingCompact,
+            folders = reorderedFolders + missingFolders,
             podcastsByFolderId = partition.podcastsByFolderId,
         )
     } else {
         ShowsFolderItems(
-            pinnedFolders = partition.pinnedFolders,
-            compactFolders = partition.compactFolders,
+            folders = partition.folders,
             podcastsByFolderId = partition.podcastsByFolderId,
         )
     }

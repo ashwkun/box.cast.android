@@ -657,4 +657,50 @@ class SubscriptionFolderLayoutLogicTest {
 
         assertEquals(listOf("pod-m", "pod-z", "pod-a"), resolved.map { it.id })
     }
+
+    @Test
+    fun `partitionSubscribedShows with FolderInterSort Manual allows compact folders to be positioned above shelf folders`() {
+        val podcasts = (1..10).map { mockPodcast(it.toString()) }
+        val shelf1 = SubscriptionFolder(
+            id = "shelf-1",
+            name = "Shelf 1",
+            podcastIds = listOf("1", "2"),
+            displaySize = cx.aswin.boxlore.core.model.FolderDisplaySize.SHELF,
+        )
+        val shelf2 = SubscriptionFolder(
+            id = "shelf-2",
+            name = "Shelf 2",
+            podcastIds = listOf("3", "4"),
+            displaySize = cx.aswin.boxlore.core.model.FolderDisplaySize.SHELF,
+        )
+        val compact1 = SubscriptionFolder(
+            id = "compact-1",
+            name = "Compact 1",
+            podcastIds = listOf("5"),
+            displaySize = cx.aswin.boxlore.core.model.FolderDisplaySize.COMPACT,
+        )
+        val compact2 = SubscriptionFolder(
+            id = "compact-2",
+            name = "Compact 2",
+            podcastIds = listOf("6"),
+            displaySize = cx.aswin.boxlore.core.model.FolderDisplaySize.COMPACT,
+        )
+        val compact3 = SubscriptionFolder(
+            id = "compact-3",
+            name = "Compact 3",
+            podcastIds = listOf("7"),
+            displaySize = cx.aswin.boxlore.core.model.FolderDisplaySize.COMPACT,
+        )
+
+        val partition = partitionSubscribedShows(
+            podcasts = podcasts,
+            folders = listOf(shelf1, shelf2, compact1, compact2, compact3),
+            folderSort = FolderInterSort.Manual,
+            folderManualOrder = listOf("compact-1", "compact-2", "compact-3", "shelf-1", "shelf-2"),
+        )
+
+        // Verifies the user scenario: 3 1x1 compact folders positioned above the 2 3x1 shelf folders
+        val unifiedOrder = partition.folders.map { it.id }
+        assertEquals(listOf("compact-1", "compact-2", "compact-3", "shelf-1", "shelf-2"), unifiedOrder)
+    }
 }

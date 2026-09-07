@@ -49,20 +49,44 @@ internal data class FolderSlots(
  * 3. Unfiled podcasts (podcasts that do not belong to any active folder).
  */
 internal data class PartitionedSubscriptionItems(
-    val pinnedFolders: List<SubscriptionFolder>,
-    val compactFolders: List<SubscriptionFolder>,
+    val folders: List<SubscriptionFolder>,
     val unfiledPodcasts: List<Podcast>,
     val podcastsByFolderId: Map<String, List<Podcast>>,
-)
+) {
+    val pinnedFolders: List<SubscriptionFolder> get() = folders.filter { it.displaySize.isPinnedToTop }
+    val compactFolders: List<SubscriptionFolder> get() = folders.filter { !it.displaySize.isPinnedToTop }
+
+    constructor(
+        pinnedFolders: List<SubscriptionFolder>,
+        compactFolders: List<SubscriptionFolder>,
+        unfiledPodcasts: List<Podcast>,
+        podcastsByFolderId: Map<String, List<Podcast>>,
+    ) : this(
+        folders = pinnedFolders + compactFolders,
+        unfiledPodcasts = unfiledPodcasts,
+        podcastsByFolderId = podcastsByFolderId,
+    )
+}
 
 /**
  * Data bundle for folder items in the subscriptions tab, keeping parameter lists concise.
  */
 internal data class ShowsFolderItems(
-    val pinnedFolders: List<SubscriptionFolder>,
-    val compactFolders: List<SubscriptionFolder>,
+    val folders: List<SubscriptionFolder>,
     val podcastsByFolderId: Map<String, List<Podcast>>,
-)
+) {
+    val pinnedFolders: List<SubscriptionFolder> get() = folders.filter { it.displaySize.isPinnedToTop }
+    val compactFolders: List<SubscriptionFolder> get() = folders.filter { !it.displaySize.isPinnedToTop }
+
+    constructor(
+        pinnedFolders: List<SubscriptionFolder>,
+        compactFolders: List<SubscriptionFolder>,
+        podcastsByFolderId: Map<String, List<Podcast>>,
+    ) : this(
+        folders = pinnedFolders + compactFolders,
+        podcastsByFolderId = podcastsByFolderId,
+    )
+}
 
 /**
  * Unified item representation for the 1×1 slots in the Subscriptions grid,
@@ -196,26 +220,37 @@ internal fun partitionSubscribedShows(
     val unfiledPodcasts = podcasts.filter { it.id !in filedPodcastIds }
 
     val effectiveInterSort = resolveEffectiveInterSort(folderSort, sort)
-    val pinnedFolders = sortFolders(
-        folders = folders.filter { it.displaySize.isPinnedToTop },
-        effectiveInterSort = effectiveInterSort,
-        podcastsByFolderId = podcastsByFolderId,
-        smartRankMap = smartRankMap,
-        totalPodcasts = totalPodcasts,
-        folderManualOrder = folderManualOrder,
-    )
-    val compactFolders = sortFolders(
-        folders = folders.filter { !it.displaySize.isPinnedToTop },
-        effectiveInterSort = effectiveInterSort,
-        podcastsByFolderId = podcastsByFolderId,
-        smartRankMap = smartRankMap,
-        totalPodcasts = totalPodcasts,
-        folderManualOrder = folderManualOrder,
-    )
+    val orderedFolders = if (effectiveInterSort == FolderInterSort.Manual) {
+        sortFolders(
+            folders = folders,
+            effectiveInterSort = effectiveInterSort,
+            podcastsByFolderId = podcastsByFolderId,
+            smartRankMap = smartRankMap,
+            totalPodcasts = totalPodcasts,
+            folderManualOrder = folderManualOrder,
+        )
+    } else {
+        val pinned = sortFolders(
+            folders = folders.filter { it.displaySize.isPinnedToTop },
+            effectiveInterSort = effectiveInterSort,
+            podcastsByFolderId = podcastsByFolderId,
+            smartRankMap = smartRankMap,
+            totalPodcasts = totalPodcasts,
+            folderManualOrder = folderManualOrder,
+        )
+        val compact = sortFolders(
+            folders = folders.filter { !it.displaySize.isPinnedToTop },
+            effectiveInterSort = effectiveInterSort,
+            podcastsByFolderId = podcastsByFolderId,
+            smartRankMap = smartRankMap,
+            totalPodcasts = totalPodcasts,
+            folderManualOrder = folderManualOrder,
+        )
+        pinned + compact
+    }
 
     return PartitionedSubscriptionItems(
-        pinnedFolders = pinnedFolders,
-        compactFolders = compactFolders,
+        folders = orderedFolders,
         unfiledPodcasts = unfiledPodcasts,
         podcastsByFolderId = podcastsByFolderId,
     )

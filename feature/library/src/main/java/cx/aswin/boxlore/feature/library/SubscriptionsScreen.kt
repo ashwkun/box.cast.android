@@ -660,7 +660,7 @@ fun SubscriptionsScreen(
                             moveShowTarget = folder to podcast
                         },
                         onReorderFolderShows = { folder ->
-                            reorderMode = ReorderMode.FolderShows(folder.id)
+                            reorderMode = ReorderMode.FolderShows(folder.id, folder.name)
                         },
                         onUnsubscribePodcast = { podcast ->
                             confirmUnsubscribePodcast = podcast

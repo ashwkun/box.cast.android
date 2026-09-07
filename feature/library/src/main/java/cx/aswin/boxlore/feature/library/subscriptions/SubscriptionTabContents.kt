@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import cx.aswin.boxlore.core.database.ListeningHistoryEntity
 import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.EpisodeStatus
+import cx.aswin.boxlore.core.model.FolderDisplaySize
 import cx.aswin.boxlore.core.model.Podcast
 import cx.aswin.boxlore.core.model.SubscriptionFolder
 import cx.aswin.boxlore.feature.library.ExpressiveSolarSystemEmptyState
@@ -229,59 +230,47 @@ private fun LazyGridScope.folderGridItems(
     reorderableGridState: ReorderableLazyGridState,
     folderActions: FolderCardActions,
 ) {
-    // Pinned full-width enlarged folders (Shelf 3×1, Panel 3×2, Showcase 3×3, etc.)
     items(
-        items = folderItems.pinnedFolders,
-        key = { "pinned_folder_${it.id}" },
-        span = { GridItemSpan(maxLineSpan) },
+        items = folderItems.folders,
+        key = { "folder_${it.id}" },
+        span = { folder ->
+            if (folder.displaySize == FolderDisplaySize.COMPACT) {
+                GridItemSpan(1)
+            } else {
+                GridItemSpan(maxLineSpan)
+            }
+        },
     ) { folder ->
         val folderShows = folderItems.podcastsByFolderId[folder.id].orEmpty()
         ReorderableItem(
             reorderableGridState,
-            key = "pinned_folder_${folder.id}",
+            key = "folder_${folder.id}",
             enabled = gridConfig.isFoldersReordering,
         ) { isDragging ->
-            PinnedEnlargedFolderCard(
-                folder = folder,
-                podcasts = folderShows,
-                actions = folderActions,
-                isDragging = isDragging,
-                dragModifier =
-                if (gridConfig.isFoldersReordering) {
-                    Modifier.longPressDraggableHandle()
-                } else {
-                    Modifier
-                },
-                isReordering = gridConfig.isFoldersReordering,
-            )
-        }
-    }
-
-    // Compact 1×1 folders (pinned on top in the folders section)
-    items(
-        items = folderItems.compactFolders,
-        key = { "compact_folder_${it.id}" },
-        span = { GridItemSpan(1) },
-    ) { folder ->
-        val folderShows = folderItems.podcastsByFolderId[folder.id].orEmpty()
-        ReorderableItem(
-            reorderableGridState,
-            key = "compact_folder_${folder.id}",
-            enabled = gridConfig.isFoldersReordering,
-        ) { isDragging ->
-            Compact1x1FolderCard(
-                folder = folder,
-                podcasts = folderShows,
-                actions = folderActions,
-                isDragging = isDragging,
-                dragModifier =
-                if (gridConfig.isFoldersReordering) {
-                    Modifier.longPressDraggableHandle()
-                } else {
-                    Modifier
-                },
-                isReordering = gridConfig.isFoldersReordering,
-            )
+            val dragModifier = if (gridConfig.isFoldersReordering) {
+                Modifier.longPressDraggableHandle()
+            } else {
+                Modifier
+            }
+            if (folder.displaySize == FolderDisplaySize.COMPACT) {
+                Compact1x1FolderCard(
+                    folder = folder,
+                    podcasts = folderShows,
+                    actions = folderActions,
+                    isDragging = isDragging,
+                    dragModifier = dragModifier,
+                    isReordering = gridConfig.isFoldersReordering,
+                )
+            } else {
+                PinnedEnlargedFolderCard(
+                    folder = folder,
+                    podcasts = folderShows,
+                    actions = folderActions,
+                    isDragging = isDragging,
+                    dragModifier = dragModifier,
+                    isReordering = gridConfig.isFoldersReordering,
+                )
+            }
         }
     }
 }
@@ -405,7 +394,7 @@ private fun ShowsReorderableList(
             }
         }
         items(
-            items = folderItems.pinnedFolders + folderItems.compactFolders,
+            items = folderItems.folders,
             key = { "list_folder_${it.id}" },
         ) { folder ->
             val folderShows = folderItems.podcastsByFolderId[folder.id].orEmpty()

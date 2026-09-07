@@ -271,7 +271,7 @@ private fun FolderDialogGrid(
 
         if (isReorderMode) {
             SubscriptionReorderBar(
-                reorderMode = ReorderMode.FolderShows(folder.id),
+                reorderMode = ReorderMode.FolderShows(folder.id, folder.name),
                 onSave = { actions.onSaveReorder(localPodcasts.map { it.id }) },
                 onCancel = actions.onCancelReorder,
             )

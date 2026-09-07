@@ -60,6 +60,7 @@ class SubscriptionReorderControlsTest {
 
     @Test
     fun `isFolderKey detects all folder prefixes`() {
+        assertTrue(isFolderKey("folder_f0"))
         assertTrue(isFolderKey("compact_folder_f1"))
         assertTrue(isFolderKey("pinned_folder_f2"))
         assertTrue(isFolderKey("list_folder_f3"))
@@ -69,6 +70,7 @@ class SubscriptionReorderControlsTest {
 
     @Test
     fun `extractFolderId extracts id correctly from key`() {
+        assertEquals("f0", extractFolderId("folder_f0"))
         assertEquals("f1", extractFolderId("compact_folder_f1"))
         assertEquals("f2", extractFolderId("pinned_folder_f2"))
         assertEquals("f3", extractFolderId("list_folder_f3"))
@@ -78,9 +80,25 @@ class SubscriptionReorderControlsTest {
     @Test
     fun `isReorderablePodcastKey filters out folders and genre header`() {
         assertTrue(isReorderablePodcastKey("pod-123"))
+        assertFalse(isReorderablePodcastKey("folder_f0"))
         assertFalse(isReorderablePodcastKey("compact_folder_f1"))
         assertFalse(isReorderablePodcastKey("pinned_folder_f2"))
         assertFalse(isReorderablePodcastKey("list_folder_f3"))
         assertFalse(isReorderablePodcastKey(ShowsGenreHeaderKey))
+    }
+
+    @Test
+    fun `resolveReorderBarContent produces expressive title with folder name`() {
+        val folderContent = resolveReorderBarContent(ReorderMode.Folders)
+        assertEquals("Reordering: Folders", folderContent.title)
+
+        val namedFolderShows = resolveReorderBarContent(ReorderMode.FolderShows("f1", "Tech News"))
+        assertEquals("Reordering: Tech News", namedFolderShows.title)
+
+        val unnamedFolderShows = resolveReorderBarContent(ReorderMode.FolderShows("f1", ""))
+        assertEquals("Reordering: Folder", unnamedFolderShows.title)
+
+        val rootShowsContent = resolveReorderBarContent(ReorderMode.RootShows)
+        assertEquals("Reordering: Shows", rootShowsContent.title)
     }
 }
