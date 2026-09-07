@@ -65,7 +65,12 @@ internal fun PinnedEnlargedFolderCard(
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = { onFolderClick(folder.id) },
+                onLongClick = { onFolderLongClick(folder) },
+            ),
     ) {
         Column(
             modifier = Modifier
@@ -183,7 +188,12 @@ private fun FolderCoversGrid(
                             modifier = Modifier.weight(1f),
                         )
                     } else {
-                        Spacer(modifier = Modifier.weight(1f))
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                                .clickable(onClick = onOverflowClick),
+                        )
                     }
                 }
             }
@@ -423,11 +433,13 @@ private fun CompactPodcastGridContent(
                 MiniPodcastSlot(
                     podcast = podcasts.getOrNull(0),
                     onClick = onPodcastClick,
+                    onEmptyClick = { onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
                 MiniPodcastSlot(
                     podcast = podcasts.getOrNull(1),
                     onClick = onPodcastClick,
+                    onEmptyClick = { onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -440,6 +452,7 @@ private fun CompactPodcastGridContent(
                 MiniPodcastSlot(
                     podcast = podcasts.getOrNull(2),
                     onClick = onPodcastClick,
+                    onEmptyClick = { onFolderClick(folder.id) },
                     modifier = Modifier.weight(1f),
                 )
                 if (podcasts.size > 4) {
@@ -463,6 +476,7 @@ private fun CompactPodcastGridContent(
                     MiniPodcastSlot(
                         podcast = podcasts.getOrNull(3),
                         onClick = onPodcastClick,
+                        onEmptyClick = { onFolderClick(folder.id) },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -475,6 +489,7 @@ private fun CompactPodcastGridContent(
 private fun MiniPodcastSlot(
     podcast: Podcast?,
     onClick: (String) -> Unit,
+    onEmptyClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val miniShape = RoundedCornerShape(6.dp)
@@ -499,7 +514,8 @@ private fun MiniPodcastSlot(
             modifier = modifier
                 .fillMaxSize()
                 .clip(miniShape)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f)),
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
+                .clickable(onClick = onEmptyClick),
         )
     }
 }
