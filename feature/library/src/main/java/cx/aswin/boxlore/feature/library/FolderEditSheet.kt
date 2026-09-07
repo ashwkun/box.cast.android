@@ -361,8 +361,6 @@ internal fun FolderEditSheetContent(
                     linkedGenre = state.effectiveLinkedGenre ?: state.nameText.trim(),
                     suggestedGenres = state.suggestedGenres,
                     onSelectLinkedGenre = actions.onSelectLinkedGenre,
-                    autoOrganize = state.isAutoOrganizeEnabled,
-                    onAutoOrganizeChange = actions.onAutoOrganizeChange,
                 ),
             )
 

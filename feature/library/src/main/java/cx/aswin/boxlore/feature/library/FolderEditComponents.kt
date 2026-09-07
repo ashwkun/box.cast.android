@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Folder
@@ -27,7 +26,6 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +39,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -69,8 +66,6 @@ internal data class FolderOrganizationState(
     val linkedGenre: String,
     val suggestedGenres: List<String> = emptyList(),
     val onSelectLinkedGenre: ((String) -> Unit)? = null,
-    val autoOrganize: Boolean = false,
-    val onAutoOrganizeChange: ((Boolean) -> Unit)? = null,
 )
 
 @Composable
@@ -720,18 +715,10 @@ internal fun FolderOrganizationCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            OrganizationSwitchRow(
-                icon = Icons.Rounded.Sync,
-                iconContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
-                title = "Auto-sync with genre",
-                subtitle = if (state.autoSync && state.linkedGenre.isNotBlank()) {
-                    "Shows tagged '${state.linkedGenre}' join automatically"
-                } else {
-                    "Automatically adds matching subscribed shows"
-                },
-                checked = state.autoSync,
-                onCheckedChange = state.onAutoSyncChange,
+            AutoSyncRow(
+                autoSync = state.autoSync,
+                linkedGenre = state.linkedGenre,
+                onAutoSyncChange = state.onAutoSyncChange,
             )
 
             if (state.autoSync && state.suggestedGenres.isNotEmpty() && state.onSelectLinkedGenre != null) {
@@ -741,39 +728,15 @@ internal fun FolderOrganizationCard(
                     onSelectLinkedGenre = state.onSelectLinkedGenre,
                 )
             }
-
-            if (state.onAutoOrganizeChange != null) {
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
-                )
-
-                OrganizationSwitchRow(
-                    icon = Icons.Rounded.AutoAwesome,
-                    iconContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    iconTint = MaterialTheme.colorScheme.primary,
-                    title = "Auto-organize library",
-                    subtitle = if (state.autoOrganize) {
-                        "Library automatically grouped by genre"
-                    } else {
-                        "Group all shows into genre folders automatically"
-                    },
-                    checked = state.autoOrganize,
-                    onCheckedChange = state.onAutoOrganizeChange,
-                )
-            }
         }
     }
 }
 
 @Composable
-private fun OrganizationSwitchRow(
-    icon: ImageVector,
-    iconContainerColor: Color,
-    iconTint: Color,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
+private fun AutoSyncRow(
+    autoSync: Boolean,
+    linkedGenre: String,
+    onAutoSyncChange: (Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -787,14 +750,14 @@ private fun OrganizationSwitchRow(
         ) {
             Surface(
                 shape = CircleShape,
-                color = iconContainerColor,
+                color = MaterialTheme.colorScheme.secondaryContainer,
                 modifier = Modifier.size(30.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = icon,
+                        imageVector = Icons.Rounded.Sync,
                         contentDescription = null,
-                        tint = iconTint,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.size(15.dp),
                     )
                 }
@@ -802,13 +765,17 @@ private fun OrganizationSwitchRow(
 
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
-                    text = title,
+                    text = "Auto-sync with genre",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = GoogleSansWeight.medium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = subtitle,
+                    text = if (autoSync && linkedGenre.isNotBlank()) {
+                        "Shows tagged '$linkedGenre' join automatically"
+                    } else {
+                        "Automatically adds matching subscribed shows"
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -816,8 +783,8 @@ private fun OrganizationSwitchRow(
         }
 
         Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
+            checked = autoSync,
+            onCheckedChange = onAutoSyncChange,
         )
     }
 }

@@ -242,16 +242,13 @@ class RoomFolderRepository(
         defaultDisplaySize: FolderDisplaySize?,
         showPodcastGrid: Boolean,
     ) {
-        val existing = existingFolders.firstOrNull { f ->
-            val linked = f.linkedGenre
-            linked?.equals(genre, ignoreCase = true) == true ||
-                isGenreTokenMatch(f.name, genre) ||
-                (linked != null && isGenreTokenMatch(linked, genre))
-        }
+        val targetGenre = if (genre.equals("Technology", ignoreCase = true)) "Tech" else genre
+        val existing = findMatchingGenreFolder(existingFolders, targetGenre)
 
         if (existing != null) {
-            if (existing.linkedGenre.isNullOrBlank()) {
-                folderDao.upsertFolder(existing.copy(linkedGenre = genre))
+            val updated = resolveUpdatedFolderEntity(existing, targetGenre)
+            if (updated != existing) {
+                folderDao.upsertFolder(updated)
             }
             val currentIds = folderDao.getPodcastIdsForFolderList(existing.folderId)
             val merged = (currentIds + podcastIds).distinct()
@@ -260,7 +257,7 @@ class RoomFolderRepository(
             }
         } else {
             createAutoOrganizeFolder(
-                genre = genre,
+                genre = targetGenre,
                 podcastIds = podcastIds,
                 defaultDisplaySize = defaultDisplaySize,
                 showPodcastGrid = showPodcastGrid,
@@ -274,8 +271,9 @@ class RoomFolderRepository(
         defaultDisplaySize: FolderDisplaySize?,
         showPodcastGrid: Boolean,
     ) {
+        val targetName = if (genre.equals("Technology", ignoreCase = true)) "Tech" else genre
         val folderId = UUID.randomUUID().toString()
-        val iconKey = defaultIconForGenre(genre)
+        val iconKey = if (targetName.equals("Tech", ignoreCase = true)) "tech" else defaultIconForGenre(targetName)
         val distinctPodcastIds = podcastIds.distinct()
         val chosenSize = defaultDisplaySize ?: when {
             distinctPodcastIds.size <= 2 -> FolderDisplaySize.COMPACT
@@ -289,10 +287,10 @@ class RoomFolderRepository(
         }
         val entity = FolderEntity(
             folderId = folderId,
-            name = genre,
+            name = targetName,
             icon = iconKey,
             displaySize = chosenSize,
-            linkedGenre = genre,
+            linkedGenre = targetName,
             showPodcastGrid = resolvedGrid,
             createdAt = System.currentTimeMillis(),
         )
@@ -301,6 +299,7 @@ class RoomFolderRepository(
     }
 
     private fun defaultIconForGenre(genre: String): String? {
+        if (genre.equals("Technology", ignoreCase = true) || genre.equals("Tech", ignoreCase = true)) return "tech"
         resolveGenreIconKey?.invoke(genre)?.let { return it }
         val canonical = PodcastGenres.canonicalize(genre) ?: genre
         return GENRE_DEFAULT_ICON_MAP[canonical.lowercase().trim()] ?: "folder"
@@ -343,8 +342,12 @@ private fun groupSubscribedPodcastsByGenre(subscribed: List<PodcastEntity>): Map
         val genreName = pod.customGenre?.trim()?.takeIf { it.isNotEmpty() }
             ?: pod.genre?.split(",")?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }
         if (!genreName.isNullOrBlank()) {
-            val canonical = PodcastGenres.canonicalize(genreName)
-                ?: (if (genreName.equals("tech", ignoreCase = true)) "Technology" else genreName.replaceFirstChar { it.uppercase() })
+            val rawCanonical = PodcastGenres.canonicalize(genreName) ?: genreName.replaceFirstChar { it.uppercase() }
+            val canonical = if (rawCanonical.equals("Technology", ignoreCase = true) || rawCanonical.equals("Tech", ignoreCase = true)) {
+                "Tech"
+            } else {
+                rawCanonical
+            }
             result.getOrPut(canonical) { mutableListOf() }.add(pod.podcastId)
         }
     }
@@ -380,4 +383,32 @@ private fun isGenreTokenMatch(candidate: String, target: String): Boolean {
         if (canonicalCandidate.equals(trimmedTarget, ignoreCase = true)) return true
     }
     return false
+}
+
+private fun findMatchingGenreFolder(existingFolders: List<FolderEntity>, genre: String): FolderEntity? =
+    existingFolders.firstOrNull { folder ->
+        isFolderMatchForGenre(folder, genre)
+    }
+
+private fun isFolderMatchForGenre(folder: FolderEntity, genre: String): Boolean {
+    if (folder.linkedGenre?.equals(genre, ignoreCase = true) == true) return true
+    if (folder.name.equals(genre, ignoreCase = true)) return true
+    if (isGenreTokenMatch(folder.name, genre)) return true
+    val linked = folder.linkedGenre
+    return linked != null && isGenreTokenMatch(linked, genre)
+}
+
+private fun resolveUpdatedFolderEntity(existing: FolderEntity, targetGenre: String): FolderEntity {
+    val shouldRenameToTech = existing.name.equals("Technology", ignoreCase = true)
+    val updatedName = if (shouldRenameToTech) "Tech" else existing.name
+    val isDefaultIcon = existing.icon == null || existing.icon == "folder" || existing.icon == "technology"
+    val updatedIcon = if (shouldRenameToTech && isDefaultIcon) "tech" else existing.icon
+    val isLegacyLinked = existing.linkedGenre.isNullOrBlank() || existing.linkedGenre.equals("Technology", ignoreCase = true)
+    val updatedLinked = if (isLegacyLinked) targetGenre else existing.linkedGenre
+
+    return existing.copy(
+        name = updatedName,
+        icon = updatedIcon,
+        linkedGenre = updatedLinked,
+    )
 }

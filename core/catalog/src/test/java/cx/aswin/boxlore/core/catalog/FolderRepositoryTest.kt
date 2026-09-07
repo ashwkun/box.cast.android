@@ -169,7 +169,7 @@ class FolderRepositoryTest {
         val folders = repository.getFolders()
         assertEquals(2, folders.size)
 
-        val techFolder = folders.firstOrNull { it.name == "Technology" }
+        val techFolder = folders.firstOrNull { it.name == "Tech" }
         assertNotNull(techFolder)
         assertEquals(FolderDisplaySize.SHELF, techFolder?.displaySize)
         assertEquals(listOf("pod-2", "pod-3"), techFolder?.podcastIds?.sorted())
@@ -218,6 +218,7 @@ class FolderRepositoryTest {
         // Existing tech folder kept its size and icon and gained pod-2
         val retrievedTech = repository.getFolder(existingTech.id)
         assertNotNull(retrievedTech)
+        assertEquals("Tech", retrievedTech?.name)
         assertEquals(FolderDisplaySize.PANEL, retrievedTech?.displaySize)
         assertEquals("custom_icon", retrievedTech?.icon)
         assertEquals(listOf("pod-2"), retrievedTech?.podcastIds)
@@ -293,7 +294,7 @@ class FolderRepositoryTest {
         assertTrue(comedyFolder?.showPodcastGrid == true)
         assertEquals(listOf("comedy-1"), comedyFolder?.podcastIds)
 
-        val techFolder = folders.firstOrNull { it.name == "Technology" }
+        val techFolder = folders.firstOrNull { it.name == "Tech" }
         assertNotNull(techFolder)
         assertEquals(FolderDisplaySize.SHELF, techFolder?.displaySize)
         assertEquals(4, techFolder?.podcastIds?.size)
