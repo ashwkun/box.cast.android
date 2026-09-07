@@ -61,21 +61,36 @@ class BoxcastPrefsTest {
     @Test
     fun bylCacheRoundTrip() {
         assertNull(prefs.getCachedBylPodcastId())
-        prefs.saveBylCache(episodesJson = "[]", podcastsJson = "[]", podcastId = "42")
+        assertNull(prefs.getCachedBylSlot())
+        prefs.saveBylCache(
+            episodesJson = "[]",
+            podcastsJson = "[]",
+            podcastId = "42",
+            slotKey = "2026-09-08:MORNING",
+        )
         assertEquals("42", prefs.getCachedBylPodcastId())
+        assertEquals("2026-09-08:MORNING", prefs.getCachedBylSlot())
         assertEquals("[]", prefs.getCachedBylRecommendationsJson())
         assertEquals("[]", prefs.getCachedBylPodcastsJson())
     }
 
     @Test
     fun bylCacheClearsOnlyForMatchingPodcastIdentity() {
-        prefs.saveBylCache(episodesJson = "[1]", podcastsJson = "[2]", podcastId = "rss:old")
+        prefs.saveBylCache(
+            episodesJson = "[1]",
+            podcastsJson = "[2]",
+            podcastId = "rss:old",
+            slotKey = "2026-09-08:NIGHT",
+        )
+        assertEquals("2026-09-08:NIGHT", prefs.getCachedBylSlot())
 
         prefs.clearBylCacheIfPodcastId("other")
         assertEquals("rss:old", prefs.getCachedBylPodcastId())
+        assertEquals("2026-09-08:NIGHT", prefs.getCachedBylSlot())
 
         prefs.clearBylCacheIfPodcastId("rss:old")
         assertNull(prefs.getCachedBylPodcastId())
+        assertNull(prefs.getCachedBylSlot())
         assertNull(prefs.getCachedBylRecommendationsJson())
         assertNull(prefs.getCachedBylPodcastsJson())
     }

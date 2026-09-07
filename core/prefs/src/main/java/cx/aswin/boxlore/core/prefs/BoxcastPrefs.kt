@@ -68,12 +68,25 @@ class BoxcastPrefs(context: Context) {
 
     fun getCachedBylPodcastId(): String? = prefs.getString(KEY_CACHED_BYL_PODCAST_ID, null)
 
-    fun saveBylCache(episodesJson: String, podcastsJson: String, podcastId: String,) {
-        prefs.edit()
-            .putString(KEY_CACHED_BYL_RECOMMENDATIONS, episodesJson)
-            .putString(KEY_CACHED_BYL_PODCASTS, podcastsJson)
-            .putString(KEY_CACHED_BYL_PODCAST_ID, podcastId)
-            .apply()
+    fun getCachedBylSlot(): String? = prefs.getString(KEY_CACHED_BYL_SLOT, null)
+
+    fun saveBylCache(
+        episodesJson: String,
+        podcastsJson: String,
+        podcastId: String,
+        slotKey: String? = null,
+    ) {
+        prefs.edit().apply {
+            putString(KEY_CACHED_BYL_RECOMMENDATIONS, episodesJson)
+            putString(KEY_CACHED_BYL_PODCASTS, podcastsJson)
+            putString(KEY_CACHED_BYL_PODCAST_ID, podcastId)
+            if (slotKey != null) {
+                putString(KEY_CACHED_BYL_SLOT, slotKey)
+            } else {
+                remove(KEY_CACHED_BYL_SLOT)
+            }
+            apply()
+        }
     }
 
     /** Clears a recommendation cache whose seed show moved to a different catalog identity. */
@@ -84,6 +97,7 @@ class BoxcastPrefs(context: Context) {
             .remove(KEY_CACHED_BYL_RECOMMENDATIONS)
             .remove(KEY_CACHED_BYL_PODCASTS)
             .remove(KEY_CACHED_BYL_PODCAST_ID)
+            .remove(KEY_CACHED_BYL_SLOT)
             .apply()
     }
 
@@ -150,6 +164,7 @@ class BoxcastPrefs(context: Context) {
         const val KEY_CACHED_BYL_RECOMMENDATIONS = "cached_byl_recommendations"
         const val KEY_CACHED_BYL_PODCASTS = "cached_byl_podcasts"
         const val KEY_CACHED_BYL_PODCAST_ID = "cached_byl_podcast_id"
+        const val KEY_CACHED_BYL_SLOT = "cached_byl_slot"
         const val KEY_DISMISSED_CURIOSITIES = "dismissed_curiosities"
         const val KEY_LEARN_CURIOSITY_HISTORY = "learn_curiosity_history"
         const val KEY_LEARNER_LOG_ENABLED = "learner_log_enabled"
