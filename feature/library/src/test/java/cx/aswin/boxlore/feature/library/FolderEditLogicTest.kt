@@ -313,7 +313,8 @@ class FolderEditLogicTest {
         // Real-time keyword filter: typing "ai" matches Tech/Technology
         val aiMatches = filterGenreSuggestions("ai", allFolderSuggestions)
         assertTrue(aiMatches.isNotEmpty())
-        assertTrue(aiMatches.any { it.name == "Tech" || it.name == "Technology" })
+        assertTrue(aiMatches.any { it.name == "Tech" })
+        assertFalse(aiMatches.any { it.name == "Technology" })
 
         // Real-time keyword filter: typing "jokes" matches Comedy
         val jokesMatches = filterGenreSuggestions("jokes", allFolderSuggestions)
@@ -337,5 +338,30 @@ class FolderEditLogicTest {
 
         assertEquals("Comedy", nameText)
         assertEquals("comedy", selectedIconKey)
+    }
+
+    @Test
+    fun folderName_disallowsTechnologyAndAllowsSwitchToTech() {
+        var nameText = "Technology"
+        var selectedIconKey: String? = null
+
+        fun isTechnologyDisallowed(name: String) = name.trim().equals("Technology", ignoreCase = true)
+        fun canSave(name: String) = name.trim().isNotEmpty() && !isTechnologyDisallowed(name)
+
+        assertTrue(isTechnologyDisallowed(nameText))
+        assertFalse(canSave(nameText))
+
+        // Also case-insensitive check
+        assertTrue(isTechnologyDisallowed("  technology  "))
+        assertFalse(canSave("  technology  "))
+
+        // Switch to Tech
+        nameText = "Tech"
+        selectedIconKey = "tech"
+
+        assertFalse(isTechnologyDisallowed(nameText))
+        assertTrue(canSave(nameText))
+        assertEquals("Tech", nameText)
+        assertEquals("tech", selectedIconKey)
     }
 }

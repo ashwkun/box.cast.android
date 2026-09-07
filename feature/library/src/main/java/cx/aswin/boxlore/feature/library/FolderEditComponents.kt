@@ -196,6 +196,63 @@ internal fun FolderIdentityHeader(
 }
 
 @Composable
+internal fun FolderTechnologyWarningCard(
+    onSwitchToTech: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f)),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = "Warning",
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(top = 2.dp),
+                )
+                Text(
+                    text = "The last dev who tried supporting 'Technology' as a folder name broke push notifications for three weeks and burned our server. Please, just 'Tech'. 📉",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    fontWeight = GoogleSansWeight.medium,
+                )
+            }
+
+            Button(
+                onClick = onSwitchToTech,
+                shape = ExpressiveShapes.Pill,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                Text(
+                    text = "Switch to 'Tech'",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = GoogleSansWeight.bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun FolderIconPickerRow(
     selectedIconKey: String?,
     queryText: String,

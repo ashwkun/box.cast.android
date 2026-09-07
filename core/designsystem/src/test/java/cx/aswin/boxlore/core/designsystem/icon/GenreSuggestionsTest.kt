@@ -68,9 +68,12 @@ class GenreSuggestionsTest {
     }
 
     @Test
-    fun `buildFolderSuggestionsWithLibrary with empty library returns base suggestions`() {
+    fun `buildFolderSuggestionsWithLibrary with empty library returns deduplicated suggestions without redundant twins`() {
         val combined = buildFolderSuggestionsWithLibrary(emptyList())
-        assertEquals(ALL_GENRE_SUGGESTIONS.size, combined.size)
+        val redundant = setOf("technology", "society", "family", "religion", "govt")
+        assertEquals(ALL_GENRE_SUGGESTIONS.size - redundant.size, combined.size)
+        assertFalse(combined.any { it.name.equals("Technology", ignoreCase = true) })
+        assertTrue(combined.any { it.name == "Tech" })
     }
 
     @Test

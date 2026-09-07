@@ -594,7 +594,11 @@ fun buildFolderSuggestionsWithLibrary(
     libraryGenres: List<String>,
     baseSuggestions: List<GenreSuggestion> = ALL_GENRE_SUGGESTIONS,
 ): List<GenreSuggestion> {
-    if (libraryGenres.isEmpty()) return baseSuggestions
+    val redundantFolderAliases = setOf("technology", "society", "family", "religion", "govt")
+
+    if (libraryGenres.isEmpty()) {
+        return baseSuggestions.filterNot { it.name.trim().lowercase() in redundantFolderAliases }
+    }
 
     val libraryGenreNames = libraryGenres
         .map { it.trim() }
@@ -634,7 +638,10 @@ fun buildFolderSuggestionsWithLibrary(
     }
 
     val remainingBase = baseSuggestions
-        .filterNot { it.name.trim().lowercase() in matchedBaseKeys }
+        .filterNot {
+            it.name.trim().lowercase() in matchedBaseKeys ||
+                it.name.trim().lowercase() in redundantFolderAliases
+        }
         .map { if (it.isFromLibrary) it.copy(isFromLibrary = false) else it }
 
     return librarySuggestions + remainingBase

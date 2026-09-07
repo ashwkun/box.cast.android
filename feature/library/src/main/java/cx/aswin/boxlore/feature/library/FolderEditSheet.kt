@@ -34,6 +34,7 @@ import cx.aswin.boxlore.core.model.SubscriptionFolder
 internal data class FolderEditFormState(
     val isEditing: Boolean,
     val canSave: Boolean,
+    val isTechnologyDisallowed: Boolean,
     val nameText: String,
     val selectedIconKey: String?,
     val selectedDisplaySize: FolderDisplaySize,
@@ -52,6 +53,7 @@ internal data class FolderEditFormActions(
     val onAutoSyncChange: (Boolean) -> Unit,
     val onSelectLinkedGenre: (String) -> Unit,
     val onSelectSuggestion: (GenreSuggestion) -> Unit,
+    val onSwitchToTech: () -> Unit,
     val onDone: () -> Unit,
     val onSave: () -> Unit,
     val onClose: () -> Unit,
@@ -119,7 +121,8 @@ private fun rememberFolderEditStateAndActions(
 
     val focusManager = LocalFocusManager.current
     val isEditing = initialFolder != null
-    val canSave = nameText.trim().isNotEmpty()
+    val isTechnologyDisallowed = nameText.trim().equals("Technology", ignoreCase = true)
+    val canSave = nameText.trim().isNotEmpty() && !isTechnologyDisallowed
 
     val effectiveLinkedGenre = if (autoSyncGenre) {
         linkedGenreText.trim().ifEmpty { nameText.trim() }
@@ -138,6 +141,7 @@ private fun rememberFolderEditStateAndActions(
     val formState = FolderEditFormState(
         isEditing = isEditing,
         canSave = canSave,
+        isTechnologyDisallowed = isTechnologyDisallowed,
         nameText = nameText,
         selectedIconKey = selectedIconKey,
         selectedDisplaySize = selectedDisplaySize,
@@ -164,6 +168,12 @@ private fun rememberFolderEditStateAndActions(
         onSelectSuggestion = { suggestion ->
             nameText = suggestion.name
             selectedIconKey = suggestion.iconKey
+            isIconManuallySelected = true
+            focusManager.clearFocus()
+        },
+        onSwitchToTech = {
+            nameText = "Tech"
+            selectedIconKey = "tech"
             isIconManuallySelected = true
             focusManager.clearFocus()
         },
@@ -219,6 +229,12 @@ internal fun FolderEditSheetContent(
                 iconKey = state.selectedIconKey,
                 onDone = actions.onDone,
             )
+
+            if (state.isTechnologyDisallowed) {
+                FolderTechnologyWarningCard(
+                    onSwitchToTech = actions.onSwitchToTech,
+                )
+            }
 
             if (state.filteredSuggestions.isNotEmpty()) {
                 FolderQuickFillChipsRow(
