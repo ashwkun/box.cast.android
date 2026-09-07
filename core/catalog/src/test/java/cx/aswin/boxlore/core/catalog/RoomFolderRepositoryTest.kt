@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import cx.aswin.boxlore.core.database.BoxLoreDatabase
 import cx.aswin.boxlore.core.database.FolderDao
+import cx.aswin.boxlore.core.database.FolderEntity
 import cx.aswin.boxlore.core.database.PodcastDao
 import cx.aswin.boxlore.core.database.PodcastEntity
 import cx.aswin.boxlore.core.model.FolderDisplaySize
@@ -260,5 +261,47 @@ class RoomFolderRepositoryTest {
         assertTrue(folder.podcastIds.contains("p-cat"))
         assertTrue(folder.podcastIds.contains("p-custom"))
         assertFalse(folder.podcastIds.contains("p-other"))
+    }
+
+    @Test
+    fun legacyTechnologyFolderIsReadAndMigratedToTech() = runTest {
+        val legacyEntity = FolderEntity(
+            folderId = "f-legacy-tech",
+            name = "Technology",
+            icon = "folder",
+            displaySize = FolderDisplaySize.COMPACT,
+            linkedGenre = "Technology",
+            showPodcastGrid = false,
+            createdAt = 1000L,
+        )
+        folderDao.upsertFolder(legacyEntity)
+
+        // Read paths dynamically resolve to "Tech" and "tech"
+        val folderFromFlow = repository.folders.first().first()
+        assertEquals("Tech", folderFromFlow.name)
+        assertEquals("tech", folderFromFlow.icon)
+        assertEquals("Tech", folderFromFlow.linkedGenre)
+
+        val folderFromGet = repository.getFolder("f-legacy-tech")
+        assertNotNull(folderFromGet)
+        assertEquals("Tech", folderFromGet?.name)
+        assertEquals("tech", folderFromGet?.icon)
+        assertEquals("Tech", folderFromGet?.linkedGenre)
+
+        val foldersList = repository.getFolders()
+        assertEquals("Tech", foldersList.first().name)
+        assertEquals("tech", foldersList.first().icon)
+
+        val folderNames = repository.folderNames.first()
+        assertEquals(listOf("Tech"), folderNames)
+
+        // syncLinkedGenres permanently updates the database entity
+        repository.syncLinkedGenres()
+
+        val dbEntity = folderDao.getFolder("f-legacy-tech")
+        assertNotNull(dbEntity)
+        assertEquals("Tech", dbEntity?.name)
+        assertEquals("tech", dbEntity?.icon)
+        assertEquals("Tech", dbEntity?.linkedGenre)
     }
 }

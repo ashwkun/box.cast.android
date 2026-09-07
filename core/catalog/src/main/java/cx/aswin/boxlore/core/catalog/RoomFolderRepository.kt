@@ -31,22 +31,14 @@ class RoomFolderRepository(
                 .groupBy { it.folderId }
             folderEntities.map { entity ->
                 val pIds = refsByFolder[entity.folderId]?.map { it.podcastId } ?: emptyList()
-                SubscriptionFolder(
-                    id = entity.folderId,
-                    name = entity.name,
-                    icon = entity.icon,
-                    displaySize = entity.displaySize,
-                    linkedGenre = entity.linkedGenre,
-                    showPodcastGrid = entity.showPodcastGrid,
-                    createdAt = entity.createdAt,
-                    podcastCount = pIds.size,
-                    podcastIds = pIds,
-                )
+                toSubscriptionFolder(entity, pIds)
             }
         }
 
     override val folderNames: Flow<List<String>> =
-        folderDao.getAllFolderNames()
+        folderDao.getAllFolderNames().map { names ->
+            names.map { if (it.equals("Technology", ignoreCase = true)) "Tech" else it }.distinct()
+        }
 
     override suspend fun getFolders(): List<SubscriptionFolder> {
         val entities = folderDao.getAllFoldersList()
@@ -56,17 +48,7 @@ class RoomFolderRepository(
             .groupBy { it.folderId }
         return entities.map { entity ->
             val pIds = crossRefs[entity.folderId]?.map { it.podcastId } ?: emptyList()
-            SubscriptionFolder(
-                id = entity.folderId,
-                name = entity.name,
-                icon = entity.icon,
-                displaySize = entity.displaySize,
-                linkedGenre = entity.linkedGenre,
-                showPodcastGrid = entity.showPodcastGrid,
-                createdAt = entity.createdAt,
-                podcastCount = pIds.size,
-                podcastIds = pIds,
-            )
+            toSubscriptionFolder(entity, pIds)
         }
     }
 
@@ -74,17 +56,7 @@ class RoomFolderRepository(
         val entity = folderDao.getFolder(folderId) ?: return null
         val subscribedIds = podcastDao.getSubscribedPodcastsList().map { it.podcastId }.toSet()
         val pIds = folderDao.getPodcastIdsForFolderList(folderId).filter { it in subscribedIds }
-        return SubscriptionFolder(
-            id = entity.folderId,
-            name = entity.name,
-            icon = entity.icon,
-            displaySize = entity.displaySize,
-            linkedGenre = entity.linkedGenre,
-            showPodcastGrid = entity.showPodcastGrid,
-            createdAt = entity.createdAt,
-            podcastCount = pIds.size,
-            podcastIds = pIds,
-        )
+        return toSubscriptionFolder(entity, pIds)
     }
 
     override fun getFolderFlow(folderId: String): Flow<SubscriptionFolder?> =
@@ -99,9 +71,13 @@ class RoomFolderRepository(
         podcastIds: List<String>,
     ): SubscriptionFolder {
         val id = UUID.randomUUID().toString()
-        val trimmedName = name.trim()
-        val trimmedIcon = icon?.trim()?.takeIf { it.isNotEmpty() }
-        val trimmedGenre = linkedGenre?.trim()?.takeIf { it.isNotEmpty() }
+        val rawName = name.trim()
+        val trimmedName = if (rawName.equals("Technology", ignoreCase = true)) "Tech" else rawName
+        val rawIcon = icon?.trim()?.takeIf { it.isNotEmpty() }
+        val isTech = trimmedName.equals("Tech", ignoreCase = true)
+        val trimmedIcon = if (isTech && isDefaultFolderIcon(rawIcon)) "tech" else rawIcon
+        val rawGenre = linkedGenre?.trim()?.takeIf { it.isNotEmpty() }
+        val trimmedGenre = if (rawGenre?.equals("Technology", ignoreCase = true) == true) "Tech" else rawGenre
         val effectiveTargetGenre = trimmedGenre ?: PodcastGenres.canonicalize(trimmedName)?.let { trimmedName }
 
         val initialPodcastIds = podcastIds.toMutableList()
@@ -131,23 +107,17 @@ class RoomFolderRepository(
             folderDao.setPodcastsForFolder(id, initialPodcastIds)
         }
 
-        return SubscriptionFolder(
-            id = id,
-            name = trimmedName,
-            icon = trimmedIcon,
-            displaySize = displaySize,
-            linkedGenre = trimmedGenre ?: effectiveTargetGenre,
-            showPodcastGrid = showPodcastGrid,
-            createdAt = createdAt,
-            podcastCount = initialPodcastIds.size,
-            podcastIds = initialPodcastIds,
-        )
+        return toSubscriptionFolder(entity, initialPodcastIds)
     }
 
     override suspend fun updateFolder(folder: SubscriptionFolder) {
-        val trimmedName = folder.name.trim()
-        val trimmedIcon = folder.icon?.trim()?.takeIf { it.isNotEmpty() }
-        val trimmedGenre = folder.linkedGenre?.trim()?.takeIf { it.isNotEmpty() }
+        val rawName = folder.name.trim()
+        val trimmedName = if (rawName.equals("Technology", ignoreCase = true)) "Tech" else rawName
+        val rawIcon = folder.icon?.trim()?.takeIf { it.isNotEmpty() }
+        val isTech = trimmedName.equals("Tech", ignoreCase = true)
+        val trimmedIcon = if (isTech && isDefaultFolderIcon(rawIcon)) "tech" else rawIcon
+        val rawGenre = folder.linkedGenre?.trim()?.takeIf { it.isNotEmpty() }
+        val trimmedGenre = if (rawGenre?.equals("Technology", ignoreCase = true) == true) "Tech" else rawGenre
         val effectiveTargetGenre = trimmedGenre ?: PodcastGenres.canonicalize(trimmedName)?.let { trimmedName }
 
         val entity = FolderEntity(
@@ -190,14 +160,18 @@ class RoomFolderRepository(
     }
 
     override suspend fun syncLinkedGenres() {
-        val folders = folderDao.getAllFoldersList().filter {
+        val allFolders = folderDao.getAllFoldersList()
+        migrateLegacyFolders(folderDao, allFolders)
+
+        val folders = allFolders.filter {
             !it.linkedGenre.isNullOrBlank() || PodcastGenres.canonicalize(it.name) != null
         }
         if (folders.isEmpty()) return
 
         val subscribed = podcastDao.getSubscribedPodcastsList()
         for (folder in folders) {
-            val targetGenre = folder.linkedGenre?.trim()?.takeIf { it.isNotEmpty() } ?: folder.name.trim()
+            val rawTargetGenre = folder.linkedGenre?.trim()?.takeIf { it.isNotEmpty() } ?: folder.name.trim()
+            val targetGenre = if (rawTargetGenre.equals("Technology", ignoreCase = true)) "Tech" else rawTargetGenre
             val matchingIds = subscribed
                 .filter { pod -> matchesGenre(pod, targetGenre) }
                 .map { it.podcastId }
@@ -398,11 +372,13 @@ private fun isFolderMatchForGenre(folder: FolderEntity, genre: String): Boolean 
     return linked != null && isGenreTokenMatch(linked, genre)
 }
 
+private fun isDefaultFolderIcon(icon: String?): Boolean =
+    icon == null || icon == "folder" || icon == "technology"
+
 private fun resolveUpdatedFolderEntity(existing: FolderEntity, targetGenre: String): FolderEntity {
     val shouldRenameToTech = existing.name.equals("Technology", ignoreCase = true)
     val updatedName = if (shouldRenameToTech) "Tech" else existing.name
-    val isDefaultIcon = existing.icon == null || existing.icon == "folder" || existing.icon == "technology"
-    val updatedIcon = if (shouldRenameToTech && isDefaultIcon) "tech" else existing.icon
+    val updatedIcon = if (shouldRenameToTech && isDefaultFolderIcon(existing.icon)) "tech" else existing.icon
     val isLegacyLinked = existing.linkedGenre.isNullOrBlank() || existing.linkedGenre.equals("Technology", ignoreCase = true)
     val updatedLinked = if (isLegacyLinked) targetGenre else existing.linkedGenre
 
@@ -411,4 +387,38 @@ private fun resolveUpdatedFolderEntity(existing: FolderEntity, targetGenre: Stri
         icon = updatedIcon,
         linkedGenre = updatedLinked,
     )
+}
+
+private fun toSubscriptionFolder(entity: FolderEntity, podcastIds: List<String>): SubscriptionFolder {
+    val isTech = entity.name.equals("Technology", ignoreCase = true)
+    val displayName = if (isTech) "Tech" else entity.name
+    val displayIcon = if (isTech && isDefaultFolderIcon(entity.icon)) "tech" else entity.icon
+    val isLegacyLinked = entity.linkedGenre?.equals("Technology", ignoreCase = true) == true
+    val displayLinkedGenre = if (isLegacyLinked) "Tech" else entity.linkedGenre
+
+    return SubscriptionFolder(
+        id = entity.folderId,
+        name = displayName,
+        icon = displayIcon,
+        displaySize = entity.displaySize,
+        linkedGenre = displayLinkedGenre,
+        showPodcastGrid = entity.showPodcastGrid,
+        createdAt = entity.createdAt,
+        podcastCount = podcastIds.size,
+        podcastIds = podcastIds,
+    )
+}
+
+private suspend fun migrateLegacyFolders(folderDao: FolderDao, allFolders: List<FolderEntity>) {
+    for (folder in allFolders) {
+        val isTech = folder.name.equals("Technology", ignoreCase = true)
+        val isTechLinked = folder.linkedGenre?.equals("Technology", ignoreCase = true) == true
+        if (isTech || isTechLinked) {
+            val targetGenre = if (isTechLinked || isTech) "Tech" else (folder.linkedGenre ?: folder.name)
+            val updated = resolveUpdatedFolderEntity(folder, targetGenre)
+            if (updated != folder) {
+                folderDao.upsertFolder(updated)
+            }
+        }
+    }
 }
