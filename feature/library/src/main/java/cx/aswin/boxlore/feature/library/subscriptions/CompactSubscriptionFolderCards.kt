@@ -73,20 +73,8 @@ internal fun Compact1x1FolderCard(
     isReordering: Boolean = false,
 ) {
     val lastSeenEpisodes = LocalLastSeenEpisodes.current
-    val hasOverflowNew = remember(podcasts, lastSeenEpisodes) {
-        if (podcasts.size > 4) {
-            hasFolderOverflowNew(podcasts.drop(3), lastSeenEpisodes)
-        } else {
-            false
-        }
-    }
-    val hasAnyNew = remember(podcasts, lastSeenEpisodes) {
-        hasAnyFolderShowNew(podcasts, lastSeenEpisodes)
-    }
-    val showFolderBadge = if (folder.effectiveShowPodcastGrid) {
-        hasOverflowNew
-    } else {
-        hasAnyNew
+    val showFolderBadge = remember(folder.effectiveShowPodcastGrid, podcasts, lastSeenEpisodes) {
+        shouldShowFolderBadge(folder.effectiveShowPodcastGrid, podcasts, lastSeenEpisodes)
     }
     val shape = RoundedCornerShape(14.dp)
     val dragScale by animateFloatAsState(
@@ -141,13 +129,10 @@ internal fun Compact1x1FolderCard(
             }
         }
 
-        if (showFolderBadge) {
-            if (folder.effectiveShowPodcastGrid) {
-                FolderFloatingBadge()
-            } else {
-                NewEpisodeBadge()
-            }
-        }
+        CompactFolderBadgeOverlay(
+            showBadge = showFolderBadge,
+            isPodcastGrid = folder.effectiveShowPodcastGrid,
+        )
 
         if (folder.effectiveShowPodcastGrid) {
             CompactFolderTitlePill(
@@ -161,6 +146,29 @@ internal fun Compact1x1FolderCard(
                     .zIndex(5f),
             )
         }
+    }
+}
+
+private fun shouldShowFolderBadge(
+    effectiveShowPodcastGrid: Boolean,
+    podcasts: List<Podcast>,
+    lastSeenEpisodes: Map<String, String>,
+): Boolean = if (effectiveShowPodcastGrid) {
+    podcasts.size > 4 && hasFolderOverflowNew(podcasts.drop(3), lastSeenEpisodes)
+} else {
+    hasAnyFolderShowNew(podcasts, lastSeenEpisodes)
+}
+
+@Composable
+private fun BoxScope.CompactFolderBadgeOverlay(
+    showBadge: Boolean,
+    isPodcastGrid: Boolean,
+) {
+    if (!showBadge) return
+    if (isPodcastGrid) {
+        FolderFloatingBadge()
+    } else {
+        NewEpisodeBadge()
     }
 }
 

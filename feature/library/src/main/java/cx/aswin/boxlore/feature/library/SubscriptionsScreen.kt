@@ -312,7 +312,6 @@ fun SubscriptionsScreen(
                                         }
                                     }
                                     if (hasSubscribedPodcasts) {
-                                        val success = checkNotNull(successState)
                                         Box {
                                             IconButton(
                                                 onClick = {

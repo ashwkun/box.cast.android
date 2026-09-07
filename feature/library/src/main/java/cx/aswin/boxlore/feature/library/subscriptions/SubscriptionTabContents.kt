@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
@@ -38,6 +39,7 @@ import cx.aswin.boxlore.feature.library.PlayAllFab
 import cx.aswin.boxlore.feature.library.SubscriptionSort
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyGridState
+import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -397,58 +399,90 @@ private fun ShowsReorderableList(
             items = folderItems.folders,
             key = { "list_folder_${it.id}" },
         ) { folder ->
-            val folderShows = folderItems.podcastsByFolderId[folder.id].orEmpty()
-            ReorderableItem(
-                reorderableListState,
-                key = "list_folder_${folder.id}",
-                enabled = gridConfig.isFoldersReordering,
-            ) { isDragging ->
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                        .then(if (gridConfig.isFoldersReordering) Modifier.longPressDraggableHandle() else Modifier),
-                ) {
-                    PinnedEnlargedFolderCard(
-                        folder = folder,
-                        podcasts = folderShows,
-                        actions = folderActions,
-                        isDragging = isDragging,
-                        isReordering = gridConfig.isFoldersReordering,
-                    )
-                }
-            }
+            ShowsListFolderItem(
+                folder = folder,
+                folderShows = folderItems.podcastsByFolderId[folder.id].orEmpty(),
+                reorderableListState = reorderableListState,
+                isFoldersReordering = gridConfig.isFoldersReordering,
+                folderActions = folderActions,
+            )
         }
         items(items = orderedPodcasts, key = { it.id }) { podcast ->
-            ReorderableItem(
-                reorderableListState,
-                key = podcast.id,
-                enabled = gridConfig.isRootReordering,
-            ) { isDragging ->
-                val onRowClick: (() -> Unit)? = if (gridConfig.isRootReordering) {
-                    null
-                } else {
-                    { actions.onPodcastClick(podcast.id) }
-                }
-                val onRowLongClick: (() -> Unit)? = if (gridConfig.isRootReordering) {
-                    null
-                } else {
-                    { actions.onPodcastLongClick(podcast) }
-                }
-                SubscriptionListRow(
-                    podcast = podcast,
-                    onClick = onRowClick,
-                    onLongClick = onRowLongClick,
-                    isPinned = podcast.id in gridConfig.pinnedPodcastIds,
-                    isDragging = isDragging,
-                    dragModifier =
-                    if (gridConfig.isRootReordering) {
-                        Modifier.longPressDraggableHandle()
-                    } else {
-                        Modifier
-                    },
-                )
-            }
+            ShowsListPodcastItem(
+                podcast = podcast,
+                reorderableListState = reorderableListState,
+                isRootReordering = gridConfig.isRootReordering,
+                isPinned = podcast.id in gridConfig.pinnedPodcastIds,
+                actions = actions,
+            )
         }
+    }
+}
+
+@Composable
+private fun LazyItemScope.ShowsListFolderItem(
+    folder: SubscriptionFolder,
+    folderShows: List<Podcast>,
+    reorderableListState: ReorderableLazyListState,
+    isFoldersReordering: Boolean,
+    folderActions: FolderCardActions,
+) {
+    ReorderableItem(
+        reorderableListState,
+        key = "list_folder_${folder.id}",
+        enabled = isFoldersReordering,
+    ) { isDragging ->
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .then(if (isFoldersReordering) Modifier.longPressDraggableHandle() else Modifier),
+        ) {
+            PinnedEnlargedFolderCard(
+                folder = folder,
+                podcasts = folderShows,
+                actions = folderActions,
+                isDragging = isDragging,
+                isReordering = isFoldersReordering,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LazyItemScope.ShowsListPodcastItem(
+    podcast: Podcast,
+    reorderableListState: ReorderableLazyListState,
+    isRootReordering: Boolean,
+    isPinned: Boolean,
+    actions: ShowsTabActions,
+) {
+    ReorderableItem(
+        reorderableListState,
+        key = podcast.id,
+        enabled = isRootReordering,
+    ) { isDragging ->
+        val onRowClick: (() -> Unit)? = if (isRootReordering) {
+            null
+        } else {
+            { actions.onPodcastClick(podcast.id) }
+        }
+        val onRowLongClick: (() -> Unit)? = if (isRootReordering) {
+            null
+        } else {
+            { actions.onPodcastLongClick(podcast) }
+        }
+        SubscriptionListRow(
+            podcast = podcast,
+            onClick = onRowClick,
+            onLongClick = onRowLongClick,
+            isPinned = isPinned,
+            isDragging = isDragging,
+            dragModifier = if (isRootReordering) {
+                Modifier.longPressDraggableHandle()
+            } else {
+                Modifier
+            },
+        )
     }
 }
 
@@ -582,32 +616,6 @@ private fun LatestEpisodesList(
             bottomPaddingOverride = config.playAllBottomPadding,
         )
     }
-}
-
-internal suspend fun scoreLatestIfNeeded(
-    useSmartRank: Boolean,
-    podcasts: List<Podcast>,
-    history: List<ListeningHistoryEntity>,
-    scoreEpisodes: suspend (List<Podcast>, List<ListeningHistoryEntity>) -> Map<String, Double>,
-): Map<String, Double> = if (useSmartRank) scoreEpisodes(podcasts, history) else emptyMap()
-
-internal fun sortLatestDisplayPodcasts(
-    podcasts: List<Podcast>,
-    useSmartRank: Boolean,
-    episodeScores: Map<String, Double>,
-): List<Podcast> = if (useSmartRank) {
-    podcasts.sortedByDescending { episodeScores[it.latestEpisode?.id] ?: 0.0 }
-} else {
-    podcasts.sortedByDescending { it.latestEpisode!!.publishedDate }
-}
-
-internal fun groupLatestByDateHeader(
-    podcasts: List<Podcast>,
-    useSmartRank: Boolean,
-): Map<String, List<Podcast>> = if (useSmartRank) {
-    emptyMap()
-} else {
-    podcasts.groupBy { getChronologicalHeader(it.latestEpisode!!.publishedDate) }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

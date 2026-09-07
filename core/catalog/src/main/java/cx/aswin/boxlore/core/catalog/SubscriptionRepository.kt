@@ -45,7 +45,7 @@ class SubscriptionRepository(
             }
         val activeEntity = linkedRss?.takeIf { it.isSubscribed } ?: existing
 
-        if (activeEntity != null && activeEntity.isSubscribed) {
+        if (activeEntity?.isSubscribed == true) {
             unsubscribeInternal(podcast, activeEntity, existing)
         } else {
             // Subscribe (Upsert to ensure we have data for offline/Jump Back In)
@@ -184,10 +184,8 @@ class SubscriptionRepository(
                 imageUrl = podcast.imageUrl.takeIf { it.isNotEmpty() } ?: existing?.imageUrl ?: "",
                 description = podcast.description,
                 isSubscribed = true,
-                subscribedAt =
-                validRestoredSubscribedAt
-                    ?: existing?.takeIf { it.isSubscribed }?.subscribedAt
-                    ?: now,
+                subscribedAt = validRestoredSubscribedAt
+                    ?: if (existing?.isSubscribed == true) existing.subscribedAt else now,
                 genre = podcast.genre,
                 type = typeVal,
                 lastRefreshed = existing?.lastRefreshed ?: now,

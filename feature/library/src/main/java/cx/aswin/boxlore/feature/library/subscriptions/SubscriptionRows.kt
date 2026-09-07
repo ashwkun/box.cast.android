@@ -218,17 +218,14 @@ internal fun SubscriptionListRow(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                if (onClick == null && onLongClick == null) {
-                    Modifier
-                } else if (onLongClick != null && !isDragging) {
-                    Modifier.combinedClickable(
+                when {
+                    isDragging || (onClick == null && onLongClick == null) -> Modifier
+                    onLongClick != null -> Modifier.combinedClickable(
                         onClick = onClick ?: {},
                         onLongClick = onLongClick,
                     )
-                } else if (onClick != null && !isDragging) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
+                    onClick != null -> Modifier.clickable(onClick = onClick)
+                    else -> Modifier
                 }
             )
             .padding(horizontal = 16.dp, vertical = 10.dp),

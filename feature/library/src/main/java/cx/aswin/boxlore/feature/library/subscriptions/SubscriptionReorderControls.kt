@@ -57,26 +57,29 @@ internal data class ReorderBarContent(
     val icon: ImageVector,
 )
 
+private const val DRAG_TO_ARRANGE = "Drag to arrange"
+private const val SWITCHES_TO_MANUAL_SORT = "Switches to manual sort"
+
 internal fun resolveReorderBarContent(reorderMode: ReorderMode): ReorderBarContent = when (reorderMode) {
     ReorderMode.Folders -> ReorderBarContent(
         title = "Reordering: Folders",
-        subtitle = "Drag to arrange",
-        note = "Switches to manual sort",
+        subtitle = DRAG_TO_ARRANGE,
+        note = SWITCHES_TO_MANUAL_SORT,
         icon = Icons.Rounded.Folder,
     )
     is ReorderMode.FolderShows -> {
         val name = reorderMode.folderName.takeIf { it.isNotBlank() } ?: "Folder"
         ReorderBarContent(
             title = "Reordering: $name",
-            subtitle = "Drag to arrange",
-            note = "Switches to manual sort",
+            subtitle = DRAG_TO_ARRANGE,
+            note = SWITCHES_TO_MANUAL_SORT,
             icon = Icons.Rounded.FolderOpen,
         )
     }
     ReorderMode.RootShows -> ReorderBarContent(
         title = "Reordering: Shows",
-        subtitle = "Drag to arrange",
-        note = "Switches to manual sort",
+        subtitle = DRAG_TO_ARRANGE,
+        note = SWITCHES_TO_MANUAL_SORT,
         icon = Icons.Rounded.Subscriptions,
     )
     ReorderMode.Inactive -> ReorderBarContent(

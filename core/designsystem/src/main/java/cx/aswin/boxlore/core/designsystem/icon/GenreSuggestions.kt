@@ -615,25 +615,7 @@ fun buildFolderSuggestionsWithLibrary(
             librarySuggestions.add(matchedBase.copy(isFromLibrary = true))
             matchedBaseKeys.add(genreName.lowercase())
         } else {
-            val iconItem = GenreIcons.findIcon(genreName)
-            val matchedItem = if (iconItem != null) {
-                GenreIcons.all.firstOrNull { it.icon == iconItem }
-            } else {
-                val fallbackVector = GenreIcons.defaultGenreIcon(genreName)
-                GenreIcons.all.firstOrNull { it.icon == fallbackVector }
-            }
-            val isGeneric = matchedItem == null || matchedItem.key == "category"
-            val iconKey = if (isGeneric) null else matchedItem.key
-            val iconVector = if (isGeneric) GenreIcons.defaultFolderIcon() else matchedItem.icon
-            librarySuggestions.add(
-                GenreSuggestion(
-                    name = genreName,
-                    iconKey = iconKey,
-                    icon = iconVector,
-                    keywords = listOf(genreName.lowercase(), "library"),
-                    isFromLibrary = true,
-                ),
-            )
+            librarySuggestions.add(createCustomLibraryGenreSuggestion(genreName))
         }
     }
 
@@ -645,6 +627,26 @@ fun buildFolderSuggestionsWithLibrary(
         .map { if (it.isFromLibrary) it.copy(isFromLibrary = false) else it }
 
     return librarySuggestions + remainingBase
+}
+
+private fun createCustomLibraryGenreSuggestion(genreName: String): GenreSuggestion {
+    val iconItem = GenreIcons.findIcon(genreName)
+    val matchedItem = if (iconItem != null) {
+        GenreIcons.all.firstOrNull { it.icon == iconItem }
+    } else {
+        val fallbackVector = GenreIcons.defaultGenreIcon(genreName)
+        GenreIcons.all.firstOrNull { it.icon == fallbackVector }
+    }
+    val isGeneric = matchedItem == null || matchedItem.key == "category"
+    val iconKey = if (isGeneric) null else matchedItem.key
+    val iconVector = if (isGeneric) GenreIcons.defaultFolderIcon() else matchedItem.icon
+    return GenreSuggestion(
+        name = genreName,
+        iconKey = iconKey,
+        icon = iconVector,
+        keywords = listOf(genreName.lowercase(), "library"),
+        isFromLibrary = true,
+    )
 }
 
 /**

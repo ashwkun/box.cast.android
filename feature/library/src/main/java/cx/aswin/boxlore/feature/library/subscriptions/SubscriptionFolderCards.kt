@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -242,52 +243,72 @@ private fun FolderCoversGrid(
             ) {
                 for (colIndex in 0 until columns) {
                     val itemIndex = rowIndex * columns + colIndex
-                    if (itemIndex < slots.visibleShows.size) {
-                        val podcast = slots.visibleShows[itemIndex]
-                        val isNew = remember(podcast, lastSeenEpisodes) {
-                            podcast.isLatestEpisodeNew(lastSeenEpisodes[podcast.id])
-                        }
-                        DirectClickableShowCover(
-                            podcast = podcast,
-                            hasNewEpisode = isNew,
-                            onClick = { actions.onPodcastClick(podcast.id) },
-                            onLongClick = { actions.onFolderLongClick(folder) },
-                            modifier = Modifier.weight(1f),
-                            isReordering = isReordering,
-                        )
-                    } else if (itemIndex == slots.visibleShows.size && slots.hasOverflow) {
-                        val overflowNewCount = remember(slots.overflowShows, lastSeenEpisodes) {
-                            countFolderOverflowNew(slots.overflowShows, lastSeenEpisodes)
-                        }
-                        FolderOverflowSlotCard(
-                            overflowShows = slots.overflowShows,
-                            overflowCount = slots.overflowCount,
-                            newEpisodesCount = overflowNewCount,
-                            onClick = { actions.onFolderClick(folder.id) },
-                            onLongClick = { actions.onFolderLongClick(folder) },
-                            modifier = Modifier.weight(1f),
-                            isReordering = isReordering,
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .aspectRatio(1f)
-                                .then(
-                                    if (isReordering) {
-                                        Modifier
-                                    } else {
-                                        Modifier.combinedClickable(
-                                            onClick = { actions.onFolderClick(folder.id) },
-                                            onLongClick = { actions.onFolderLongClick(folder) },
-                                        )
-                                    },
-                                ),
-                        )
-                    }
+                    FolderCoverSlot(
+                        itemIndex = itemIndex,
+                        slots = slots,
+                        folder = folder,
+                        actions = actions,
+                        lastSeenEpisodes = lastSeenEpisodes,
+                        isReordering = isReordering,
+                    )
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RowScope.FolderCoverSlot(
+    itemIndex: Int,
+    slots: FolderSlots,
+    folder: SubscriptionFolder,
+    actions: FolderCardActions,
+    lastSeenEpisodes: Map<String, String>,
+    isReordering: Boolean,
+) {
+    if (itemIndex < slots.visibleShows.size) {
+        val podcast = slots.visibleShows[itemIndex]
+        val isNew = remember(podcast, lastSeenEpisodes) {
+            podcast.isLatestEpisodeNew(lastSeenEpisodes[podcast.id])
+        }
+        DirectClickableShowCover(
+            podcast = podcast,
+            hasNewEpisode = isNew,
+            onClick = { actions.onPodcastClick(podcast.id) },
+            onLongClick = { actions.onFolderLongClick(folder) },
+            modifier = Modifier.weight(1f),
+            isReordering = isReordering,
+        )
+    } else if (itemIndex == slots.visibleShows.size && slots.hasOverflow) {
+        val overflowNewCount = remember(slots.overflowShows, lastSeenEpisodes) {
+            countFolderOverflowNew(slots.overflowShows, lastSeenEpisodes)
+        }
+        FolderOverflowSlotCard(
+            overflowShows = slots.overflowShows,
+            overflowCount = slots.overflowCount,
+            newEpisodesCount = overflowNewCount,
+            onClick = { actions.onFolderClick(folder.id) },
+            onLongClick = { actions.onFolderLongClick(folder) },
+            modifier = Modifier.weight(1f),
+            isReordering = isReordering,
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .aspectRatio(1f)
+                .then(
+                    if (isReordering) {
+                        Modifier
+                    } else {
+                        Modifier.combinedClickable(
+                            onClick = { actions.onFolderClick(folder.id) },
+                            onLongClick = { actions.onFolderLongClick(folder) },
+                        )
+                    },
+                ),
+        )
     }
 }
 

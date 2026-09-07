@@ -271,7 +271,7 @@ private fun rememberFolderEditFormActions(
         } else {
             null
         }
-        val finalShowPodcastGrid = if (finalIcon == null) true else fields.podcastGridState.value
+        val finalShowPodcastGrid = finalIcon == null || fields.podcastGridState.value
         onSave(finalName, finalIcon, fields.displaySizeState.value, finalLinked, finalShowPodcastGrid)
     },
     onClose = onDismissRequest,
@@ -375,6 +375,10 @@ private fun AutoOrganizeSlimNudge(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val title = if (isActive) "Auto-organize is active" else "Auto-organize library"
+    val subtitle = if (isActive) "Library automatically grouped by genre" else "Group shows by genre automatically"
+    val actionText = if (isActive) "Manage" else "Auto"
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
@@ -412,47 +416,56 @@ private fun AutoOrganizeSlimNudge(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(
-                        text = if (isActive) "Auto-organize is active" else "Auto-organize library",
+                        text = title,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = GoogleSansWeight.bold,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
-                        text = if (isActive) {
-                            "Library automatically grouped by genre"
-                        } else {
-                            "Group shows by genre automatically"
-                        },
+                        text = subtitle,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
 
-            Surface(
+            AutoOrganizeActionPill(
+                text = actionText,
                 onClick = onClick,
-                shape = ExpressiveShapes.Pill,
-                color = MaterialTheme.colorScheme.primaryContainer,
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = if (isActive) "Manage" else "Auto",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = GoogleSansWeight.bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
-            }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AutoOrganizeActionPill(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ExpressiveShapes.Pill,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = GoogleSansWeight.bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(14.dp),
+            )
         }
     }
 }

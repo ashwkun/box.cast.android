@@ -93,7 +93,6 @@ internal fun SubscriptionFolderDialog(
         ),
     ) {
         val lastSeenEpisodes = LocalLastSeenEpisodes.current
-        val folderIcon = GenreIcons.folderIconOrFallback(folder.icon)
 
         Surface(
             shape = RoundedCornerShape(24.dp),

@@ -53,6 +53,7 @@ src/main/java/cx/aswin/boxlore/feature/library/
     SubscriptionFolderDialog.kt   — Centered floating dialog displaying folder shows in a 3-column grid with maximized viewing area and embedded reorder bar
     SubscriptionFolderLayoutLogic.kt — Folder partitioning, display-size calculations, and inter/intra folder sort resolution
     SubscriptionGenreCatalog.kt   — genre label/icon map mirrored from Explore and resolved against custom podcast genre overrides
+    SubscriptionLatestLogic.kt    — Latest episodes sorting, smart scoring, and chronological header grouping
     SubscriptionListRowParts.kt   — list artwork, title column, pin badge
     SubscriptionReorderControls.kt — Scoped reorder mode state and floating bar with Save/Exit controls and sort notices
     SubscriptionRows.kt           — grid cards (title fallback on broken art), list/latest rows, date headers

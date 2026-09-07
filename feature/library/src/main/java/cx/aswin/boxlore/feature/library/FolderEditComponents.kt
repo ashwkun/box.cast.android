@@ -650,22 +650,26 @@ private fun CoverStyleOptionTab(
     modifier: Modifier = Modifier,
 ) {
     val enabled = onClick != null
+    val colorScheme = MaterialTheme.colorScheme
+    val containerColor = if (isSelected) {
+        colorScheme.primaryContainer.copy(alpha = 0.45f)
+    } else {
+        colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+    }
+    val borderWidth = if (isSelected) 1.5.dp else 1.dp
+    val borderColor = if (isSelected) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.4f)
+    val iconTint = when {
+        !enabled -> colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+        isSelected -> colorScheme.primary
+        else -> colorScheme.onSurface
+    }
+    val titleColor = if (enabled) colorScheme.onSurface else colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+
     Surface(
         modifier = modifier.clickable(enabled = enabled) { onClick?.invoke() },
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
-        },
-        border = BorderStroke(
-            width = if (isSelected) 1.5.dp else 1.dp,
-            color = if (isSelected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-            },
-        ),
+        color = containerColor,
+        border = BorderStroke(width = borderWidth, color = borderColor),
     ) {
         Row(
             modifier = Modifier
@@ -677,15 +681,7 @@ private fun CoverStyleOptionTab(
             Icon(
                 imageVector = iconVector,
                 contentDescription = null,
-                tint = if (enabled) {
-                    if (isSelected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                },
+                tint = iconTint,
                 modifier = Modifier.size(20.dp),
             )
             Column {
@@ -693,11 +689,7 @@ private fun CoverStyleOptionTab(
                     text = title,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = GoogleSansWeight.medium,
-                    color = if (enabled) {
-                        MaterialTheme.colorScheme.onSurface
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    },
+                    color = titleColor,
                 )
                 Text(
                     text = subtitle,

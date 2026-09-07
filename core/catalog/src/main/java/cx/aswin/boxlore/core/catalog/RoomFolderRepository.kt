@@ -288,11 +288,8 @@ private suspend fun createAutoOrganizeFolder(
         distinctPodcastIds.size <= 5 -> FolderDisplaySize.SHELF
         else -> FolderDisplaySize.PANEL
     }
-    val resolvedGrid = if (chosenSize == FolderDisplaySize.COMPACT) {
-        if (defaultDisplaySize == null) true else showPodcastGrid
-    } else {
-        false
-    }
+    val resolvedGrid = chosenSize == FolderDisplaySize.COMPACT &&
+        (defaultDisplaySize == null || showPodcastGrid)
     val entity = FolderEntity(
         folderId = folderId,
         name = targetName,
@@ -380,12 +377,11 @@ private fun isGenreTokenMatch(candidate: String, target: String): Boolean {
     val canonicalTarget = PodcastGenres.canonicalize(trimmedTarget)
     val canonicalCandidate = PodcastGenres.canonicalize(trimmedCandidate)
 
-    if (canonicalTarget != null) {
-        if (canonicalTarget.equals(canonicalCandidate, ignoreCase = true)) return true
-        if (canonicalTarget.equals(trimmedCandidate, ignoreCase = true)) return true
+    if (canonicalTarget != null && (canonicalTarget.equals(canonicalCandidate, ignoreCase = true) || canonicalTarget.equals(trimmedCandidate, ignoreCase = true))) {
+        return true
     }
-    if (canonicalCandidate != null) {
-        if (canonicalCandidate.equals(trimmedTarget, ignoreCase = true)) return true
+    if (canonicalCandidate != null && canonicalCandidate.equals(trimmedTarget, ignoreCase = true)) {
+        return true
     }
     return false
 }

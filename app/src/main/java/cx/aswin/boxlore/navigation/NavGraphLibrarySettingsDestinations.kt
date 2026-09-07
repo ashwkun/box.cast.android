@@ -20,7 +20,6 @@ internal fun androidx.navigation.NavGraphBuilder.addSettingsDestination(w: NavGr
     val podcastRepository = w.podcastRepository
     val playbackRepository = w.playbackRepository
     val subscriptionRepository = w.subscriptionRepository
-    val folderRepository = w.folderRepository
     val userPrefs = w.userPrefs
     val scope = w.scope
     val opmlCallbacks = w.opmlCallbacks
