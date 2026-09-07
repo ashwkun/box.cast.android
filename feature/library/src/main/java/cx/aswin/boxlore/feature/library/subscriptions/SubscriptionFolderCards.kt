@@ -639,7 +639,7 @@ private fun MiniPodcastSlot(
                 modifier = Modifier.fillMaxSize(),
             )
             if (hasNewEpisode) {
-                NewEpisodeBadge()
+                MiniNewEpisodeBadge()
             }
         }
     } else {
@@ -649,6 +649,32 @@ private fun MiniPodcastSlot(
                 .clip(miniShape)
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.4f))
                 .clickable(onClick = onEmptyClick),
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.MiniNewEpisodeBadge(
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(3.dp),
+        color = MaterialTheme.colorScheme.primary,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surface),
+        modifier = modifier
+            .align(Alignment.TopEnd)
+            .padding(top = 2.dp, end = 2.dp),
+    ) {
+        Text(
+            text = "NEW",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 6.sp,
+                fontWeight = GoogleSansWeight.extraBold,
+                letterSpacing = 0.3.sp,
+                lineHeight = 7.sp,
+            ),
+            color = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.padding(horizontal = 2.5.dp, vertical = 1.dp),
         )
     }
 }
