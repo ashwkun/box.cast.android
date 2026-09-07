@@ -504,7 +504,11 @@ internal fun Compact1x1FolderCard(
         }
 
         if (showFolderBadge) {
-            FolderFloatingBadge()
+            if (folder.effectiveShowPodcastGrid) {
+                FolderFloatingBadge()
+            } else {
+                NewEpisodeBadge()
+            }
         }
     }
 }
