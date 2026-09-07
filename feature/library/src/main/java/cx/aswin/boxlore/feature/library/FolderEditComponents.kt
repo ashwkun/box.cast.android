@@ -55,6 +55,8 @@ import cx.aswin.boxlore.core.designsystem.theme.ExpressiveShapes
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.FolderDisplaySize
 
+internal val DefaultFolderDisplaySize = FolderDisplaySize.SHELF
+
 internal val SelectableFolderSizes = listOf(
     FolderDisplaySize.COMPACT,
     FolderDisplaySize.SHELF,

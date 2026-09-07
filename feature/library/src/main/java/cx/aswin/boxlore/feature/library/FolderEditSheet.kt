@@ -106,7 +106,7 @@ private fun rememberFolderEditStateAndActions(
     val iconState = remember(initialFolder) { mutableStateOf(initialFolder?.icon) }
     val iconManualState = remember(initialFolder) { mutableStateOf(initialFolder?.icon != null) }
     val displaySizeState = remember(initialFolder) {
-        mutableStateOf(initialFolder?.displaySize ?: FolderDisplaySize.COMPACT)
+        mutableStateOf(initialFolder?.displaySize ?: DefaultFolderDisplaySize)
     }
     val podcastGridState = remember(initialFolder) {
         mutableStateOf(initialFolder?.showPodcastGrid ?: false)

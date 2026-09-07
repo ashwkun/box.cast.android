@@ -453,4 +453,10 @@ class FolderEditLogicTest {
             assertEquals("Pinned to the top of the page", size.placementLabel)
         }
     }
+
+    @Test
+    fun defaultFolderDisplaySize_isShelf3x1() {
+        assertEquals(FolderDisplaySize.SHELF, DefaultFolderDisplaySize)
+        assertEquals("3×1", DefaultFolderDisplaySize.dimensionsLabel)
+    }
 }
