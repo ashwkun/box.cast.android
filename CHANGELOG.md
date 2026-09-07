@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added interactive same-show continuation banner with expandable episode preview and quick-refill action in the player queue sheet. ([#1019](https://github.com/boxcreate/boxlore/pull/1019)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- Room schema v35 with `FolderEntity` and `PodcastFolderCrossRef` for persistent subscription folders and show memberships. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- `FolderRepository` and `RoomFolderRepository` in `:core:catalog` managing folder CRUD, genre linking, and automatic organization. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- `LibraryBackupFolderLogic` and extended `LibraryBackupManager` v6 supporting backup/restore of folder structures, memberships, folder sort preferences, and custom podcast tags. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- Direct-clickable show slots, overflow mini-clusters (`+N`), and `FolderExpandedDialog` for enlarged folder interactions. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- Drag-and-drop folder reordering with persistent manual order in `subscriptionFolderManualOrder` and custom scoped reorder bar. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Subscriptions tab presentation style preference (`top` vs `floating`) in `:core:prefs`, Settings UI, and Subscriptions screen. ([#1048](https://github.com/boxcreate/boxlore/pull/1048)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Elevated Play All FAB animation when floating tab selector is active. ([#1048](https://github.com/boxcreate/boxlore/pull/1048)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Backup and restore support for `subscriptionsTabStyle`, `navigationStyle`, and `fontRoundness` in `LibraryBackupManager`. ([#1048](https://github.com/boxcreate/boxlore/pull/1048)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
@@ -19,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Curated 30+ Material rounded icon catalog in `GenreIcons.kt`. ([#1055](https://github.com/boxcreate/boxlore/pull/1055)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Hybrid user-priority ordering for custom tags in Subscriptions filter chips. ([#1055](https://github.com/boxcreate/boxlore/pull/1055)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 ### Changed
+- Subscriptions screen grid rendering to support sized folder items alongside unfiled podcasts. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- Enhanced subscription sort sheet with 3-tier folder and intra-folder sort options and auto-organize controls. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- Enforced canonical genre normalization (mapping `"Technology"` to `"Tech"` and auto-assigning `"tech"` icon). ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Resolved out-of-memory errors during large podcast pagination and feed parsing by streaming responses and bounding in-memory cache sizes (#1026). ([#1044](https://github.com/boxcreate/boxlore/pull/1044)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Modernize ktlint setup with Compose-friendly `.editorconfig`, remove 24 legacy XML baseline files, and apply repository-wide code formatting. ([#1020](https://github.com/boxcreate/boxlore/pull/1020)) <!-- impact:no-user-impact --> <!-- copy:locked -->
 - Enabled Gradle configuration cache in gradle.properties, reducing build configuration time for local and CI builds ([#1021](https://github.com/boxcreate/boxlore/pull/1021)) <!-- impact:no-user-impact -->
@@ -30,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Eliminate silent disk storage leaks in `SimpleCache` by ensuring background download removals directly evict media cache files even when background service starts are blocked. ([#1033](https://github.com/boxcreate/boxlore/pull/1033)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Fix notification auto-downloads failing or getting stuck in downloading state by awaiting completion under WorkManager wake locks and reconciling stale orphaned download records. ([#1033](https://github.com/boxcreate/boxlore/pull/1033)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Prevent WorkManager 10-minute execution ceiling aborts during smart downloads by transitioning to sequential downloads with an 8.5-minute time budget. ([#1033](https://github.com/boxcreate/boxlore/pull/1033)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- Reorder jump glitch and touch targeting in subscriptions drag-and-drop grid. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- Keyboard dismissal and state retention in folder creation bottom sheet. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Preserved notification and auto-download toggles on Podcast Info pull-to-refresh and routed subscribed shows to direct publisher feed refresh. ([#1016](https://github.com/boxcreate/boxlore/issues/1016)) ([#1022](https://github.com/boxcreate/boxlore/pull/1022)) <!-- impact:user-impact-high --> <!-- copy:locked -->
 - Fixed latent `notificationsEnabled` and `autoDownloadEnabled` mapping in RSS repository entity conversion. ([#1022](https://github.com/boxcreate/boxlore/pull/1022)) <!-- impact:user-impact-high --> <!-- copy:locked -->
 - Prevent SecurityException crashes caused by system PendingIntent UID quota exhaustion in FCM notifications and Media3 playback session setup (#1025). ([#1034](https://github.com/boxcreate/boxlore/pull/1034)) <!-- impact:user-impact-high --> <!-- copy:locked -->
@@ -128,6 +138,15 @@ readme-copy:end pr=1050 -->
 ### Improvements
 - Added custom podcast tags and icons for subscribed shows in boxlore, with live chip preview, keyword suggestions, and priority filtering in Subscriptions.
 readme-copy:end pr=1055 -->
+
+<!-- readme-copy:start pr=1059
+### Critical
+- **Subscription Folders & Custom Sizes**: Organize your podcast library into custom folders with adaptive layouts—from compact 1×1 tiles to full-width 3×1 shelves and expanded panels, featuring direct show playback right from the folder card.
+- **Auto-Organize Library**: Instantly group your subscribed shows into genre-based folders with one tap, smart size presets, and automatic deduplication.
+- **Multi-Level Sorting & Drag-and-Drop**: Customize folder order with drag-and-drop manual arrangement, smart recency rankings, and independent intra-folder show sorting.
+- **Custom Podcast Tags & Icons**: Assign custom tags and expressive icons to any subscribed show, seamlessly cross-linking them with your folders and filter chips.
+- **Full Backup & Restore**: Export and restore your complete library configuration—including folder definitions, show memberships, sorting preferences, and custom tags—with 100% fidelity.
+readme-copy:end pr=1059 -->
 ## [v0.0.24] - 2026-08-30
 
 ### Added
