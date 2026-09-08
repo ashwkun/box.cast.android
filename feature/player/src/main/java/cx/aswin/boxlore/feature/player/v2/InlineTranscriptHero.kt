@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -77,12 +78,20 @@ fun InlineTranscriptHero(
                 text = "Transcript",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = GoogleSansWeight.bold,
+                color = colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
-            FilledTonalIconButton(onClick = actions.onFullscreen) {
+            FilledTonalIconButton(
+                onClick = actions.onFullscreen,
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = colorScheme.surfaceContainerHigh,
+                    contentColor = colorScheme.onSurface,
+                ),
+            ) {
                 Icon(
                     imageVector = Icons.Rounded.Fullscreen,
-                    contentDescription = "Open fullscreen transcript"
+                    contentDescription = "Open fullscreen transcript",
+                    tint = colorScheme.onSurface,
                 )
             }
         }

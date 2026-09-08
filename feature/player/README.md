@@ -34,6 +34,7 @@ src/main/java/cx/aswin/boxlore/feature/player/
     FullPlayerCastControls.kt
     FullPlayerV2Content.kt
     FullPlayerV2Sheets.kt
+    InlineTranscriptHero.kt
     MiniPlayerV2.kt
     PlayerHero.kt
     PlayerSeekbar.kt

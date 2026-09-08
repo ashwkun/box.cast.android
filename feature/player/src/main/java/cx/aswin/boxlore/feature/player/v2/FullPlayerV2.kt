@@ -65,6 +65,7 @@ import cx.aswin.boxlore.core.playback.PlayerState
 import cx.aswin.boxlore.core.playback.setOutputVolume
 import cx.aswin.boxlore.core.playback.skipToNextEpisode
 import cx.aswin.boxlore.core.playback.stopCasting
+import cx.aswin.boxlore.feature.player.v2.logic.PlayerMetadataStylingLogic
 import cx.aswin.boxlore.feature.player.v2.logic.calculateResponsiveHeroLayout
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -429,9 +430,20 @@ private fun FullPlayerScrollableContent(
             ui = ui,
             isCompact = resources.layout.isCompact,
         )
-        Spacer(modifier = Modifier.height(if (resources.layout.isCompact) 10.dp else 16.dp))
-        PlayerMetadata(model.episode, model.podcast, display.colorScheme, actions)
-        Spacer(modifier = Modifier.height(if (resources.layout.isCompact) 8.dp else 14.dp))
+        val (metadataTopSpacing, metadataBottomSpacing) =
+            PlayerMetadataStylingLogic.resolveMetadataSpacing(
+                isTranscriptMode = ui.showInlineTranscript,
+                isCompact = resources.layout.isCompact,
+            )
+        Spacer(modifier = Modifier.height(metadataTopSpacing))
+        PlayerMetadata(
+            episode = model.episode,
+            podcast = model.podcast,
+            colorScheme = display.colorScheme,
+            actions = actions,
+            isTranscriptMode = ui.showInlineTranscript,
+        )
+        Spacer(modifier = Modifier.height(metadataBottomSpacing))
         FullPlayerControls(
             model =
             FullPlayerControlModel(
