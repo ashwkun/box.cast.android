@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.0.25] - 2026-09-08
+
 ### Added
 - Added interactive same-show continuation banner with expandable episode preview and quick-refill action in the player queue sheet. ([#1019](https://github.com/boxcreate/boxlore/pull/1019)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Room schema v35 with `FolderEntity` and `PodcastFolderCrossRef` for persistent subscription folders and show memberships. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
@@ -62,109 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reset custom tags and icons to default catalog genres when unsubscribing from a show. ([#1055](https://github.com/boxcreate/boxlore/pull/1055)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Prompt Material 3 confirmation dialog before removing downloaded episodes across Podcast Info, Episode Info, Expanded Player, and Downloaded Episodes screen (#1061). ([#1064](https://github.com/boxcreate/boxlore/pull/1064)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 
-<!-- readme-copy:start pr=1019
-### Critical
-- Fixed an issue where the queue would skip upcoming episodes of the show you were listening to.
-- Added a convenient queue banner to preview and add upcoming episodes of a show when played from recommendations.
-readme-copy:end pr=1019 -->
-
-<!-- readme-copy:start pr=1022
-### Fixes
-- Pulling down to refresh on a podcast's page now checks for newly released episodes without resetting your notification or download settings.
-readme-copy:end pr=1022 -->
-
-<!-- readme-copy:start pr=1030
-### Critical
-- Fixed an issue where tapping recommended episodes from the Home screen could cause boxlore to unexpectedly close.
-readme-copy:end pr=1030 -->
-
-<!-- readme-copy:start pr=1033
-### Critical
-- Fixed an issue on Android 14 and newer where background auto-downloads could crash or fail to start when new episode notifications arrived.
-- Fixed storage cleanup so deleting or replacing downloaded episodes properly reclaims device disk space.
-- Improved background auto-download reliability so new episodes are ready for offline listening as soon as notifications arrive.
-readme-copy:end pr=1033 -->
-
-<!-- readme-copy:start pr=1034
-### Fixes
-- Resolved an issue where receiving many episode notifications over time could cause audio playback to fail to start.
-readme-copy:end pr=1034 -->
-
-<!-- readme-copy:start pr=1036
-### Fixes
-- Fixed an issue where episodes played from Android Auto showed missing show names and could cause playback to resume an older session on restart.
-readme-copy:end pr=1036 -->
-
-<!-- readme-copy:start pr=1039
-### Fixes
-- Fixed the Cast icon in the full-screen player so it adapts to light and dark themes and matches the Share button.
-readme-copy:end pr=1039 -->
-
-<!-- readme-copy:start pr=1041
-### Fixes
-- Fixed an intermittent crash that could occur when disconnecting from Android Auto during artwork loading.
-readme-copy:end pr=1041 -->
-
-<!-- readme-copy:start pr=1042
-### Improvements
-- Fixed background crashes when restoring playback sessions or updating widgets.
-readme-copy:end pr=1042 -->
-
-<!-- readme-copy:start pr=1043
-### Fixes
-- Fixed crashes when viewing search results and recommendation shelves with duplicate items.
-readme-copy:end pr=1043 -->
-
-<!-- readme-copy:start pr=1044
-### Improvements
-- Resolved out-of-memory errors during large podcast pagination and feed parsing by streaming responses and bounding in-memory cache sizes.
-readme-copy:end pr=1044 -->
-
-<!-- readme-copy:start pr=1045
-### Fixes
-- Android Auto now seamlessly resumes your last played podcast and queue when reconnecting in your vehicle instead of showing an error screen.
-readme-copy:end pr=1045 -->
-
-<!-- readme-copy:start pr=1046
-### Fixes
-- Fixed Video Spotlight cards on the Home screen so their dropshadow and border scale smoothly with the artwork during tap animation instead of revealing a static outer outline.
-readme-copy:end pr=1046 -->
-
-<!-- readme-copy:start pr=1048
-### Improvements
-- Added tab style preference for Subscriptions in Settings > Appearance, allowing users to choose between top header tabs or a bottom floating selector in boxlore.
-readme-copy:end pr=1048 -->
-
-<!-- readme-copy:start pr=1050
-### Improvements
-- Added real-time show progress and active animated loader when restoring library backups.
-- Streamlined notification permission prompt after backup restore to a single tap.
-readme-copy:end pr=1050 -->
-
-<!-- readme-copy:start pr=1055
-### Improvements
-- Added custom podcast tags and icons for subscribed shows in boxlore, with live chip preview, keyword suggestions, and priority filtering in Subscriptions.
-readme-copy:end pr=1055 -->
-
-<!-- readme-copy:start pr=1059
-### Critical
-- **Subscription Folders & Custom Sizes**: Organize your podcast library into custom folders with adaptive layouts—from compact 1×1 tiles to full-width 3×1 shelves and expanded panels, featuring direct show playback right from the folder card.
-- **Auto-Organize Library**: Instantly group your subscribed shows into genre-based folders with one tap, smart size presets, and automatic deduplication.
-- **Multi-Level Sorting & Drag-and-Drop**: Customize folder order with drag-and-drop manual arrangement, smart recency rankings, and independent intra-folder show sorting.
-- **Custom Podcast Tags & Icons**: Assign custom tags and expressive icons to any subscribed show, seamlessly cross-linking them with your folders and filter chips.
-- **Full Backup & Restore**: Export and restore your complete library configuration—including folder definitions, show memberships, sorting preferences, and custom tags—with 100% fidelity.
-readme-copy:end pr=1059 -->
-
-<!-- readme-copy:start pr=1064
-### Improvements
-- Added a confirmation prompt when removing downloaded episodes to prevent accidental deletions.
-readme-copy:end pr=1064 -->
-
-<!-- readme-copy:start pr=1065
-### Improvements
-- Downloaded episodes now include chapters and transcripts for offline listening on planes, trains, and commutes.
-- Polished inline player transcript view with theme-matching headers and focused text sizing.
-readme-copy:end pr=1065 -->
 ## [v0.0.24] - 2026-08-30
 
 ### Added
