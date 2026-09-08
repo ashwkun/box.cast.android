@@ -1,25 +1,35 @@
 package cx.aswin.boxlore.core.catalog
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import cx.aswin.boxlore.core.model.Chapter
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertSame
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import java.io.File
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
-/**
- * Pure-JVM coverage for [ChapterRepository]'s in-memory cache and the description parser
- * ([ChapterRepository.parseChaptersFromDescription]) — no network is touched.
- */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class ChapterRepositoryTest {
-    @BeforeEach
+    private lateinit var context: Context
+
+    @Before
     fun setUp() {
+        context = ApplicationProvider.getApplicationContext()
         ChapterRepository.clearCache()
     }
 
-    @AfterEach
+    @After
     fun tearDown() {
         ChapterRepository.clearCache()
     }
@@ -94,5 +104,87 @@ class ChapterRepositoryTest {
         val html = "<p>00:00</p><p>01:00 Real Chapter</p>"
 
         assertTrue(ChapterRepository.parseChaptersFromDescription(html).isEmpty())
+    }
+
+    // ---- JSON round-trip & offline helpers ----
+
+    @Test
+    fun parseChaptersFromJsonAndChaptersToJsonRoundTrip() {
+        val chapters = listOf(
+            Chapter(title = "Intro", startTime = 0.0),
+            Chapter(title = "Discussion", startTime = 30.0),
+        )
+        val json = ChapterRepository.chaptersToJson(chapters)
+        val parsed = ChapterRepository.parseChaptersFromJson(json)
+
+        assertEquals(2, parsed.size)
+        assertEquals("Intro", parsed[0].title)
+        assertEquals(0.0, parsed[0].startTime, 0.001)
+        assertEquals("Discussion", parsed[1].title)
+        assertEquals(30.0, parsed[1].startTime, 0.001)
+    }
+
+    @Test
+    fun hasChaptersInDescriptionReturnsTrueOnlyWhenTwoOrMoreTimestamps() {
+        assertTrue(ChapterRepository.hasChaptersInDescription("<p>00:00 Intro</p><p>02:00 Main</p>"))
+        assertFalse(ChapterRepository.hasChaptersInDescription("<p>00:00 Intro</p>"))
+        assertFalse(ChapterRepository.hasChaptersInDescription(null))
+        assertFalse(ChapterRepository.hasChaptersInDescription(""))
+    }
+
+    @Test
+    fun offlineChaptersSaveGetAndDeleteLifecycle() {
+        val episodeId = "ep_test_123"
+        assertFalse(ChapterOfflineStorage.hasOfflineChapters(context, episodeId))
+        assertTrue(ChapterOfflineStorage.getOfflineChapters(context, episodeId).isEmpty())
+
+        val chapters = listOf(
+            Chapter(title = "Chapter 1", startTime = 0.0),
+            Chapter(title = "Chapter 2", startTime = 60.0),
+        )
+        val json = ChapterRepository.chaptersToJson(chapters)
+        val path = ChapterOfflineStorage.saveOfflineChapters(context, episodeId, json)
+
+        assertNotNull(path)
+        assertTrue(ChapterOfflineStorage.hasOfflineChapters(context, episodeId))
+
+        val loaded = ChapterOfflineStorage.getOfflineChapters(context, episodeId)
+        assertEquals(2, loaded.size)
+        assertEquals("Chapter 1", loaded[0].title)
+        assertEquals("Chapter 2", loaded[1].title)
+
+        ChapterOfflineStorage.deleteOfflineChapters(context, episodeId)
+        assertFalse(ChapterOfflineStorage.hasOfflineChapters(context, episodeId))
+        assertTrue(ChapterOfflineStorage.getOfflineChapters(context, episodeId).isEmpty())
+    }
+
+    @Test
+    fun getChaptersFromLocalFilePathParsesCorrectly() = runTest {
+        val tempFile = File.createTempFile("chapters", ".json")
+        try {
+            val json = """
+                {
+                    "version": "1.2.0",
+                    "chapters": [
+                        { "title": "Local Intro", "startTime": 0.0 },
+                        { "title": "Local Outro", "startTime": 100.0 }
+                    ]
+                }
+            """.trimIndent()
+            tempFile.writeText(json)
+
+            val chapters = ChapterRepository.getChapters(tempFile.absolutePath)
+            assertEquals(2, chapters.size)
+            assertEquals("Local Intro", chapters[0].title)
+            assertEquals(0.0, chapters[0].startTime, 0.001)
+            assertEquals("Local Outro", chapters[1].title)
+            assertEquals(100.0, chapters[1].startTime, 0.001)
+
+            val fileUriChapters = ChapterRepository.getChapters("file://${tempFile.absolutePath}")
+            assertEquals(2, fileUriChapters.size)
+            assertEquals("Local Intro", fileUriChapters[0].title)
+        } finally {
+            tempFile.delete()
+        }
     }
 }

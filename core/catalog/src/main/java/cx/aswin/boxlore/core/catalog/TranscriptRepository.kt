@@ -45,18 +45,19 @@ object TranscriptRepository {
     }
 
     suspend fun getTranscript(url: String, type: String? = null): List<TranscriptSegment> = withContext(Dispatchers.IO) {
-        val normalizedUrl = normalizeUrl(url)
+        val normalizedUrl = if (url.startsWith("/") || url.startsWith("file:")) {
+            url
+        } else {
+            normalizeUrl(url)
+        }
         cache[normalizedUrl]?.let { return@withContext it }
 
         try {
-            val content = URL(normalizedUrl).readText()
-            val segments = when {
-                type?.contains("srt") == true || normalizedUrl.endsWith(".srt", ignoreCase = true) -> parseSrt(content)
-                type?.contains("vtt") == true || normalizedUrl.endsWith(".vtt", ignoreCase = true) -> parseVtt(content)
-                content.trimStart().startsWith("WEBVTT") -> parseVtt(content)
-                else -> parseSrt(content) // Default to SRT
+            val content = resolveTranscriptContent(url, normalizedUrl)
+            val segments = parseTranscriptContent(content, type, normalizedUrl)
+            if (segments.isNotEmpty()) {
+                cache[normalizedUrl] = segments
             }
-            cache[normalizedUrl] = segments
             segments
         } catch (e: Exception) {
             android.util.Log.w("TranscriptRepo", "Failed to fetch transcript: $normalizedUrl", e)
@@ -389,4 +390,18 @@ object TranscriptRepository {
     fun clearCache() {
         cache.clear()
     }
+}
+
+private fun resolveTranscriptContent(url: String, normalizedUrl: String): String = when {
+    url.startsWith("/") -> java.io.File(url).readText()
+    url.startsWith("file://") -> java.io.File(url.removePrefix("file://")).readText()
+    url.startsWith("file:") -> java.io.File(url.removePrefix("file:")).readText()
+    else -> URL(normalizedUrl).readText()
+}
+
+private fun parseTranscriptContent(content: String, type: String?, normalizedUrl: String): List<TranscriptSegment> = when {
+    type?.contains("srt") == true || normalizedUrl.endsWith(".srt", ignoreCase = true) -> TranscriptRepository.parseSrt(content)
+    type?.contains("vtt") == true || normalizedUrl.endsWith(".vtt", ignoreCase = true) -> TranscriptRepository.parseVtt(content)
+    content.trimStart().startsWith("WEBVTT") -> TranscriptRepository.parseVtt(content)
+    else -> TranscriptRepository.parseSrt(content)
 }

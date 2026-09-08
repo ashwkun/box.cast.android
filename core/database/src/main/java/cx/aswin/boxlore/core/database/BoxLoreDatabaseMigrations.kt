@@ -335,4 +335,27 @@ object BoxLoreDatabaseMigrations {
             "CREATE INDEX IF NOT EXISTS index_podcast_folder_cross_ref_podcastId ON podcast_folder_cross_ref(podcastId)",
         )
     }
+
+    private fun getTableColumns(db: SupportSQLiteDatabase, tableName: String): Set<String> {
+        val columns = mutableSetOf<String>()
+        db.query("PRAGMA table_info($tableName)").use { cursor ->
+            val nameIndex = cursor.getColumnIndex("name")
+            if (nameIndex != -1) {
+                while (cursor.moveToNext()) {
+                    columns.add(cursor.getString(nameIndex))
+                }
+            }
+        }
+        return columns
+    }
+
+    fun migrate35To36(db: SupportSQLiteDatabase) {
+        val columns = getTableColumns(db, "downloaded_episodes")
+        if (!columns.contains("chaptersUrl")) {
+            db.execSQL("ALTER TABLE downloaded_episodes ADD COLUMN chaptersUrl TEXT")
+        }
+        if (!columns.contains("transcriptUrl")) {
+            db.execSQL("ALTER TABLE downloaded_episodes ADD COLUMN transcriptUrl TEXT")
+        }
+    }
 }

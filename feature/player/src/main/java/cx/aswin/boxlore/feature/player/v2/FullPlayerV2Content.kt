@@ -1,5 +1,7 @@
 package cx.aswin.boxlore.feature.player.v2
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.MarqueeSpacing
 import androidx.compose.foundation.background
@@ -35,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import cx.aswin.boxlore.core.catalog.ChapterRepository
 import cx.aswin.boxlore.core.designsystem.theme.GoogleSansWeight
 import cx.aswin.boxlore.core.model.AutoTranscriptState
 import cx.aswin.boxlore.core.model.Episode
@@ -63,6 +66,7 @@ import cx.aswin.boxlore.core.prefs.UserPreferencesRepository
 import cx.aswin.boxlore.feature.player.ChaptersSheetContent
 import cx.aswin.boxlore.feature.player.QueueSheetActions
 import cx.aswin.boxlore.feature.player.QueueSheetContent
+import cx.aswin.boxlore.feature.player.v2.logic.PlayerMetadataStylingLogic
 import cx.aswin.boxlore.feature.player.v2.logic.resolveQueuePodcast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -73,30 +77,64 @@ internal fun PlayerMetadata(
     episode: Episode,
     podcast: Podcast,
     colorScheme: ColorScheme,
-    actions: FullPlayerActions
+    actions: FullPlayerActions,
+    isTranscriptMode: Boolean = false,
 ) {
+    val episodeTitleStyle = if (isTranscriptMode) {
+        MaterialTheme.typography.titleMedium.copy(fontWeight = GoogleSansWeight.bold)
+    } else {
+        MaterialTheme.typography.titleLarge.copy(fontWeight = GoogleSansWeight.bold)
+    }
+
+    val podcastTitleStyle = if (isTranscriptMode) {
+        MaterialTheme.typography.bodySmall.copy(fontWeight = GoogleSansWeight.medium)
+    } else {
+        MaterialTheme.typography.bodyLarge.copy(fontWeight = GoogleSansWeight.medium)
+    }
+
+    val targetColors = PlayerMetadataStylingLogic.resolveTargetColors(
+        isTranscriptMode = isTranscriptMode,
+        onSurface = colorScheme.onSurface,
+        onSurfaceVariant = colorScheme.onSurfaceVariant,
+    )
+
+    val episodeColor by animateColorAsState(
+        targetValue = targetColors.episodeColor,
+        animationSpec = tween(durationMillis = 240),
+        label = "episodeTitleColor",
+    )
+
+    val podcastColor by animateColorAsState(
+        targetValue = targetColors.podcastColor,
+        animationSpec = tween(durationMillis = 240),
+        label = "podcastTitleColor",
+    )
+
+    val (episodeVelocity, podcastVelocity) =
+        PlayerMetadataStylingLogic.resolveMarqueeVelocity(isTranscriptMode)
+
     MarqueeMetadataText(
         text = episode.title.replace("+", " "),
-        style = MaterialTheme.typography.titleLarge.copy(fontWeight = GoogleSansWeight.bold),
-        color = colorScheme.onSurface,
-        velocity = 26.dp,
+        style = episodeTitleStyle,
+        color = episodeColor,
+        velocity = episodeVelocity,
         onClick = {
             cx.aswin.boxlore.core.analytics.PlayerSessionAggregator.logAction("episode_info")
             actions.onCollapse()
             actions.onEpisodeInfoClick(episode)
-        }
+        },
     )
-    Spacer(modifier = Modifier.height(3.dp))
+    Spacer(modifier = Modifier.height(if (isTranscriptMode) 1.dp else 3.dp))
     MarqueeMetadataText(
         text = podcast.title.replace("+", " "),
-        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = GoogleSansWeight.medium),
-        color = colorScheme.onSurfaceVariant,
-        velocity = 24.dp,
+        style = podcastTitleStyle,
+        color = podcastColor,
+        velocity = podcastVelocity,
         onClick = {
             cx.aswin.boxlore.core.analytics.PlayerSessionAggregator.logAction("podcast_info")
             actions.onCollapse()
             actions.onPodcastInfoClick(podcast)
-        }
+        },
     )
 }
 
@@ -205,8 +243,11 @@ internal fun FullPlayerSecondaryControls(
             model.state.sleepAtEndOfEpisode
         ),
         availability = SecondaryAvailabilityState(
-            hasChapters = !model.episode.chaptersUrl.isNullOrEmpty() || model.state.currentChapters.isNotEmpty(),
-            hasTranscript = model.state.currentTranscript.isNotEmpty(),
+            hasChapters = !model.episode.chaptersUrl.isNullOrEmpty() ||
+                model.state.currentChapters.isNotEmpty() ||
+                ChapterRepository.hasChaptersInDescription(model.episode.description),
+            hasTranscript = model.state.currentTranscript.isNotEmpty() ||
+                !model.episode.transcriptUrl.isNullOrEmpty(),
             isTranscriptVisible = ui.showInlineTranscript,
             isChaptersLoading = model.state.isChaptersLoading,
             autoTranscriptState = model.state.autoTranscriptState,

@@ -251,6 +251,7 @@ class PlaybackRepository internal constructor(
 
     internal val chaptersController =
         PlaybackChaptersTranscriptController(
+            context = context,
             scope = repositoryScope,
             playerState = playerState,
             playerStateFlow = playerStateFlow,

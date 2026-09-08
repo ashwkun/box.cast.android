@@ -18,8 +18,6 @@ import cx.aswin.boxlore.core.database.DownloadedEpisodeEntity
 import cx.aswin.boxlore.core.model.Episode
 import cx.aswin.boxlore.core.model.EpisodeMediaCacheKey
 import cx.aswin.boxlore.core.model.Podcast
-import cx.aswin.boxlore.core.ranking.FeedbackTarget
-import cx.aswin.boxlore.core.ranking.RankingAction
 import cx.aswin.boxlore.core.ranking.RankingFeedbackRepository
 import java.io.File
 import java.util.concurrent.Executors
@@ -150,7 +148,7 @@ open class DownloadRepository(
         android.util.Log.d("DownloadRepo", "Optimistically adding download: ${episode.id}")
         // Optimistically insert into DB as "Downloading"
         CoroutineScope(Dispatchers.IO).launch {
-            insertOptimisticDownload(context, database, rankingFeedbackRepository, episode, podcast, isSmartDownloaded)
+            DownloadChaptersTranscriptsHelper.insertOptimisticDownload(context, database, rankingFeedbackRepository, episode, podcast, isSmartDownloaded)
         }
     }
 
@@ -186,6 +184,7 @@ open class DownloadRepository(
                 episodeImgPath = existing?.episodeImageUrl,
                 podcastImgPath = existing?.podcastImageUrl,
             )
+            DownloadChaptersTranscriptsHelper.cleanupChaptersAndTranscripts(context, episodeId)
 
             database.downloadedEpisodeDao().delete(episodeId)
         }
@@ -720,177 +719,16 @@ private suspend fun cleanupArtwork(
     podcastImgPath: String?,
 ) {
     try {
-        deleteLocalFileIfValid(episodeImgPath)
+        DownloadChaptersTranscriptsHelper.deleteLocalFileIfValid(episodeImgPath)
         if (podcastId != null && podcastImgPath != null) {
             val othersCount = database.downloadedEpisodeDao().countOthersByPodcastId(podcastId, episodeId)
             if (othersCount == 0) {
-                deleteLocalFileIfValid(podcastImgPath)
+                DownloadChaptersTranscriptsHelper.deleteLocalFileIfValid(podcastImgPath)
             }
         }
     } catch (e: Exception) {
         Log.e("DownloadRepo", "Failed to clean up artwork files for $episodeId", e)
     }
-}
-
-private fun downloadArtworkLocally(
-    context: Context,
-    imageUrl: String?,
-    subDir: String,
-    fileName: String,
-): String? {
-    if (imageUrl.isNullOrBlank()) return null
-    try {
-        val cleanUrlStr = if (imageUrl.startsWith("//")) "https:$imageUrl" else imageUrl
-        val url = java.net.URI.create(cleanUrlStr).toURL()
-        val dir = File(context.filesDir, subDir).apply { mkdirs() }
-        val file = File(dir, fileName)
-        url.openStream().use { input ->
-            file.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-        return file.absolutePath
-    } catch (e: Exception) {
-        android.util.Log.e("DownloadRepo", "Failed to download artwork: $imageUrl", e)
-        return null
-    }
-}
-
-private fun deleteLocalFileIfValid(path: String?) {
-    if (path.isNullOrBlank()) return
-    val prefix = "file://"
-    if (path.startsWith("/") || path.startsWith(prefix)) {
-        val cleanPath = path.removePrefix(prefix)
-        try {
-            val file = File(cleanPath)
-            if (file.exists()) {
-                file.delete()
-            }
-        } catch (e: Exception) {
-            android.util.Log.w("DownloadRepo", "Failed to delete file: $cleanPath", e)
-        }
-    }
-}
-
-private fun resolveArtworkUrl(primary: String?, fallback: String?): String? =
-    DownloadArtworkUrls.remoteUrl(primary) ?: DownloadArtworkUrls.remoteUrl(fallback)
-
-private suspend fun handleAlreadyCompletedOptimistic(
-    database: BoxLoreDatabase,
-    rankingFeedbackRepository: RankingFeedbackRepository,
-    existing: DownloadedEpisodeEntity,
-    episode: Episode,
-    podcast: Podcast,
-    effectiveIsSmartDownloaded: Boolean,
-) {
-    if (existing.isSmartDownloaded && !effectiveIsSmartDownloaded) {
-        database.downloadedEpisodeDao().insert(existing.copy(isSmartDownloaded = false))
-    }
-    if (!effectiveIsSmartDownloaded) {
-        recordDownloadRankingFeedback(rankingFeedbackRepository, episode, podcast)
-    }
-}
-
-private fun buildImmediateOptimisticEntity(
-    episode: Episode,
-    podcast: Podcast,
-    existing: DownloadedEpisodeEntity?,
-    effectiveIsSmartDownloaded: Boolean,
-    episodeArtSource: String?,
-    podcastArtSource: String?,
-): DownloadedEpisodeEntity = DownloadedEpisodeEntity(
-    episodeId = episode.id,
-    podcastId = podcast.id,
-    episodeTitle = episode.title,
-    episodeDescription = episode.description,
-    episodeImageUrl = existing?.episodeImageUrl ?: episodeArtSource,
-    podcastName = podcast.title,
-    podcastImageUrl = existing?.podcastImageUrl ?: podcastArtSource,
-    durationMs = episode.duration * 1000L,
-    publishedDate = episode.publishedDate,
-    localFilePath = existing?.localFilePath ?: "",
-    downloadId = existing?.downloadId ?: 0,
-    downloadedAt = existing?.downloadedAt ?: System.currentTimeMillis(),
-    sizeBytes = existing?.sizeBytes ?: 0,
-    status = DownloadedEpisodeEntity.STATUS_DOWNLOADING,
-    isSmartDownloaded = effectiveIsSmartDownloaded,
-)
-
-private suspend fun fetchAndPersistArtwork(
-    context: Context,
-    database: BoxLoreDatabase,
-    episodeId: String,
-    podcastId: String,
-    episodeArtSource: String?,
-    podcastArtSource: String?,
-) {
-    val localEp = downloadArtworkLocally(context, episodeArtSource, "downloaded_artworks", "episode_$episodeId.png")
-    val localPod = downloadArtworkLocally(context, podcastArtSource, "downloaded_artworks", "podcast_$podcastId.png")
-    if (localEp == null && localPod == null) return
-
-    try {
-        val current = database.downloadedEpisodeDao().getDownload(episodeId) ?: return
-        database.downloadedEpisodeDao().insert(
-            current.copy(
-                episodeImageUrl = localEp ?: current.episodeImageUrl,
-                podcastImageUrl = localPod ?: current.podcastImageUrl,
-            ),
-        )
-    } catch (e: Exception) {
-        android.util.Log.e("DownloadRepo", "Failed to update artwork paths for $episodeId", e)
-    }
-}
-
-private suspend fun insertOptimisticDownload(
-    context: Context,
-    database: BoxLoreDatabase,
-    rankingFeedbackRepository: RankingFeedbackRepository,
-    episode: Episode,
-    podcast: Podcast,
-    isSmartDownloaded: Boolean,
-) {
-    val existing = try {
-        database.downloadedEpisodeDao().getDownload(episode.id)
-    } catch (e: Exception) {
-        null
-    }
-    val effectiveIsSmart = isSmartDownloaded && (existing == null || existing.isSmartDownloaded)
-
-    if (existing?.status == DownloadedEpisodeEntity.STATUS_COMPLETED) {
-        handleAlreadyCompletedOptimistic(database, rankingFeedbackRepository, existing, episode, podcast, effectiveIsSmart)
-        return
-    }
-
-    val epArt = resolveArtworkUrl(episode.imageUrl, podcast.imageUrl)
-    val podArt = resolveArtworkUrl(podcast.imageUrl, episode.imageUrl)
-    val entity = buildImmediateOptimisticEntity(episode, podcast, existing, effectiveIsSmart, epArt, podArt)
-
-    try {
-        database.downloadedEpisodeDao().insert(entity)
-    } catch (e: Exception) {
-        android.util.Log.e("DownloadRepo", "Optimistic insert failed for ${episode.id}", e)
-    }
-
-    if (!effectiveIsSmart) {
-        recordDownloadRankingFeedback(rankingFeedbackRepository, episode, podcast)
-    }
-
-    fetchAndPersistArtwork(context, database, episode.id, podcast.id, epArt, podArt)
-}
-
-private suspend fun recordDownloadRankingFeedback(
-    rankingFeedbackRepository: RankingFeedbackRepository,
-    episode: Episode,
-    podcast: Podcast,
-) {
-    rankingFeedbackRepository.recordAction(
-        target = FeedbackTarget(
-            episodeId = episode.id,
-            podcastId = podcast.id,
-            genre = episode.podcastGenre ?: podcast.genre,
-        ),
-        action = RankingAction.MANUAL_DOWNLOAD,
-    )
 }
 
 @androidx.annotation.VisibleForTesting

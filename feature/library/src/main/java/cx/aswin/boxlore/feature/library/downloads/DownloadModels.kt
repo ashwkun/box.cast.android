@@ -39,7 +39,9 @@ fun DownloadedEpisodeEntity.toEpisode() = Episode(
     imageUrl = episodeImageUrl,
     podcastImageUrl = podcastImageUrl,
     duration = (durationMs / 1000).toInt(),
-    publishedDate = publishedDate
+    publishedDate = publishedDate,
+    chaptersUrl = chaptersUrl,
+    transcriptUrl = transcriptUrl,
 )
 
 fun DownloadedEpisodeEntity.toPodcast() = Podcast(

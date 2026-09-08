@@ -1,8 +1,10 @@
 package cx.aswin.boxlore.core.playback
 
 import cx.aswin.boxlore.core.catalog.BuildConfig
+import cx.aswin.boxlore.core.catalog.ChapterOfflineStorage
 import cx.aswin.boxlore.core.catalog.ChapterRepository
 import cx.aswin.boxlore.core.catalog.PodcastRepository
+import cx.aswin.boxlore.core.catalog.TranscriptOfflineStorage
 import cx.aswin.boxlore.core.catalog.TranscriptRepository
 import cx.aswin.boxlore.core.catalog.mapRegionForBriefing
 import cx.aswin.boxlore.core.model.AutoTranscriptState
@@ -19,6 +21,7 @@ import kotlinx.coroutines.launch
  * Chapters / transcript monitoring and auto-generation for [cx.aswin.boxlore.core.playback.PlaybackRepository].
  */
 internal class PlaybackChaptersTranscriptController(
+    private val context: android.content.Context,
     private val scope: CoroutineScope,
     private val playerState: StateFlow<PlayerState>,
     private val playerStateFlow: MutableStateFlow<PlayerState>,
@@ -165,7 +168,13 @@ internal class PlaybackChaptersTranscriptController(
                                             autoChaptersState = AutoTranscriptState.NONE,
                                         )
                                     launch {
-                                        val chapters = ChapterRepository.getChapters(chaptersUrl)
+                                        var chapters = ChapterRepository.getChapters(chaptersUrl)
+                                        if (chapters.isEmpty()) {
+                                            chapters = ChapterOfflineStorage.getOfflineChapters(context, episodeId)
+                                        }
+                                        if (chapters.isEmpty()) {
+                                            chapters = ChapterRepository.parseChaptersFromDescription(episode.description)
+                                        }
                                         if (playerStateFlow.value.currentEpisode?.id == episodeId) {
                                             playerStateFlow.value =
                                                 playerStateFlow.value.copy(
@@ -175,7 +184,12 @@ internal class PlaybackChaptersTranscriptController(
                                         }
                                     }
                                 } else {
-                                    val parsedChapters = ChapterRepository.parseChaptersFromDescription(episode?.description)
+                                    val offlineChapters = ChapterOfflineStorage.getOfflineChapters(context, episodeId)
+                                    val parsedChapters = if (offlineChapters.isNotEmpty()) {
+                                        offlineChapters
+                                    } else {
+                                        ChapterRepository.parseChaptersFromDescription(episode?.description)
+                                    }
                                     if (parsedChapters.isNotEmpty()) {
                                         playerStateFlow.value =
                                             playerStateFlow.value.copy(
@@ -201,7 +215,10 @@ internal class PlaybackChaptersTranscriptController(
                                     // RSS transcript available — fetch normally, no AI state
                                     playerStateFlow.value = playerStateFlow.value.copy(autoTranscriptState = AutoTranscriptState.NONE)
                                     launch {
-                                        val transcript = TranscriptRepository.getTranscript(transcriptUrl)
+                                        var transcript = TranscriptRepository.getTranscript(transcriptUrl)
+                                        if (transcript.isEmpty()) {
+                                            transcript = TranscriptOfflineStorage.getOfflineTranscript(context, episodeId)
+                                        }
                                         if (playerStateFlow.value.currentEpisode?.id == episodeId) {
                                             playerStateFlow.value = playerStateFlow.value.copy(currentTranscript = transcript)
                                         }
@@ -281,58 +298,18 @@ internal class PlaybackChaptersTranscriptController(
                                         }
                                     }
                                 } else if (episode != null && episode.audioUrl.isNotEmpty()) {
-                                    // No RSS transcript — check auto-transcript status
-                                    playerStateFlow.value =
-                                        playerStateFlow.value.copy(
-                                            autoTranscriptState = AutoTranscriptState.CHECKING,
-                                            currentTranscript = emptyList(),
-                                        )
-                                    launch {
-                                        val deviceUuid = deviceUuid()
-                                        val response =
-                                            TranscriptRepository.checkAutoTranscriptStatus(
-                                                api = podcastRepository.api,
-                                                publicKey = podcastRepository.publicKey,
-                                                deviceUuid = deviceUuid,
-                                                episodeId = episodeId,
-                                                audioUrl = episode.audioUrl,
-                                                transcriptUrl = episode.transcriptUrl,
-                                            )
-                                        if (playerStateFlow.value.currentEpisode?.id != episodeId) return@launch
-
-                                        val status = response?.status
-                                        val limitLeft = response?.limitLeft
-                                        val chapters = response?.chapters
-
+                                    val offlineTranscript = TranscriptOfflineStorage.getOfflineTranscript(context, episodeId)
+                                    if (offlineTranscript.isNotEmpty()) {
                                         playerStateFlow.value =
                                             playerStateFlow.value.copy(
-                                                autoTranscriptLimitLeft = limitLeft,
+                                                autoTranscriptState = AutoTranscriptState.NONE,
+                                                currentTranscript = offlineTranscript,
                                             )
-
-                                        if (chapters != null && playerStateFlow.value.currentEpisode?.id == episodeId) {
-                                            playerStateFlow.value =
-                                                playerStateFlow.value.copy(
-                                                    currentChapters = if (playerStateFlow.value.isChaptersNative) playerStateFlow.value.currentChapters else chapters,
-                                                    autoChaptersState =
-                                                    if (chapters.isNotEmpty() ||
-                                                        playerStateFlow.value.isChaptersNative
-                                                    ) {
-                                                        AutoTranscriptState.COMPLETED
-                                                    } else {
-                                                        playerStateFlow.value.autoChaptersState
-                                                    },
-                                                )
-                                        }
-
-                                        when (status) {
-                                            "completed" -> {
-                                                // Transcript exists — fetch the full SRT
-                                                playerStateFlow.value =
-                                                    playerStateFlow.value.copy(
-                                                        autoTranscriptState = AutoTranscriptState.COMPLETED,
-                                                    )
-                                                val transcript =
-                                                    TranscriptRepository.getAutoTranscript(
+                                        if (chaptersUrl.isNullOrEmpty() && !playerStateFlow.value.isChaptersNative) {
+                                            launch {
+                                                val deviceUuid = deviceUuid()
+                                                val response =
+                                                    TranscriptRepository.checkAutoTranscriptStatus(
                                                         api = podcastRepository.api,
                                                         publicKey = podcastRepository.publicKey,
                                                         deviceUuid = deviceUuid,
@@ -340,6 +317,87 @@ internal class PlaybackChaptersTranscriptController(
                                                         audioUrl = episode.audioUrl,
                                                         transcriptUrl = episode.transcriptUrl,
                                                     )
+                                                if (playerStateFlow.value.currentEpisode?.id != episodeId) return@launch
+                                                val chapters = response?.chapters
+                                                if (chapters != null) {
+                                                    playerStateFlow.value =
+                                                        playerStateFlow.value.copy(
+                                                            currentChapters = if (playerStateFlow.value.isChaptersNative) playerStateFlow.value.currentChapters else chapters,
+                                                            autoChaptersState =
+                                                            if (chapters.isNotEmpty() ||
+                                                                playerStateFlow.value.isChaptersNative
+                                                            ) {
+                                                                AutoTranscriptState.COMPLETED
+                                                            } else {
+                                                                playerStateFlow.value.autoChaptersState
+                                                            },
+                                                        )
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // No RSS transcript — check auto-transcript status
+                                        playerStateFlow.value =
+                                            playerStateFlow.value.copy(
+                                                autoTranscriptState = AutoTranscriptState.CHECKING,
+                                                currentTranscript = emptyList(),
+                                            )
+                                        launch {
+                                            val deviceUuid = deviceUuid()
+                                            val response =
+                                                TranscriptRepository.checkAutoTranscriptStatus(
+                                                    api = podcastRepository.api,
+                                                    publicKey = podcastRepository.publicKey,
+                                                    deviceUuid = deviceUuid,
+                                                    episodeId = episodeId,
+                                                    audioUrl = episode.audioUrl,
+                                                    transcriptUrl = episode.transcriptUrl,
+                                                )
+                                            if (playerStateFlow.value.currentEpisode?.id != episodeId) return@launch
+
+                                            val status = response?.status
+                                            val limitLeft = response?.limitLeft
+                                            val chapters = response?.chapters
+
+                                            playerStateFlow.value =
+                                                playerStateFlow.value.copy(
+                                                    autoTranscriptLimitLeft = limitLeft,
+                                                )
+
+                                            if (chapters != null && playerStateFlow.value.currentEpisode?.id == episodeId) {
+                                                playerStateFlow.value =
+                                                    playerStateFlow.value.copy(
+                                                        currentChapters = if (playerStateFlow.value.isChaptersNative) playerStateFlow.value.currentChapters else chapters,
+                                                        autoChaptersState =
+                                                        if (chapters.isNotEmpty() ||
+                                                            playerStateFlow.value.isChaptersNative
+                                                        ) {
+                                                            AutoTranscriptState.COMPLETED
+                                                        } else {
+                                                            playerStateFlow.value.autoChaptersState
+                                                        },
+                                                    )
+                                            }
+
+                                            when (status) {
+                                                "completed" -> {
+                                                    // Transcript exists — fetch the full SRT
+                                                    playerStateFlow.value =
+                                                        playerStateFlow.value.copy(
+                                                            autoTranscriptState = AutoTranscriptState.COMPLETED,
+                                                        )
+                                                    var transcript =
+                                                        TranscriptRepository.getAutoTranscript(
+                                                            api = podcastRepository.api,
+                                                            publicKey = podcastRepository.publicKey,
+                                                            deviceUuid = deviceUuid,
+                                                            episodeId = episodeId,
+                                                            audioUrl = episode.audioUrl,
+                                                            transcriptUrl = episode.transcriptUrl,
+                                                        )
+                                                    if (transcript.isEmpty()) {
+                                                        transcript = TranscriptOfflineStorage.getOfflineTranscript(context, episodeId)
+                                                    }
                                                 if (playerStateFlow.value.currentEpisode?.id == episodeId) {
                                                     val autoChapters = ChapterRepository.getCachedChapters("auto_$episodeId") ?: emptyList()
                                                     playerStateFlow.value =
@@ -418,6 +476,7 @@ internal class PlaybackChaptersTranscriptController(
                                             }
                                         }
                                     }
+                                }
                                 } else {
                                     playerStateFlow.value =
                                         playerStateFlow.value.copy(
