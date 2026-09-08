@@ -14,7 +14,7 @@ Search by name or topic, get recommendations, listen offline, watch video shows,
 <!-- download-play:end -->
 &nbsp;&nbsp;
 <!-- download-apk:start -->
-<a href="https://github.com/boxcreate/boxlore/releases/latest/download/boxlore-v0.0.24.apk"><img src="docs/images/button_github_v8.svg" width="224" height="60" alt="Download the boxlore APK from GitHub"/></a>
+<a href="https://github.com/boxcreate/boxlore/releases/latest/download/boxlore-v0.0.25.apk"><img src="docs/images/button_github_v8.svg" width="224" height="60" alt="Download the boxlore APK from GitHub"/></a>
 <!-- download-apk:end -->
 </p>
 
@@ -67,6 +67,15 @@ The app uses your listening activity—such as what you play, skip, and like—t
 ### Upcoming
 
 <!-- release-upcoming:start -->
+New features and improvements for the next release are currently in development.
+<p align="center"><sub><sub>AI-generated summary; may contain mistakes.<br/>Verify details in the <a href="CHANGELOG.md">changelog</a> and linked pull requests.</sub></sub></p>
+<!-- release-upcoming:end -->
+
+
+### What's New · `v0.0.25` · 2026-09-08
+
+<!-- release-whats-new:start -->
+<!-- release-meta: version=v0.0.25 date=2026-09-08 -->
 <p>🎙️ <b>Community Thanks</b>: Big shoutout to <b>@pclewis33-arch</b> for proposing genre editing, which inspired our new subscription organization system featuring custom folders, adaptive card sizes, and personalized show tags. Please let us know how it works for you! And thank you to everyone who reported bugs—we've resolved as many as possible in this release to keep <b>boxlore</b> reliable.</p>
 
 <b>🆕 New features:</b>
@@ -105,28 +114,6 @@ The app uses your listening activity—such as what you play, skip, and like—t
 <li><b>Video Spotlight Animation</b>: Fixed Video Spotlight cards on the Home screen so their dropshadow and border scale smoothly with the artwork during tap animation instead of revealing a static outer outline. <a href="https://github.com/boxcreate/boxlore/pull/1046"><img src="https://img.shields.io/badge/PR-1046-6750A4?style=flat-square" alt="PR #1046" height="18"/></a></li>
 <li><b>Player Cast Icon Theming</b>: Fixed the Cast icon in the full-screen player so it adapts to light and dark themes and matches the Share button. <a href="https://github.com/boxcreate/boxlore/pull/1039"><img src="https://img.shields.io/badge/PR-1039-6750A4?style=flat-square" alt="PR #1039" height="18"/></a></li>
 </ul>
-<!-- release-upcoming:end -->
-
-
-### What's New · `v0.0.24` · 2026-08-30
-
-<!-- release-whats-new:start -->
-<!-- release-meta: version=v0.0.24 date=2026-08-30 -->
-<b>🚨 Critical:</b>
-<ul align="left">
-<li>Episodes now reliably resume from your latest listening position after overnight or background playback, and restored players show progress as soon as boxlore opens. <a href="https://github.com/boxcreate/boxlore/pull/1012"><img src="https://img.shields.io/badge/PR-1012-6750A4?style=flat-square" alt="PR #1012" height="18"/></a></li>
-</ul>
-<b>⚡ Improvements:</b>
-<ul align="left">
-<li>Unsubscribing now works on the first try even while podcast data is loading, so removed shows no longer reappear or jump to the front of Home. <a href="https://github.com/boxcreate/boxlore/pull/1009"><img src="https://img.shields.io/badge/PR-1009-6750A4?style=flat-square" alt="PR #1009" height="18"/></a></li>
-<li>Sharing podcasts and episodes is now clearer, with cleaner artwork cards for messages and Instagram Stories. <a href="https://github.com/boxcreate/boxlore/pull/1011"><img src="https://img.shields.io/badge/PR-1011-6750A4?style=flat-square" alt="PR #1011" height="18"/></a></li>
-<li>Playback widgets now handle long episode names more cleanly, show more context for new episodes, and offer a new compact Next-control layout. <a href="https://github.com/boxcreate/boxlore/pull/1010"><img src="https://img.shields.io/badge/PR-1010-6750A4?style=flat-square" alt="PR #1010" height="18"/></a></li>
-</ul>
-<b>🐛 Fixes:</b>
-<ul align="left">
-<li>Briefing market now keeps the explicit global market setting, ensuring you see the right content for your region. <a href="https://github.com/boxcreate/boxlore/pull/1008"><img src="https://img.shields.io/badge/PR-1008-6750A4?style=flat-square" alt="PR #1008" height="18"/></a></li>
-</ul>
-<p align="center"><sub><sub>AI-generated summary; may contain mistakes.<br/>Verify details in the <a href="CHANGELOG.md">changelog</a> and linked pull requests.</sub></sub></p>
 <!-- release-whats-new:end -->
 
 <!-- upcoming-changes:end -->
