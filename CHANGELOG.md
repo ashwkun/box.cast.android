@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `LibraryBackupFolderLogic` and extended `LibraryBackupManager` v6 supporting backup/restore of folder structures, memberships, folder sort preferences, and custom podcast tags. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Direct-clickable show slots, overflow mini-clusters (`+N`), and `FolderExpandedDialog` for enlarged folder interactions. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
 - Drag-and-drop folder reordering with persistent manual order in `subscriptionFolderManualOrder` and custom scoped reorder bar. ([#1059](https://github.com/boxcreate/boxlore/pull/1059)) <!-- impact:user-impact-critical --> <!-- copy:locked -->
+- Offline chapter and transcript persistence for downloaded episodes, including Room migration v35 -> v36. ([#1065](https://github.com/boxcreate/boxlore/pull/1065)) <!-- impact:user-impact-high --> <!-- copy:locked -->
+- Automatic fallback to show note description timestamps for offline chapter generation when remote JSON chapters are absent. ([#1065](https://github.com/boxcreate/boxlore/pull/1065)) <!-- impact:user-impact-high --> <!-- copy:locked -->
 - Subscriptions tab presentation style preference (`top` vs `floating`) in `:core:prefs`, Settings UI, and Subscriptions screen. ([#1048](https://github.com/boxcreate/boxlore/pull/1048)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Elevated Play All FAB animation when floating tab selector is active. ([#1048](https://github.com/boxcreate/boxlore/pull/1048)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Backup and restore support for `subscriptionsTabStyle`, `navigationStyle`, and `fontRoundness` in `LibraryBackupManager`. ([#1048](https://github.com/boxcreate/boxlore/pull/1048)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
@@ -46,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevent SecurityException crashes caused by system PendingIntent UID quota exhaustion in FCM notifications and Media3 playback session setup (#1025). ([#1034](https://github.com/boxcreate/boxlore/pull/1034)) <!-- impact:user-impact-high --> <!-- copy:locked -->
 - Preserved show name metadata during Android Auto playback and resolved session restore reversions when replaying completed episodes (#1035). ([#1036](https://github.com/boxcreate/boxlore/pull/1036)) <!-- impact:user-impact-high --> <!-- copy:locked -->
 - Fixed Android Auto reconnection failure by registering `MediaButtonReceiver` and implementing `onPlaybackResumption` with queue hydration and repeat session recovery (#1038). ([#1045](https://github.com/boxcreate/boxlore/pull/1045)) <!-- impact:user-impact-high --> <!-- copy:locked -->
+- Fixed disabled or missing chapters and transcripts during offline playback of downloaded episodes. ([#1065](https://github.com/boxcreate/boxlore/pull/1065)) <!-- impact:user-impact-high --> <!-- copy:locked -->
+- Fixed player dynamic theme application on inline transcript header and fullscreen button. ([#1065](https://github.com/boxcreate/boxlore/pull/1065)) <!-- impact:user-impact-high --> <!-- copy:locked -->
+- Calibrated player metadata typography and muted colors in transcript mode without visual conflict with inactive transcript lines. ([#1065](https://github.com/boxcreate/boxlore/pull/1065)) <!-- impact:user-impact-high --> <!-- copy:locked -->
 - Adapted the Cast button in the expanded player sheet to respect dark and light themes and match the Share button theming (#1037). ([#1039](https://github.com/boxcreate/boxlore/pull/1039)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Handled broken pipe and network disconnect exceptions safely during Android Auto artwork streaming (#1027). ([#1041](https://github.com/boxcreate/boxlore/pull/1041)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
 - Enforce `MediaController` main-thread affinity in `PlaybackRepository` to prevent `IllegalStateException` on background session restoration. ([#1042](https://github.com/boxcreate/boxlore/pull/1042)) <!-- impact:user-impact-medium --> <!-- copy:locked -->
@@ -154,6 +159,12 @@ readme-copy:end pr=1059 -->
 ### Improvements
 - Added a confirmation prompt when removing downloaded episodes to prevent accidental deletions.
 readme-copy:end pr=1064 -->
+
+<!-- readme-copy:start pr=1065
+### Improvements
+- Downloaded episodes now include chapters and transcripts for offline listening on planes, trains, and commutes.
+- Polished inline player transcript view with theme-matching headers and focused text sizing.
+readme-copy:end pr=1065 -->
 ## [v0.0.24] - 2026-08-30
 
 ### Added
