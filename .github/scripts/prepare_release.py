@@ -1126,6 +1126,7 @@ def notification_bullets(content: str, version: AppVersion) -> list[str]:
         ]
 
     bullets: list[str] = []
+    max_bullets = 5 if is_ai_generated else 8
     for candidate in candidates:
         if (
             not candidate
@@ -1135,7 +1136,7 @@ def notification_bullets(content: str, version: AppVersion) -> list[str]:
         ):
             continue
         bullets.append(shorten_notification_line(candidate))
-        if is_ai_generated and len(bullets) == 5:
+        if len(bullets) == max_bullets:
             break
     if not bullets:
         fail(f"README What's New block for {version.tag} has no notification text")

@@ -105,7 +105,6 @@ The app uses your listening activity—such as what you play, skip, and like—t
 <li><b>Video Spotlight Animation</b>: Fixed Video Spotlight cards on the Home screen so their dropshadow and border scale smoothly with the artwork during tap animation instead of revealing a static outer outline. <a href="https://github.com/boxcreate/boxlore/pull/1046"><img src="https://img.shields.io/badge/PR-1046-6750A4?style=flat-square" alt="PR #1046" height="18"/></a></li>
 <li><b>Player Cast Icon Theming</b>: Fixed the Cast icon in the full-screen player so it adapts to light and dark themes and matches the Share button. <a href="https://github.com/boxcreate/boxlore/pull/1039"><img src="https://img.shields.io/badge/PR-1039-6750A4?style=flat-square" alt="PR #1039" height="18"/></a></li>
 </ul>
-<p align="center"><sub><sub>AI-generated summary; may contain mistakes.<br/>Verify details in the <a href="CHANGELOG.md">changelog</a> and linked pull requests.</sub></sub></p>
 <!-- release-upcoming:end -->
 
 
