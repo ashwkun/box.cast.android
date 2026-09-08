@@ -1,5 +1,5 @@
 {
-  "lastRun": "2026-09-08T17:23:52.019Z",
+  "lastRun": "2026-09-08T20:05:54.642Z",
   "podcasts": {
     "2123": {
       "lastEpisodeId": "567722198",
@@ -66,22 +66,22 @@
       "lastCheckedAt": 1782580346119
     },
     "318297": {
-      "lastRssKey": "DFE8B9E4-509C-481A-A982-FDB50738D92E",
-      "lastEpisodeTitle": "TNB Tech Minute: Google Cloud and Accenture Team Up to Embed AI Engineers On-Site With Clients",
+      "lastRssKey": "D82685FE-6A6C-4455-A66A-F6DC424F3768",
+      "lastEpisodeTitle": "TNB Tech Minute: Meta Launches Personal AI Agent For Mainstream Consumers",
       "lastEpisodeId": "60099655755",
-      "lastCheckedAt": 1788888238547
+      "lastCheckedAt": 1788897962977
     },
     "331078": {
-      "lastRssKey": "80e1257e-a890-11f1-95c4-6fad7ece203c",
-      "lastEpisodeTitle": "Tim Cook Ain't Goin Anywhere",
+      "lastRssKey": "813f16d4-a890-11f1-95c4-7b1ae992a185",
+      "lastEpisodeTitle": "Did AI Just Solve Math?",
       "lastEpisodeId": "59764839545",
-      "lastCheckedAt": 1788817353381
+      "lastCheckedAt": 1788897964055
     },
     "385117": {
-      "lastRssKey": "0ff280cc-aba8-11f1-958c-4f314e7b63d8",
-      "lastEpisodeTitle": "1PM ET 09/08/2026 Newscast",
-      "lastEpisodeId": "60085424720",
-      "lastCheckedAt": 1788888239027
+      "lastRssKey": "cfd0e3c4-abb8-11f1-b27c-937e1bbc6ee5",
+      "lastEpisodeTitle": "3PM ET 09/08/2026 Newscast",
+      "lastEpisodeId": "60123781795",
+      "lastCheckedAt": 1788897964633
     },
     "386911": {
       "lastRssKey": "fe6bbddc-a887-11f1-9153-5fae2fe654bd",
@@ -90,10 +90,10 @@
       "lastCheckedAt": 1788549518808
     },
     "415434": {
-      "lastRssKey": "c9c7fbe0-c3c7-11f0-8340-9f47fcc04021",
-      "lastEpisodeTitle": "AGI is whatever you want it to be",
+      "lastRssKey": "c91d4268-c3c7-11f0-8340-d7c9117b9029",
+      "lastEpisodeTitle": "The tech that made a 2-hour marathon possible",
       "lastEpisodeId": "59905313780",
-      "lastCheckedAt": 1788540280223
+      "lastCheckedAt": 1788897965506
     },
     "419624": {
       "lastRssKey": "421354b8-c04f-4202-9c3a-48a375e73b54",
@@ -131,10 +131,10 @@
       "lastCheckedAt": 1782580346423
     },
     "461319": {
-      "lastRssKey": "236dc522-200e-4ee2-941b-e1be4f6c11f8",
-      "lastEpisodeTitle": "Cybercab Fleet is Here!!! | Tesla Time News 672",
-      "lastEpisodeId": "60032601762",
-      "lastCheckedAt": 1788722693662
+      "lastRssKey": "876edfe9-3964-4778-9d60-ecb962043ae3",
+      "lastEpisodeTitle": "First Deadly Cybercab Crash | Tesla Time News 673",
+      "lastEpisodeId": "60124467901",
+      "lastCheckedAt": 1788897970040
     },
     "466583": {
       "lastRssKey": "55550814-a7e9-11f1-9a1e-f34adf9c9e73",
@@ -243,10 +243,10 @@
       "lastCheckedAt": 1788857949653
     },
     "808826": {
-      "lastRssKey": "6a9669e9341b771cca47ade6",
-      "lastEpisodeTitle": "Go Go Gadget GPT",
+      "lastRssKey": "6a9fc06ea84f75ab704f7f9d",
+      "lastEpisodeTitle": "Jeopardy!",
       "lastEpisodeId": "58865121562",
-      "lastCheckedAt": 1788291914943
+      "lastCheckedAt": 1788897988323
     },
     "838740": {
       "lastRssKey": "d252c192-a89f-11f1-99e6-1b1f53e86e1e",
@@ -348,10 +348,10 @@
       "lastCheckedAt": 1788743817939
     },
     "1193286": {
-      "lastEpisodeId": "60096067936",
-      "lastEpisodeTitle": "Habs Are Nowhere Near Ready For Training Camp | The Sick Podcast with Tony Marinaro September 7 2026",
-      "lastRssKey": "4b4373fe-ab0b-11f1-9d1e-f72fab7ff0de",
-      "lastCheckedAt": 1788857963130
+      "lastEpisodeId": "60122183452",
+      "lastEpisodeTitle": "Le Futur De Martin St-Louis À Montréal | Le Sick Podcast Avec Tony Marinaro 08/09/26",
+      "lastRssKey": "05b36614-ab9c-11f1-9bf0-7b858d6a49b5",
+      "lastCheckedAt": 1788898000009
     },
     "1208307": {
       "lastRssKey": "6aa00cf94f0fa94d53a8d0a6",
