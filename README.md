@@ -67,6 +67,8 @@ The app uses your listening activity—such as what you play, skip, and like—t
 ### Upcoming
 
 <!-- release-upcoming:start -->
+<p>🎙️ <b>Community Thanks</b>: Big shoutout to <b>@pclewis33-arch</b> for proposing genre editing, which inspired our new subscription organization system featuring custom folders, adaptive card sizes, and personalized show tags. Please let us know how it works for you! And thank you to everyone who reported bugs—we've resolved as many as possible in this release to keep <b>boxlore</b> reliable.</p>
+
 <b>🆕 New features:</b>
 <ul align="left">
 <li><b>Subscription Folders & Custom Sizes</b>: Organize your podcast library into custom folders with adaptive layouts—from compact 1×1 tiles to full-width 3×1 shelves and expanded panels, featuring direct show playback right from the folder card. <a href="https://github.com/boxcreate/boxlore/pull/1059"><img src="https://img.shields.io/badge/PR-1059-6750A4?style=flat-square" alt="PR #1059" height="18"/></a></li>
