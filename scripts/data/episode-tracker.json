@@ -1,5 +1,5 @@
 {
-  "lastRun": "2026-09-09T01:03:34.097Z",
+  "lastRun": "2026-09-09T06:24:06.010Z",
   "podcasts": {
     "2123": {
       "lastEpisodeId": "567722198",
@@ -60,6 +60,11 @@
       "lastEpisodeId": "59987155333",
       "lastCheckedAt": 1788619148432
     },
+    "271849": {
+      "lastRssKey": "tag:soundcloud,2010:tracks/2395697256",
+      "lastEpisodeTitle": "Proverbs for the Digital Home",
+      "lastCheckedAt": 1788935052844
+    },
     "311214": {
       "lastEpisodeId": "567104661",
       "lastEpisodeTitle": "The Cemetery Shadow Man",
@@ -78,10 +83,10 @@
       "lastCheckedAt": 1788897964055
     },
     "385117": {
-      "lastRssKey": "bc49533e-abe2-11f1-86d5-df03cfad6142",
-      "lastEpisodeTitle": "8PM ET 09/08/2026 Newscast",
+      "lastRssKey": "02ebdc30-ac15-11f1-bd82-9b6794d36979",
+      "lastEpisodeTitle": "2AM ET 09/09/2026 Newscast",
       "lastEpisodeId": "60123781795",
-      "lastCheckedAt": 1788915820870
+      "lastCheckedAt": 1788935054000
     },
     "386911": {
       "lastRssKey": "fe6bbddc-a887-11f1-9153-5fae2fe654bd",
@@ -120,10 +125,10 @@
       "lastCheckedAt": 1788888243111
     },
     "444785": {
-      "lastRssKey": "d2b355f4-842d-4ced-99a8-05a420a12f6b",
-      "lastEpisodeTitle": "Locked On Canadiens DIVISION PREVIEWS: UNSTOPPABLE: Are Cale Makar & Nathan MacKinnon set to CONTROL the Central Division this season?",
-      "lastEpisodeId": "60093954352",
-      "lastCheckedAt": 1788841397697
+      "lastRssKey": "6a12af77-f814-4ee6-ae12-d295f2d9e46e",
+      "lastEpisodeTitle": "CHANGING THE GUARD: Canadiens' Rookie Camp Roster Without Notable Prospects + Metro Division Preview",
+      "lastEpisodeId": "60140849278",
+      "lastCheckedAt": 1788935058626
     },
     "448245": {
       "lastEpisodeId": "56601446692",
@@ -183,10 +188,10 @@
       "lastCheckedAt": 1782585870863
     },
     "570903": {
-      "lastRssKey": "urn:bbc:podcast:m0030f49",
-      "lastEpisodeTitle": "Series 13: The Humans are Taking Over",
+      "lastRssKey": "urn:bbc:podcast:p0p3xtfv",
+      "lastEpisodeTitle": "Series 13: Jilly Cooper",
       "lastEpisodeId": "58699345714",
-      "lastCheckedAt": 1788244473149
+      "lastCheckedAt": 1788935063789
     },
     "577105": {
       "lastRssKey": "prx_7057_82aaba05-80c9-4d2e-8069-3c20f2b7dbc8",
@@ -273,10 +278,10 @@
       "lastCheckedAt": 1788874189297
     },
     "928708": {
-      "lastRssKey": "c8e5253a-a89c-11f1-92f3-b73ca0b0b560",
-      "lastEpisodeTitle": "This Day in History - September 8, 2026",
+      "lastRssKey": "e28047c8-aada-11f1-be10-876831ac67d1",
+      "lastEpisodeTitle": "This Day in History - September 9, 2026",
       "lastEpisodeId": "60049745208",
-      "lastCheckedAt": 1788841417360
+      "lastCheckedAt": 1788935068992
     },
     "946758": {
       "lastRssKey": "10a4917c-77b5-11f0-8752-337e8b32dca6",
@@ -407,10 +412,10 @@
       "lastCheckedAt": 1788730441420
     },
     "2407094": {
-      "lastRssKey": "6aa0407192488ad4ab59871f",
-      "lastEpisodeTitle": "La honte mondiale pour la France ? Le classement PISA expliqué",
+      "lastRssKey": "6aa03932dfa4e87da1cae4f4",
+      "lastEpisodeTitle": "(Pop) Pourquoi Macron veut que YouTube paie pour le cinéma français ?… HugoDécrypte",
       "lastEpisodeId": "60098359393",
-      "lastCheckedAt": 1788888279033
+      "lastCheckedAt": 1788935083463
     },
     "2574026": {
       "lastRssKey": "0f315c7a-a7c6-11f1-ac0f-3feab159b1ff",
@@ -594,10 +599,10 @@
       "lastCheckedAt": 1788874219795
     },
     "6456494": {
+      "lastRssKey": "6aa09a1399455f9a93cb84ac",
+      "lastEpisodeTitle": "Lake Android Faithful",
       "lastEpisodeId": "59912911833",
-      "lastEpisodeTitle": "Bug Droids in Bucket Hats",
-      "lastRssKey": "6a9792ceda248a131d446d60",
-      "lastCheckedAt": 1788491166610
+      "lastCheckedAt": 1788935098200
     },
     "6602135": {
       "lastRssKey": "75815325-d437-47de-a47f-a411416cd7e7",
@@ -672,10 +677,10 @@
       "lastCheckedAt": 1788390031214
     },
     "6956562": {
-      "lastRssKey": "08838122-aeac-48de-a967-35f98da56a5e",
-      "lastEpisodeTitle": "The logic behind ISRO and DRDO’s tech transfers",
-      "lastEpisodeId": "60089935369",
-      "lastCheckedAt": 1788841453283
+      "lastRssKey": "4e6c799e-7f15-4d36-9488-03b19d1ad739",
+      "lastEpisodeTitle": "When AI starts spending your money",
+      "lastEpisodeId": "60136375445",
+      "lastCheckedAt": 1788935102260
     },
     "6994919": {
       "lastEpisodeId": "42873997390",
@@ -731,10 +736,10 @@
       "lastCheckedAt": 1788785867153
     },
     "7376606": {
-      "lastRssKey": "c7250f02-f5a6-47dd-9a23-e63db5976011",
-      "lastEpisodeTitle": "What Was Medieval Life Really Like for Every Social Class? 🏰👑 | Boring History for Sleep",
+      "lastRssKey": "a83f02dd-8a4b-47a6-adb9-6f79722c9493",
+      "lastEpisodeTitle": "William Shakespeare — The Strange Life of History’s Greatest Playwright 🎭📜 | Boring History for Sleep",
       "lastEpisodeId": "60012474493",
-      "lastCheckedAt": 1788841458428
+      "lastCheckedAt": 1788935108403
     },
     "7424167": {
       "lastRssKey": "urn:bbc:podcast:m0030n9k",
