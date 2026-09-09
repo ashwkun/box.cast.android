@@ -1,5 +1,5 @@
 {
-  "lastRun": "2026-09-09T11:42:53.437Z",
+  "lastRun": "2026-09-09T15:58:33.247Z",
   "podcasts": {
     "2123": {
       "lastEpisodeId": "567722198",
@@ -71,10 +71,10 @@
       "lastCheckedAt": 1782580346119
     },
     "318297": {
-      "lastRssKey": "D82685FE-6A6C-4455-A66A-F6DC424F3768",
-      "lastEpisodeTitle": "TNB Tech Minute: Meta Launches Personal AI Agent For Mainstream Consumers",
+      "lastRssKey": "3BBD8041-E20E-4041-880B-9147B193C551",
+      "lastEpisodeTitle": "TNB Tech Minute: U.S. Prosecutors to Deliver Opening Statements in Huawei Criminal Trial",
       "lastEpisodeId": "60099655755",
-      "lastCheckedAt": 1788897962977
+      "lastCheckedAt": 1788969520906
     },
     "331078": {
       "lastRssKey": "813f16d4-a890-11f1-95c4-7b1ae992a185",
@@ -83,10 +83,10 @@
       "lastCheckedAt": 1788897964055
     },
     "385117": {
-      "lastRssKey": "ef94422e-ac3e-11f1-b76b-f35749a49e90",
-      "lastEpisodeTitle": "7AM ET 09/09/2026 Newscast",
+      "lastRssKey": "765e1ac0-ac60-11f1-9cab-8f3a8fea2390",
+      "lastEpisodeTitle": "11AM ET 09/09/2026 Newscast",
       "lastEpisodeId": "60123781795",
-      "lastCheckedAt": 1788954179691
+      "lastCheckedAt": 1788969522306
     },
     "386911": {
       "lastRssKey": "fe6bbddc-a887-11f1-9153-5fae2fe654bd",
@@ -153,10 +153,10 @@
       "lastCheckedAt": 1788340730762
     },
     "491579": {
-      "lastRssKey": "6aa034bd7275dabe9586e0b6",
-      "lastEpisodeTitle": "New Contract For Farke? | The Square Ball",
+      "lastRssKey": "6aa17fee6389ebc58153949b",
+      "lastEpisodeTitle": "Propaganda: It's Always Us",
       "lastEpisodeId": "59852857473",
-      "lastCheckedAt": 1788888248396
+      "lastCheckedAt": 1788969528949
     },
     "499394": {
       "lastRssKey": "flightcast:01M1M9A59AFBGJG3WGBMW30A0F",
@@ -296,10 +296,10 @@
       "lastCheckedAt": 1788549536272
     },
     "980370": {
-      "lastRssKey": "6aa02305e25cb7d39e91b630",
-      "lastEpisodeTitle": "How the wealth gap is reshaping politics | Xochitl Gonzalez",
-      "lastEpisodeId": "59697911357",
-      "lastCheckedAt": 1788888266906
+      "lastRssKey": "6aa16c4c156a52f88077296c",
+      "lastEpisodeTitle": "How bullying spreads — and how social bravery stops it | Amy Cuddy",
+      "lastEpisodeId": "60161759896",
+      "lastCheckedAt": 1788969551555
     },
     "998969": {
       "lastRssKey": "audioboom-01a07642-0bc9-7c51-96e8-296cc73d1d80",
@@ -598,6 +598,11 @@
       "lastEpisodeId": "59712792909",
       "lastCheckedAt": 1788954224918
     },
+    "6413946": {
+      "lastRssKey": "476fbf9b-ed8f-44fa-9145-616f4e0662df",
+      "lastEpisodeTitle": "EP 819: México acumula caídas en prueba PISA de aprendizaje, Revelan acuerdo de senadora de Morena con Estados Unidos y Lanza operativo contra drones de criminales en la frontera",
+      "lastCheckedAt": 1788969587134
+    },
     "6456494": {
       "lastRssKey": "6aa09a1399455f9a93cb84ac",
       "lastEpisodeTitle": "Lake Android Faithful",
@@ -657,6 +662,12 @@
       "lastEpisodeTitle": "ELLAM PHASES DHAN.",
       "lastEpisodeId": "53696806037",
       "lastCheckedAt": 1787770938932
+    },
+    "6852067": {
+      "lastRssKey": "e684fc84-ab33-11f1-844c-abddd2d93a82",
+      "lastEpisodeTitle": "La trampa de la IA: Negocio de la defensa",
+      "lastEpisodeId": "60114499389",
+      "lastCheckedAt": 1788969593316
     },
     "6866732": {
       "lastRssKey": "https://api.spreaker.com/episode/74932240",
@@ -722,6 +733,12 @@
       "lastEpisodeTitle": "They just put EVERYONE on notice... - Zharovsky and Gleb showing OUT",
       "lastEpisodeId": "60132290764",
       "lastCheckedAt": 1788915884419
+    },
+    "7248222": {
+      "lastRssKey": "0450e608-abcd-11f1-92a6-0b891f354de7",
+      "lastEpisodeTitle": "Alex Fdz en Chilango: Martes 8 de septiembre de 2026",
+      "lastEpisodeId": "60136042421",
+      "lastCheckedAt": 1788969602412
     },
     "7319490": {
       "lastRssKey": "01a05eb0-2016-7266-99a4-deed8661abea",
@@ -805,6 +822,12 @@
       "lastEpisodeId": "48800123551",
       "lastEpisodeTitle": "Scientists Discuss the Future of Extreme Weather",
       "lastCheckedAt": 1786543013085
+    },
+    "7756959": {
+      "lastRssKey": "fb7a1d04-abd8-11f1-a154-2fcfb2ba5bee",
+      "lastEpisodeTitle": "¿Qué tan bien conoces a tus vecinos? + La nueva película de A24 | VA VA VA",
+      "lastEpisodeId": "60132395912",
+      "lastCheckedAt": 1788969615699
     },
     "7837137": {
       "lastRssKey": "https://api.spreaker.com/episode/71692637",
