@@ -1,5 +1,5 @@
 {
-  "lastRun": "2026-09-10T08:19:37.405Z",
+  "lastRun": "2026-09-10T13:01:24.504Z",
   "podcasts": {
     "2123": {
       "lastEpisodeId": "567722198",
@@ -83,10 +83,10 @@
       "lastCheckedAt": 1788990588029
     },
     "385117": {
-      "lastRssKey": "f11a5542-acee-11f1-acde-433e3c8ec735",
-      "lastEpisodeTitle": "4AM ET 09/10/2026 Newscast",
-      "lastEpisodeId": "60123781795",
-      "lastCheckedAt": 1789028385925
+      "lastRssKey": "7ce7ce4e-ad10-11f1-99ce-ff6d8aeb8dad",
+      "lastEpisodeTitle": "8AM ET 09/10/2026 Newscast",
+      "lastEpisodeId": "60198436378",
+      "lastCheckedAt": 1789045293056
     },
     "386911": {
       "lastRssKey": "fe6bbddc-a887-11f1-9153-5fae2fe654bd",
@@ -113,10 +113,10 @@
       "lastCheckedAt": 1786765059294
     },
     "437685": {
-      "lastRssKey": "84f19694-8d60-11f1-adef-370f31678915",
-      "lastEpisodeTitle": "A History of Looney Tunes",
-      "lastEpisodeId": "60150194370",
-      "lastCheckedAt": 1788954182651
+      "lastRssKey": "84d14114-8d60-11f1-adef-37851d882326",
+      "lastEpisodeTitle": "The Srivijaya Empire",
+      "lastEpisodeId": "60193928062",
+      "lastCheckedAt": 1789045296860
     },
     "444331": {
       "lastRssKey": "8bc9001c-ace9-11f1-8456-cf79c5ae6c4e",
@@ -217,16 +217,16 @@
       "lastCheckedAt": 1788643853208
     },
     "724143": {
-      "lastRssKey": "848f6ada-ac98-11f1-b9a9-a7c5b1d786e4",
-      "lastEpisodeTitle": "Fachin tira Moraes do inquérito das fake news, marca julgamento e mantém Andrei Rodrigues na Polícia Federal",
+      "lastRssKey": "450622b2-acfe-11f1-aa9f-439234cf5dc5",
+      "lastEpisodeTitle": "Reações à decisão de Fachin; risco de tornado; contato de mães de crianças desaparecidas com a Interpol",
       "lastEpisodeId": "60065032576",
-      "lastCheckedAt": 1788997852425
+      "lastCheckedAt": 1789045304934
     },
     "743229": {
-      "lastEpisodeId": "60150609890",
-      "lastEpisodeTitle": "Trump’s War on Mail-In Voting",
-      "lastRssKey": "17fdb53e-f7c7-4aa2-81d9-8f74c29c6832",
-      "lastCheckedAt": 1788954201212
+      "lastEpisodeId": "60194518370",
+      "lastEpisodeTitle": "A Couple Breaks Up. Who Gets Custody of Their Embryos?",
+      "lastRssKey": "fc255834-c015-49e9-85e3-ce766bc75999",
+      "lastCheckedAt": 1789045305122
     },
     "743322": {
       "lastEpisodeId": "51557400761",
@@ -353,10 +353,10 @@
       "lastCheckedAt": 1788874198746
     },
     "1116485": {
-      "lastRssKey": "6aa1d548b2e7cb9b0da6f8c5",
-      "lastEpisodeTitle": "Liverpool 2-1 Atletico Madrid | Andoni Iraola UCL Post-Match Press Conference",
-      "lastEpisodeId": "60166943604",
-      "lastCheckedAt": 1788997864098
+      "lastRssKey": "6aa28b7037f1584de86ab55d",
+      "lastEpisodeTitle": "Does Alexis Mac Allister DESERVE A New Liverpool Contract?",
+      "lastEpisodeId": "60198008978",
+      "lastCheckedAt": 1789045318314
     },
     "1149997": {
       "lastRssKey": "3eba3442-d6c2-47fe-b02d-e453f366c161",
@@ -376,10 +376,10 @@
       "lastCheckedAt": 1789010176314
     },
     "1208307": {
-      "lastRssKey": "6aa1222a7275dabe95d5d439",
-      "lastEpisodeTitle": "Chaos but no passing? What to expect from F1's first visit to Madring",
+      "lastRssKey": "6aa278892e8bb8424c257178",
+      "lastEpisodeTitle": "F1 Rewind: When a young Ayrton Senna drove F1's elite crazy",
       "lastEpisodeId": "59631407122",
-      "lastCheckedAt": 1788954212514
+      "lastCheckedAt": 1789045319740
     },
     "1258562": {
       "lastRssKey": "6a940426057694768e5ae005",
@@ -451,10 +451,10 @@
       "lastCheckedAt": 1788029139347
     },
     "3237767": {
-      "lastRssKey": "2c64afbc-6de4-4d82-93d5-8ab11cb6c7fa",
-      "lastEpisodeTitle": "Hopium for Every NFL Team in 2026",
-      "lastEpisodeId": "59884546748",
-      "lastCheckedAt": 1788785844763
+      "lastRssKey": "b54072a2-5fd1-473d-ba49-d1dd5b8fab35",
+      "lastEpisodeTitle": "Drake Maye Tosses the Seahawks a W on Opening Day",
+      "lastEpisodeId": "60195569988",
+      "lastCheckedAt": 1789045324962
     },
     "3353685": {
       "lastEpisodeId": "59982883194",
@@ -552,9 +552,9 @@
       "lastCheckedAt": 1789028442501
     },
     "4898105": {
-      "lastRssKey": "d13b2e78-ac02-11f1-8ee8-8f109d1c45de",
-      "lastEpisodeTitle": "5 Big Announcements from The Legend of Zelda 40th Anniversary Direct",
-      "lastCheckedAt": 1788981267717
+      "lastRssKey": "4eb96b34-acc2-11f1-a0a4-3f5a8d951c17",
+      "lastEpisodeTitle": "The Big Announcements from Nintendo Direct September 2026",
+      "lastCheckedAt": 1789045330867
     },
     "5107672": {
       "lastRssKey": "8767b558-5d3e-492f-a2c2-21a55734e386",
@@ -602,10 +602,10 @@
       "lastCheckedAt": 1788509528936
     },
     "5731394": {
-      "lastRssKey": "fa7ddff0-abe5-11f1-9bdb-277bf3f1ca14",
-      "lastEpisodeTitle": "Sci Fi Section Ep 7: Red Rising Chapters 39-44",
+      "lastRssKey": "85148cd4-aca1-11f1-9a90-13e9716643b6",
+      "lastEpisodeTitle": "The Ducks Waive Chris Kreider In A Disaster Move For Anaheim",
       "lastEpisodeId": "60007884583",
-      "lastCheckedAt": 1788954223780
+      "lastCheckedAt": 1789045332926
     },
     "5930143": {
       "lastRssKey": "409c54f5-d6f1-40d2-8738-3edd419c9e3b",
@@ -620,15 +620,21 @@
       "lastCheckedAt": 1788990618187
     },
     "5972153": {
-      "lastRssKey": "ffa71148-ac28-11f1-b28e-1fd2424fc452",
-      "lastEpisodeTitle": "Iran escalation, GOP convention, Equatorial Guinea and Venezuela's migrants",
+      "lastRssKey": "07d011b4-acfe-11f1-a9b3-0346b1355b2a",
+      "lastEpisodeTitle": "AI's doomsday warning, Trump's $5,000 'dividend' and submarine drones",
       "lastEpisodeId": "59712792909",
-      "lastCheckedAt": 1788954224918
+      "lastCheckedAt": 1789045334389
+    },
+    "6264274": {
+      "lastRssKey": "18d91ae8-ad7a-4659-9843-1c8af96e287f",
+      "lastEpisodeTitle": "Spider-Noir Cancelled, Biggest Summer Box Office Ever",
+      "lastCheckedAt": 1789045335042
     },
     "6413946": {
-      "lastRssKey": "476fbf9b-ed8f-44fa-9145-616f4e0662df",
-      "lastEpisodeTitle": "EP 819: México acumula caídas en prueba PISA de aprendizaje, Revelan acuerdo de senadora de Morena con Estados Unidos y Lanza operativo contra drones de criminales en la frontera",
-      "lastCheckedAt": 1788969587134
+      "lastRssKey": "84feb968-4ef0-479f-b390-232ee6be8ca5",
+      "lastEpisodeTitle": "EP 820: Una mirada de fondo a los resultados de PISA, Presentan el gasto federal para 2027 y Proceso electoral arranca con turbulencia en el INE",
+      "lastEpisodeId": "60198639919",
+      "lastCheckedAt": 1789045335467
     },
     "6456494": {
       "lastRssKey": "6aa09a1399455f9a93cb84ac",
@@ -697,10 +703,10 @@
       "lastCheckedAt": 1787770938932
     },
     "6852067": {
-      "lastRssKey": "e684fc84-ab33-11f1-844c-abddd2d93a82",
-      "lastEpisodeTitle": "La trampa de la IA: Negocio de la defensa",
+      "lastRssKey": "509f7c02-acd3-11f1-bdc2-7b8b4c623737",
+      "lastEpisodeTitle": "Grupo Modelo: De Panaderos a la Cervecería MÁS GRANDE del mundo",
       "lastEpisodeId": "60114499389",
-      "lastCheckedAt": 1788969593316
+      "lastCheckedAt": 1789045339116
     },
     "6866732": {
       "lastRssKey": "https://api.spreaker.com/episode/74932240",
@@ -709,10 +715,10 @@
       "lastCheckedAt": 1788693297640
     },
     "6897392": {
-      "lastRssKey": "https://api.spreaker.com/episode/59779839",
-      "lastEpisodeTitle": "Yours Truly, Johnny Dollar - The Elliott Champion Matter",
+      "lastRssKey": "https://api.spreaker.com/episode/59779842",
+      "lastEpisodeTitle": "Lives Of Harry Lime - The Blue Caribou",
       "lastEpisodeId": "59068613094",
-      "lastCheckedAt": 1788954228259
+      "lastCheckedAt": 1789045340040
     },
     "6912659": {
       "lastRssKey": "babbaf25-6379-4266-8817-8a50517a6cfb",
@@ -751,9 +757,9 @@
       "lastCheckedAt": 1788997885128
     },
     "7183032": {
-      "lastRssKey": "721d37f0-a7e7-4482-8e1e-24545ab7e80c",
-      "lastEpisodeTitle": "\"I Questioned Hindu Gods” - Just One Surah Led him to Islam",
-      "lastCheckedAt": 1788804614429
+      "lastRssKey": "40403625-39d2-4e98-9f81-2865ae55e362",
+      "lastEpisodeTitle": "The Punishment of Lut's People Visualized by AI - 3 Qur'anic Miracles Discovered!",
+      "lastCheckedAt": 1789045343259
     },
     "7200648": {
       "lastRssKey": "https://api.spreaker.com/episode/64228821",
@@ -846,10 +852,10 @@
       "lastCheckedAt": 1786559338104
     },
     "7639797": {
-      "lastRssKey": "f89a9a75-9be9-4f15-a528-85cccffac513",
-      "lastEpisodeTitle": "Revelation 14",
-      "lastEpisodeId": "60149427971",
-      "lastCheckedAt": 1788954235520
+      "lastRssKey": "0290650f-0ad4-4ab6-9228-1ae796157cbd",
+      "lastEpisodeTitle": "Revelation 15",
+      "lastEpisodeId": "60193640645",
+      "lastCheckedAt": 1789045347209
     },
     "7662230": {
       "lastEpisodeId": "48800123551",
