@@ -13,7 +13,7 @@ This page is written by the people building **boxlore**, to tell you the unvarni
 ## The Three Ironclad Rules
 
 1. **Zero Ads, Forever:** We do not have banner ads, sponsor tracking pixels, or cross-site advertising SDKs. boxlore will never have ads.
-2. **No Accounts, No Identity Profiling:** We never ask for your name, email address, phone number, age, or gender. There is no account sign-up. Your library, subscriptions, likes, and history stay inside the local database on your phone.
+2. **No Accounts, No Cloud Profiles:** We never ask for your name, email address, phone number, age, or gender. There is no account sign-up and no central user profile. The actual database managing your library, folders, and downloads lives strictly on your phone, not on a server.
 3. **Your Taste Stays on Your Phone:** Your learned recommendation model, skip habits, and playback affinities are calculated strictly on your device using a local database. They are never sent to our servers.
 
 ---
@@ -58,7 +58,7 @@ We use PostHog for telemetry. Here are the five categories of data collected, an
 
 ## What Stays Strictly Local
 
-* **Your Library:** All your subscribed shows, custom folders, custom tags, downloaded media files, and listening history remain strictly on your device.
+* **Your Library Database:** Your custom folders, custom tags, downloaded audio files, and complete library records live on your phone. We do not sync or mirror your library to a cloud server. (Individual actions like liking an episode or playing a show emit anonymous telemetry events as described above, but they are never tied to a personal identity).
 * **Your Personalization Brain:** boxlore runs an on-device Bayesian ranking model. The math that learns what you skip, finish, and like stays inside your phone's local database.
 * **Your Backups:** When you export a full JSON backup of your library, it is generated locally and saved to your phone storage. We never hold a copy of your backup on our servers unless you explicitly share it.
 
