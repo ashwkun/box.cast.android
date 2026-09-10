@@ -1,57 +1,72 @@
 # What we track and why
 
-> **boxlore isn’t meant for monetary gain. It’s a few friends finishing a childhood dream: watching code turn into magic on screens.**
+Most privacy pages are written by corporate lawyers to disguise what an app takes from you. 
+
+This page is written by the people building **boxlore**, to tell you the unvarnished truth about what data leaves your phone, why we collect it, and the strict boundaries we never cross.
+
+> **boxlore is not built for profit. It is a few friends finishing a childhood dream: watching code turn into magic on screens.**
 >
-> *Never sold · Never for ads · No ads in boxlore · Usage only*
-
-Whatever we collect will never be sold, never used to push ads, and never used for the other creepy things people do with data. It is only to understand how many people use the app, how they use it, and which features work or don't.
+> *Never sold · Zero ads · Anonymous usage only*
 
 ---
 
-## What this looks like, and what it isn’t
+## The Three Ironclad Rules
 
-Analytics can suggest a rough sketch (rough geographic region, device model, general podcast taste), but never a precise identity profile, and never age or gender. We don’t ask for your name or email, and there is no account; your subscriptions and library stay on your device.
-
-The only personal details that show up are ones you type into search or AI onboarding. Please don't type sensitive personal info into search boxes.
-
-And again: data is never sold, and never used for ads. **boxlore will never have ads.**
+1. **Zero Ads, Forever:** We do not have banner ads, sponsor tracking pixels, or cross-site advertising SDKs. boxlore will never have ads.
+2. **No Accounts, No Identity Profiling:** We never ask for your name, email address, phone number, age, or gender. There is no account sign-up. Your library, subscriptions, likes, and history stay inside the local database on your phone.
+3. **Your Taste Stays on Your Phone:** Your learned recommendation model, skip habits, and playback affinities are calculated strictly on your device using a local database. They are never sent to our servers.
 
 ---
 
-## The 5 Things We Collect
+## Why We Track Anything at All
 
-### 1. App use
-* **What's collected:** Screen opens, feature taps, settings changes, and rough time spent. Things like home carousel swipes, explore searches, library visits, settings opens, and mini-player taps.
-* **Why:** So we can see how many people are actually using boxlore, which parts feel alive, and which ones flop, so we can make better product calls. And honestly, so we can watch the charts and feel happy that people are using something we built.
-* **Real example:** Earlier builds had a Radio feature. Usage data showed almost nobody used it, so we removed it instead of keeping dead weight in the app.
+Building an Android media player that works across thousands of phone models, car stereos, and malformed RSS feeds is difficult. 
 
-### 2. Search and onboarding text
-* **What's collected:** Search queries and what the app returns, plus AI onboarding chat text.
-* **Why:** Podcast Index and Apple's APIs lean hard on exact-word matching. Search quality is one of the biggest pain points we’re trying to fix, so seeing real queries and responses is critical. Same for AI onboarding: we need to know whether prompts are understood and answers stay relevant.
-* **Real example:** A lot of people typed real podcast names into onboarding and treated the AI like a search box. The model kept asking generic taste questions instead of helping. So we added a layer that checks if the text is basically a show name, validates it against the chat context, and offers "use search instead" with that title so you can subscribe immediately.
+If an episode fails to stream, we need to know. If a button is confusing, we need to see where people get stuck. If nobody uses a feature, we want to remove the dead weight instead of letting the app become bloated.
 
-### 3. Listening activity
-* **What's collected:** Podcast and episode details, playback progress, likes, subscriptions, downloads, and related listening signals.
-* **Why:** Public charts aren't great for granular signals, and Apple charts don't provide the play-level signal we need. We use this to understand listening trends and build community charts that are native to boxlore.
-
-### 4. App and device
-* **What's collected:** App version, OS version, device manufacturer/model, local hour, and an anonymous analytics ID.
-* **Why:** We don’t really need this for product decisions; PostHog tracks it by default, and we don’t currently have a clean way to turn that part off.
-
-### 5. Crashes and errors
-* **What's collected:** Technical stack traces, error codes, and crash reports.
-* **Why:** Pretty obvious: if the app breaks on a specific Android version or car head unit, we need to know so we can fix it.
+And honestly, we track usage because we care. When we sit up at 2:00 AM fixing an audio service bug, watching the charts and seeing hundreds of real people listening to podcasts brings us genuine joy. It reminds us that the work matters.
 
 ---
 
-## On-device recommendations (What stays on your phone)
+## Exactly What Leaves Your Phone
 
-Your learned taste profile and ranking model stay on your device. They are not uploaded. JSON backups you create include this state so an imported install can continue with the same learning without any server profile.
+We use PostHog for telemetry. Here are the five categories of data collected, and exactly how we use them:
+
+### 1. App Navigation and Feature Use
+* **What is sent:** Screen opens, button taps, carousel swipes, settings adjustments, and general time spent.
+* **Why:** To see how many people actually use boxlore, which features feel alive, and which ones flop, so we can make better product calls.
+* **Real example:** Earlier versions had a Radio feature. The data showed that almost nobody clicked on it, so we removed it completely instead of keeping bloat in the app.
+
+### 2. Search Queries and Onboarding Text
+* **What is sent:** The search terms you type and the results returned, along with text entered during AI onboarding.
+* **Why:** Podcast Index and Apple directory search rely heavily on exact-word matching, which often produces terrible results for normal human queries. Seeing real queries helps us tune our typo tolerance and semantic topic search so the app actually finds what you want.
+* **Real example:** Many people typed real show names into the onboarding assistant expecting it to act like a search bar. Because we saw this in the queries, we built a smart detection layer that recognizes show titles and offers a one-tap subscription button immediately.
+
+### 3. Listening Signals and Playback Events
+* **What is sent:** Podcast and episode identifiers, playback progress, completed plays, likes, and downloads.
+* **Why:** Public charts are heavily manipulated and do not give reliable play-level signals. We use these events to understand aggregate listening trends and power our community charts.
+
+### 4. Device and Operating System Details
+* **What is sent:** App version, Android OS version, device manufacturer and model, local time zone hour, and an anonymous random analytics ID.
+* **Why:** PostHog tracks basic device environment properties by default. This helps us spot platform-specific bugs (for example, if a background crash only happens on Samsung Android 14 devices).
+
+### 5. Crash and Error Logs
+* **What is sent:** Technical stack traces, error codes, and crash contexts.
+* **Why:** If playback fails when reconnecting to Android Auto in your vehicle, or if a malformed podcast feed causes a crash, we need the stack trace so we can fix it.
 
 ---
 
-## Full Event Glossary
+## What Stays Strictly Local
 
-For complete transparency, our exact event schema, property definitions, and emission rules are documented in:
-* **[Analytics Event Glossary](ANALYTICS_EVENT_GLOSSARY.md)**
-* **[Companion Event CSV](analytics/event_glossary.csv)**
+* **Your Library:** All your subscribed shows, custom folders, custom tags, downloaded media files, and listening history remain strictly on your device.
+* **Your Personalization Brain:** boxlore runs an on-device Bayesian ranking model. The math that learns what you skip, finish, and like stays inside your phone's local database.
+* **Your Backups:** When you export a full JSON backup of your library, it is generated locally and saved to your phone storage. We never hold a copy of your backup on our servers unless you explicitly share it.
+
+---
+
+## Full Transparency: The Event Glossary
+
+We believe in complete, open-book transparency. Every single event name, property payload, and emission rule captured by our analytics is publicly documented:
+
+* **[Analytics Event Glossary](ANALYTICS_EVENT_GLOSSARY.md)**: The full technical schema of every event emitted by the app.
+* **[Companion Event CSV](analytics/event_glossary.csv)**: Machine-readable reference of our analytics inventory.
