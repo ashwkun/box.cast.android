@@ -76,7 +76,7 @@ New features and improvements for the next release are currently in development.
 
 <!-- release-whats-new:start -->
 <!-- release-meta: version=v0.0.25 date=2026-09-08 -->
-<p>🎙️ <b>Community Thanks</b>: Big shoutout to <b>@pclewis33-arch</b> for proposing genre editing, which inspired our new subscription organization system featuring custom folders, adaptive card sizes, and personalized show tags. Please let us know how it works for you! And thank you to everyone who reported bugs—we've resolved as many as possible in this release to keep <b>boxlore</b> reliable.</p>
+
 
 <b>🆕 New features:</b>
 <ul align="left">
