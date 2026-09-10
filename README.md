@@ -36,6 +36,7 @@ Search by name or topic, get recommendations, listen offline, watch video shows,
 <br/>
 
 **[About](#about)** ·
+**[The soul of boxlore](docs/SOUL.md)** ·
 **[Features](#features)** ·
 **[Release notes](#release-notes)** ·
 **[Screenshots](#screenshots)** ·
@@ -56,6 +57,8 @@ Search by name or topic, get recommendations, listen offline, watch video shows,
 boxlore is an Android app for finding, following, and playing podcasts. Search for a show even when the spelling is imperfect, or describe a subject to find relevant shows and episodes.
 
 The app uses your listening activity—such as what you play, skip, and like—to suggest more podcasts. This personalization is processed on your device. You can listen online or offline, build a queue, and keep subscriptions, downloads, history, and likes in one library.
+
+Read **[The soul of boxlore](docs/SOUL.md)**: why this app is free, ad-free, and crafted with care.
 
 ## Features
 
